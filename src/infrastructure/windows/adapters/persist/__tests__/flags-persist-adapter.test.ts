@@ -10,6 +10,7 @@ describe("FlagsPersistAdapter", () => {
     id: string;
     update: (changes: unknown, options?: unknown) => Promise<unknown>;
     getFlag?: (scope: string, key: string) => unknown;
+    setFlag?: (scope: string, key: string, value: unknown) => Promise<unknown>;
     flags?: Record<string, Record<string, unknown>>;
   };
 
@@ -20,6 +21,7 @@ describe("FlagsPersistAdapter", () => {
       id: "Actor.123",
       update: vi.fn().mockResolvedValue(undefined),
       getFlag: vi.fn().mockReturnValue({ value: "test" }),
+      setFlag: vi.fn().mockResolvedValue(undefined),
       flags: {
         testNamespace: {
           testKey: { value: "test" },
@@ -186,6 +188,36 @@ describe("FlagsPersistAdapter", () => {
       expect(result.error.code).toBe("DocumentNotFound");
     });
 
+    it("should return error if document does not support update", async () => {
+      // Create a document without update method
+      const documentWithoutUpdate = {
+        id: "Actor.123",
+        getFlag: vi.fn().mockReturnValue({ value: "test" }),
+        setFlag: vi.fn().mockResolvedValue(undefined),
+      };
+      const collectionWithoutUpdate = new Map();
+      collectionWithoutUpdate.set("Actor.123", documentWithoutUpdate);
+      (globalThis as { game?: unknown }).game = {
+        collections: {
+          get: vi.fn().mockReturnValue(collectionWithoutUpdate),
+        },
+      };
+
+      const config: PersistConfig = {
+        type: "flag",
+        documentId: "Actor.123",
+        namespace: "testNamespace",
+        key: "testKey",
+      };
+      const data = { value: "test" };
+
+      const result = await adapter.save(config, data);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("OPERATION_FAILED");
+      expect(result.error.message).toContain("Document does not support update");
+    });
+
     it("should return error if document not found in collection", async () => {
       const emptyCollection = new Map();
       (globalThis as { game?: unknown }).game = {
@@ -271,6 +303,29 @@ describe("FlagsPersistAdapter", () => {
 
       const result = await adapter.load(config);
 
+      expectResultOk(result);
+      expect(result.value).toEqual({});
+    });
+
+    it("should skip flag value that is not a Record (coverage for line 162 else branch)", async () => {
+      // Mock flag value as primitive (not a Record)
+      mockDocument.getFlag = vi.fn().mockReturnValue(undefined);
+      mockDocument.flags = {
+        testNamespace: {
+          testKey: "primitive-string-value", // Not a Record
+        },
+      };
+
+      const config: PersistConfig = {
+        type: "flag",
+        documentId: "Actor.123",
+        namespace: "testNamespace",
+        key: "testKey",
+      };
+
+      const result = await adapter.load(config);
+
+      // Should return empty object because flagValue is not a Record (else branch at line 162)
       expectResultOk(result);
       expect(result.value).toEqual({});
     });

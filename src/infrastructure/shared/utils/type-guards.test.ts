@@ -3,7 +3,13 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { hasMethod, hasProperty, isObjectWithMethods, isInitializable } from "./type-guards";
+import {
+  hasMethod,
+  hasProperty,
+  hasOwnProperty,
+  isObjectWithMethods,
+  isInitializable,
+} from "./type-guards";
 import { ok } from "@/domain/utils/result";
 import type { Initializable } from "@/domain/ports/initializable.interface";
 
@@ -91,6 +97,48 @@ describe("type-guards", () => {
       expect(hasProperty("string", "name")).toBe(false);
       expect(hasProperty(42, "name")).toBe(false);
       expect(hasProperty(true, "name")).toBe(false);
+    });
+  });
+
+  describe("hasOwnProperty", () => {
+    it("should return true for object with own property", () => {
+      const obj = { name: "test" };
+      expect(hasOwnProperty(obj, "name")).toBe(true);
+    });
+
+    it("should return false for object without property", () => {
+      const obj = { name: "test" };
+      expect(hasOwnProperty(obj, "other")).toBe(false);
+    });
+
+    it("should return true for property with undefined value", () => {
+      const obj = { name: undefined };
+      expect(hasOwnProperty(obj, "name")).toBe(true);
+    });
+
+    it("should return false for inherited property", () => {
+      const obj = Object.create({ inherited: "value" });
+      expect(hasOwnProperty(obj, "inherited")).toBe(false);
+    });
+
+    it("should return false for null", () => {
+      expect(hasOwnProperty(null, "name")).toBe(false);
+    });
+
+    it("should return false for undefined", () => {
+      expect(hasOwnProperty(undefined, "name")).toBe(false);
+    });
+
+    it("should return false for primitive values", () => {
+      expect(hasOwnProperty("string", "name")).toBe(false);
+      expect(hasOwnProperty(42, "name")).toBe(false);
+      expect(hasOwnProperty(true, "name")).toBe(false);
+    });
+
+    it("should return true for array index properties", () => {
+      const arr = [1, 2, 3];
+      expect(hasOwnProperty(arr, "0")).toBe(true);
+      expect(hasOwnProperty(arr, "length")).toBe(true);
     });
   });
 

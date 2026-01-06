@@ -3,7 +3,6 @@ import type {
   ActorSnapshot,
   ItemSnapshot,
 } from "@/application/windows/ports/shared-document-cache-port.interface";
-import { castSvelteStateRune } from "@/infrastructure/adapters/foundry/runtime-casts";
 
 /**
  * GlobalDocumentCache - Singleton-Cache für Shared Document State
@@ -23,37 +22,13 @@ export class GlobalDocumentCache implements ISharedDocumentCache {
 
   // Reaktive Caches (Plain Objects, nicht Foundry Document Instanzen)
   // Serialisierte Snapshots (system/flags/name etc.) als Plain Objects
-  // Fallback für Tests: Wenn $state nicht verfügbar ist, verwende normale Map
+  // $state rune is available here because this is a .svelte.ts file
 
-  readonly actorsById: Map<string, ActorSnapshot> = (() => {
-    // Type-safe cast: Use runtime cast helper for Svelte 5 $state rune
-    const $stateResult = castSvelteStateRune();
-    if ($stateResult.ok) {
-      return $stateResult.value(new Map<string, ActorSnapshot>());
-    }
-    // Fallback for tests: If $state is not available, use normal Map
-    return new Map<string, ActorSnapshot>();
-  })();
+  readonly actorsById: Map<string, ActorSnapshot> = $state(new Map<string, ActorSnapshot>());
 
-  readonly itemsById: Map<string, ItemSnapshot> = (() => {
-    // Type-safe cast: Use runtime cast helper for Svelte 5 $state rune
-    const $stateResult = castSvelteStateRune();
-    if ($stateResult.ok) {
-      return $stateResult.value(new Map<string, ItemSnapshot>());
-    }
-    // Fallback for tests: If $state is not available, use normal Map
-    return new Map<string, ItemSnapshot>();
-  })();
+  readonly itemsById: Map<string, ItemSnapshot> = $state(new Map<string, ItemSnapshot>());
 
-  readonly itemsByActorId: Map<string, string[]> = (() => {
-    // Type-safe cast: Use runtime cast helper for Svelte 5 $state rune
-    const $stateResult = castSvelteStateRune();
-    if ($stateResult.ok) {
-      return $stateResult.value(new Map<string, string[]>());
-    }
-    // Fallback for tests: If $state is not available, use normal Map
-    return new Map<string, string[]>();
-  })();
+  readonly itemsByActorId: Map<string, string[]> = $state(new Map<string, string[]>());
 
   private constructor() {
     // Private constructor for singleton

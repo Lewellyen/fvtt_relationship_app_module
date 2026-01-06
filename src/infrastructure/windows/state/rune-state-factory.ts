@@ -1,6 +1,6 @@
 import type { IStatePortFactory } from "@/application/windows/ports/state-port-factory-port.interface";
 import type { IWindowState } from "@/domain/windows/types/view-model.interface";
-import { RuneState } from "./rune-state";
+import { RuneState } from "./rune-state.svelte";
 
 /**
  * RuneStateFactory - IStatePortFactory Implementierung für RuneState

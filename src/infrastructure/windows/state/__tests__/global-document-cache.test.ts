@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { GlobalDocumentCache } from "../global-document-cache";
+import { GlobalDocumentCache } from "../global-document-cache.svelte";
 import type {
   ActorSnapshot,
   ItemSnapshot,
@@ -221,7 +221,7 @@ describe("GlobalDocumentCache", () => {
       // Now patch again - should not add duplicate
       cache.patchItem("Item.789", { name: "Test Item 2", actorId: "Actor.123" });
       const finalItems = cache.getItemsByActorId("Actor.123");
-      const _count = finalItems.filter((id) => id === "Item.456").length;
+      const _count = finalItems.filter((id: string) => id === "Item.456").length;
       // Should handle gracefully even if duplicate exists
       expect(finalItems).toContain("Item.456");
       expect(finalItems).toContain("Item.789");
@@ -239,7 +239,7 @@ describe("GlobalDocumentCache", () => {
       // Now change actorId - should not add duplicate
       cache.patchItem("Item.456", { actorId: "Actor.456" });
       const finalItems = cache.getItemsByActorId("Actor.456");
-      const _count = finalItems.filter((id) => id === "Item.456").length;
+      const _count = finalItems.filter((id: string) => id === "Item.456").length;
       // Should handle gracefully even if duplicate exists
       expect(finalItems).toContain("Item.456");
     });
@@ -272,7 +272,7 @@ describe("GlobalDocumentCache", () => {
 
       // Should not add duplicate (branch 108 else path: itemId already included)
       items = cache.getItemsByActorId("Actor.123");
-      const count = items.filter((id) => id === "Item.456").length;
+      const count = items.filter((id: string) => id === "Item.456").length;
       expect(count).toBe(1); // Should still be only once, not duplicated
     });
 
@@ -390,7 +390,7 @@ describe("GlobalDocumentCache", () => {
       cache.patchItem("Item.456", { actorId: "Actor.456" });
 
       const finalItems = cache.getItemsByActorId("Actor.456");
-      const count = finalItems.filter((id) => id === "Item.456").length;
+      const count = finalItems.filter((id: string) => id === "Item.456").length;
       // Should still be only once, not duplicated (branch 139 else path executed)
       expect(finalItems).toContain("Item.456");
       expect(count).toBe(1); // Verify it's not duplicated

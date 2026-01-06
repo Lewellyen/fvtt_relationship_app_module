@@ -101,6 +101,7 @@ export function getRootContainer(): Result<ServiceContainer, string> {
 // deterministisch in Unit-Tests abzudecken. Die Logik wird über Integrationspfade geprüft.
 if (!bootstrapOk) {
   // Detect version once and reuse for both error logging and version-specific checks
+  /* v8 ignore start */
   const foundryVersion = tryGetFoundryVersion();
 
   BootstrapErrorHandler.logError(bootstrapResult.error, {
@@ -139,6 +140,7 @@ if (!bootstrapOk) {
 
   // Soft abort: Don't proceed with initialization
   // (no throw, no return - just don't call initializeFoundryModule)
+  /* v8 ignore stop */
 } else {
   // Only initialize if bootstrap succeeded
   initializeFoundryModule();

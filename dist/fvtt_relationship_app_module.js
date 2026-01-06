@@ -10,7 +10,7 @@ var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read fr
 var __privateAdd = (obj, member, value2) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value2);
 var __privateSet = (obj, member, value2, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value2) : member.set(obj, value2), value2);
 var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
-var _a, _disposed, _disposed2, _disposed3, _disposed4, _disposed5, _disposed6, _b, _commit_callbacks, _discard_callbacks, _pending, _blocking_pending, _deferred, _dirty_effects, _maybe_dirty_effects, _Batch_instances, traverse_effect_tree_fn, defer_effects_fn, clear_marked_fn, resolve_fn, commit_fn, _pending2, _anchor, _hydrate_open, _props, _children, _effect, _main_effect, _pending_effect, _failed_effect, _offscreen_fragment, _pending_anchor, _local_pending_count, _pending_count, _is_creating_fallback, _effect_pending, _effect_pending_subscriber, _Boundary_instances, hydrate_resolved_content_fn, hydrate_pending_content_fn, get_anchor_fn, run_fn, show_pending_snippet_fn, update_pending_count_fn, _batches, _onscreen, _offscreen, _outroing, _transition, _commit, _discard, _listeners, _observer, _options, _ResizeObserverSingleton_instances, getObserver_fn, _events, _instance, _c;
+var _a, _disposed, _disposed2, _disposed3, _disposed4, _disposed5, _disposed6, _b, _commit_callbacks, _discard_callbacks, _pending, _blocking_pending, _deferred, _dirty_effects, _maybe_dirty_effects, _Batch_instances, traverse_effect_tree_fn, defer_effects_fn, clear_marked_fn, resolve_fn, commit_fn, _pending2, _anchor, _hydrate_open, _props, _children, _effect, _main_effect, _pending_effect, _failed_effect, _offscreen_fragment, _pending_anchor, _local_pending_count, _pending_count, _is_creating_fallback, _effect_pending, _effect_pending_subscriber, _Boundary_instances, hydrate_resolved_content_fn, hydrate_pending_content_fn, get_anchor_fn, run_fn, show_pending_snippet_fn, update_pending_count_fn, _batches, _onscreen, _offscreen, _outroing, _transition, _commit, _discard, _listeners, _observer, _options, _ResizeObserverSingleton_instances, getObserver_fn, _events, _instance, _c, _runeState, _actorsById, _itemsById, _itemsByActorId, _d;
 const MODULE_METADATA = {
   ID: "fvtt_relationship_app_module",
   NAME: "Beziehungsnetzwerke für Foundry",
@@ -439,7 +439,6 @@ const _RuntimeConfigEventEmitter = class _RuntimeConfigEventEmitter {
   }
   /**
    * Type-safe helper to set listeners for a specific key.
-   * @ts-expect-error - Type coverage exclusion for generic Set cast
    */
   setListenersForKey(key2, listeners) {
     this.listeners.set(key2, listeners);
@@ -507,10 +506,10 @@ function castToFoundryHookCallback(callback) {
   return callback;
 }
 __name(castToFoundryHookCallback, "castToFoundryHookCallback");
-function castResolvedService(value2) {
+function castResolvedService$1(value2) {
   return value2;
 }
-__name(castResolvedService, "castResolvedService");
+__name(castResolvedService$1, "castResolvedService$1");
 function castContainerErrorCode(code) {
   return code;
 }
@@ -2042,7 +2041,7 @@ const _ServiceResolutionManager = class _ServiceResolutionManager {
   resolve(token) {
     const result = this.resolveWithError(token);
     if (isOk(result)) {
-      return castResolvedService(result.value);
+      return castResolvedService$1(result.value);
     }
     const containerError = {
       code: castContainerErrorCode(result.error.code),
@@ -2182,7 +2181,7 @@ const _ServiceContainer = class _ServiceContainer {
         };
         return err(containerError);
       }
-      const metricsCollector = castResolvedService(result.value);
+      const metricsCollector = castResolvedService$1(result.value);
       return ok(metricsCollector);
     });
     this.apiSecurityManager = new ApiSecurityManager();
@@ -2287,7 +2286,7 @@ const _ServiceContainer = class _ServiceContainer {
   injectMetricsCollector() {
     const metricsResult = this.resolutionManager.resolveWithError(metricsCollectorToken);
     if (metricsResult.ok) {
-      const metricsCollector = castResolvedService(metricsResult.value);
+      const metricsCollector = castResolvedService$1(metricsResult.value);
       this.metricsInjectionManager.performInjection(metricsCollector);
     }
   }
@@ -2820,7 +2819,7 @@ const _PortResolutionStrategy = class _PortResolutionStrategy {
           )
         );
       }
-      return ok(castResolvedService(resolveResult.value));
+      return ok(castResolvedService$1(resolveResult.value));
     } catch (error) {
       return err(
         createFoundryError(
@@ -9426,6 +9425,13 @@ function hasProperty(obj, propertyName) {
   return obj !== null && obj !== void 0 && typeof obj === "object" && propertyName in obj;
 }
 __name(hasProperty, "hasProperty");
+function hasOwnProperty$1(obj, propertyName) {
+  if (obj === null || obj === void 0 || typeof obj !== "object") {
+    return false;
+  }
+  return Object.prototype.hasOwnProperty.call(obj, propertyName);
+}
+__name(hasOwnProperty$1, "hasOwnProperty$1");
 function isObjectWithMethods(obj, methodNames) {
   if (obj === null || obj === void 0 || typeof obj !== "object") {
     return false;
@@ -9494,6 +9500,10 @@ function extractHtmlElement(html2) {
   return html2 instanceof HTMLElement ? html2 : null;
 }
 __name(extractHtmlElement, "extractHtmlElement");
+function isRecord$1(value2) {
+  return value2 !== null && typeof value2 === "object" && !Array.isArray(value2);
+}
+__name(isRecord$1, "isRecord$1");
 function getFactoryOrError(factories, version) {
   const factory = factories.get(version);
   if (!factory) {
@@ -9546,6 +9556,10 @@ function castCreatedJournalEntry(document2) {
   return document2;
 }
 __name(castCreatedJournalEntry, "castCreatedJournalEntry");
+function createEntityDataWithId(data, id) {
+  return { ...data, id };
+}
+__name(createEntityDataWithId, "createEntityDataWithId");
 function castFoundryDocumentCollection(collections, documentType) {
   if (!isObjectWithMethods(collections, ["get"])) {
     return err(
@@ -9581,23 +9595,6 @@ function castFoundryDocumentCollection(collections, documentType) {
   return ok(collection);
 }
 __name(castFoundryDocumentCollection, "castFoundryDocumentCollection");
-function castSvelteStateRune() {
-  if (typeof globalThis === "undefined" || globalThis === null) {
-    return err(createFoundryError("API_NOT_AVAILABLE", "globalThis is not available", {}));
-  }
-  const $state = globalThis.$state;
-  if (typeof $state !== "function") {
-    return err(
-      createFoundryError(
-        "API_NOT_AVAILABLE",
-        "Svelte 5 $state rune is not available in globalThis",
-        {}
-      )
-    );
-  }
-  return ok($state);
-}
-__name(castSvelteStateRune, "castSvelteStateRune");
 const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
   constructor() {
     __privateAdd(this, _disposed3, false);
@@ -13056,6 +13053,7 @@ const journalDirectoryRerenderSchedulerToken = createInjectionToken(
   "JournalDirectoryRerenderScheduler"
 );
 const eventRegistrarRegistryToken = createInjectionToken("EventRegistrarRegistry");
+const journalOverviewServiceToken = createInjectionToken("JournalOverviewService");
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
 const foundryGameToken = createInjectionToken("FoundryGame");
 const foundryHooksToken = createInjectionToken("FoundryHooks");
@@ -13464,7 +13462,7 @@ const _ApiServiceResolver = class _ApiServiceResolver {
         };
         return err(containerError);
       }
-      const service = castResolvedService(result.value);
+      const service = castResolvedService$1(result.value);
       const wrappedService = this.serviceWrapperFactory.wrapSensitiveService(
         token,
         service,
@@ -13495,7 +13493,7 @@ const _ApiHealthMetricsProvider = class _ApiHealthMetricsProvider {
         cacheHitRate: 0
       };
     }
-    const metricsCollector = castResolvedService(metricsResult.value);
+    const metricsCollector = castResolvedService$1(metricsResult.value);
     return metricsCollector.getSnapshot();
   }
   /**
@@ -13517,7 +13515,7 @@ const _ApiHealthMetricsProvider = class _ApiHealthMetricsProvider {
         timestamp: (/* @__PURE__ */ new Date()).toISOString()
       };
     }
-    const healthService = castResolvedService(healthServiceResult.value);
+    const healthService = castResolvedService$1(healthServiceResult.value);
     return healthService.getHealth();
   }
 };
@@ -13730,10 +13728,10 @@ const _NotificationBootstrapper = class _NotificationBootstrapper {
     if (!queuedUIChannelResult.ok) {
       return err(`QueuedUIChannel could not be resolved: ${queuedUIChannelResult.error.message}`);
     }
-    const notificationCenter = castResolvedService(
+    const notificationCenter = castResolvedService$1(
       notificationCenterResult.value
     );
-    const queuedUIChannel = castResolvedService(queuedUIChannelResult.value);
+    const queuedUIChannel = castResolvedService$1(queuedUIChannelResult.value);
     notificationCenter.addChannel(queuedUIChannel);
     return ok(void 0);
   }
@@ -13764,7 +13762,7 @@ const _ApiBootstrapper = class _ApiBootstrapper {
     if (!apiInitializerResult.ok) {
       return err(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
     }
-    const apiInitializer = castResolvedService(apiInitializerResult.value);
+    const apiInitializer = castResolvedService$1(apiInitializerResult.value);
     const exposeResult = apiInitializer.expose(container);
     if (!exposeResult.ok) {
       return err(`Failed to expose API: ${exposeResult.error}`);
@@ -13801,7 +13799,7 @@ const _SettingsBootstrapper = class _SettingsBootstrapper {
         `Failed to resolve ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
       );
     }
-    const settingsRegistrar = castResolvedService(
+    const settingsRegistrar = castResolvedService$1(
       settingsRegistrarResult.value
     );
     settingsRegistrar.registerAll();
@@ -13835,7 +13833,7 @@ const _LoggingBootstrapper = class _LoggingBootstrapper {
     if (!settingsResult.ok) {
       return ok(void 0);
     }
-    const settings = castResolvedService(settingsResult.value);
+    const settings = castResolvedService$1(settingsResult.value);
     const logLevelResult = settings.get(
       MODULE_METADATA.ID,
       SETTING_KEYS.LOG_LEVEL,
@@ -13909,7 +13907,7 @@ const _EventsBootstrapper = class _EventsBootstrapper {
     if (!eventRegistrarResult.ok) {
       return err(`Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`);
     }
-    const eventRegistrar = castResolvedService(eventRegistrarResult.value);
+    const eventRegistrar = castResolvedService$1(eventRegistrarResult.value);
     const eventRegistrationResult = eventRegistrar.registerAll();
     if (!eventRegistrationResult.ok) {
       const errorMessages = eventRegistrationResult.error.map((e) => e.message).join(", ");
@@ -13917,7 +13915,7 @@ const _EventsBootstrapper = class _EventsBootstrapper {
     }
     const windowHooksResult = container.resolveWithError(windowHooksServiceToken);
     if (windowHooksResult.ok) {
-      const windowHooksService = castResolvedService(windowHooksResult.value);
+      const windowHooksService = castResolvedService$1(windowHooksResult.value);
       windowHooksService.register();
     }
     return ok(void 0);
@@ -13954,7 +13952,7 @@ const _ContextMenuBootstrapper = class _ContextMenuBootstrapper {
         `JournalContextMenuLibWrapperService could not be resolved: ${contextMenuLibWrapperResult.error.message}`
       );
     }
-    const contextMenuLibWrapper = castResolvedService(
+    const contextMenuLibWrapper = castResolvedService$1(
       contextMenuLibWrapperResult.value
     );
     const registerResult = contextMenuLibWrapper.register();
@@ -13967,7 +13965,7 @@ const _ContextMenuBootstrapper = class _ContextMenuBootstrapper {
         `RegisterContextMenuUseCase could not be resolved: ${contextMenuUseCaseResult.error.message}`
       );
     }
-    const contextMenuUseCase = castResolvedService(
+    const contextMenuUseCase = castResolvedService$1(
       contextMenuUseCaseResult.value
     );
     const callbackRegisterResult = contextMenuUseCase.register();
@@ -14007,12 +14005,12 @@ const _SidebarButtonBootstrapper = class _SidebarButtonBootstrapper {
         `ShowAllHiddenJournalsUseCase could not be resolved: ${useCaseResult.error.message}`
       );
     }
-    const useCase = castResolvedService(useCaseResult.value);
+    const useCase = castResolvedService$1(useCaseResult.value);
     const hooksResult = container.resolveWithError(foundryHooksToken);
     if (!hooksResult.ok) {
       return err(`FoundryHooksPort could not be resolved: ${hooksResult.error.message}`);
     }
-    const hooks = castResolvedService(hooksResult.value);
+    const hooks = castResolvedService$1(hooksResult.value);
     const hookRegistrationResult = hooks.on("renderJournalDirectory", (...args2) => {
       if (args2.length < 2) {
         return;
@@ -14022,30 +14020,59 @@ const _SidebarButtonBootstrapper = class _SidebarButtonBootstrapper {
         return;
       }
       const html2 = htmlArg;
-      const existingButton = html2.querySelector(".show-all-hidden-journals-button");
-      if (existingButton) {
-        return;
-      }
-      const button = document.createElement("button");
-      button.className = "show-all-hidden-journals-button";
-      button.type = "button";
-      button.title = "Alle versteckten Journale wieder einblenden";
-      button.innerHTML = '<i class="fas fa-eye"></i> Alle Journale einblenden';
-      button.addEventListener("click", async () => {
-        const result = await useCase.execute();
-        if (result.ok) {
-        } else {
-        }
-      });
       const actionButtons = html2.querySelector(".header-actions.action-buttons");
-      if (actionButtons) {
-        actionButtons.appendChild(button);
-      } else {
-        const directoryHeader = html2.querySelector(".directory-header");
-        if (directoryHeader) {
+      const directoryHeader = html2.querySelector(".directory-header");
+      const existingButton = html2.querySelector(".show-all-hidden-journals-button");
+      if (!existingButton) {
+        const button = document.createElement("button");
+        button.className = "show-all-hidden-journals-button";
+        button.type = "button";
+        button.title = "Alle versteckten Journale wieder einblenden";
+        button.innerHTML = '<i class="fas fa-eye"></i> Alle Journale einblenden';
+        button.addEventListener("click", async () => {
+          const result = await useCase.execute();
+          if (result.ok) {
+          } else {
+          }
+        });
+        if (actionButtons) {
+          actionButtons.appendChild(button);
+        } else if (directoryHeader) {
           directoryHeader.appendChild(button);
         } else {
           html2.insertBefore(button, html2.firstChild);
+        }
+      }
+      const existingOverviewButton = html2.querySelector(".journal-overview-button");
+      if (!existingOverviewButton) {
+        const windowFactoryResult = container.resolveWithError(windowFactoryToken);
+        if (!windowFactoryResult.ok) {
+          console.warn(
+            "[Journal Overview] WindowFactory not available:",
+            windowFactoryResult.error.message
+          );
+          return;
+        }
+        const windowFactory = castResolvedService$1(windowFactoryResult.value);
+        const overviewButton = document.createElement("button");
+        overviewButton.className = "journal-overview-button";
+        overviewButton.type = "button";
+        overviewButton.title = "Journal-Übersicht anzeigen";
+        overviewButton.innerHTML = '<i class="fas fa-list"></i> Übersicht';
+        overviewButton.addEventListener("click", async () => {
+          const result = await windowFactory.createWindow("journal-overview");
+          if (result.ok) {
+            await result.value.show();
+          } else {
+            console.error("Failed to open journal overview window:", result.error);
+          }
+        });
+        if (actionButtons) {
+          actionButtons.appendChild(overviewButton);
+        } else if (directoryHeader) {
+          directoryHeader.appendChild(overviewButton);
+        } else {
+          html2.insertBefore(overviewButton, html2.firstChild);
         }
       }
     });
@@ -16928,7 +16955,7 @@ function resolveMultipleServices$1(container, tokens) {
     if (!result.ok) {
       throw new Error(`Failed to resolve ${name}: ${result.error.message}`);
     }
-    results.push(castResolvedService(result.value));
+    results.push(castResolvedService$1(result.value));
   }
   return results;
 }
@@ -18571,11 +18598,32 @@ const _FoundryJournalUiEventAdapter = class _FoundryJournalUiEventAdapter {
       };
     }
     if ("journalId" in record2 && typeof record2.journalId === "string" && "options" in record2 && Array.isArray(record2.options)) {
-      return {
+      const options = [];
+      const typedRecord = {
         journalId: record2.journalId,
-        // type-coverage:ignore-next-line - Fallback path for generic registerListener, not used in practice
+        /* type-coverage:ignore-next-line -- Runtime type check: record.options validated as array above */
         options: record2.options,
-        timestamp: typeof record2.timestamp === "number" ? record2.timestamp : Date.now()
+        timestamp: typeof record2.timestamp === "number" ? record2.timestamp : void 0
+      };
+      for (const item of typedRecord.options) {
+        if (typeof item === "object" && item !== null && "name" in item && typeof item.name === "string" && "icon" in item && typeof item.icon === "string" && "callback" in item && typeof item.callback === "function") {
+          const typedItem = {
+            name: item.name,
+            icon: item.icon,
+            /* type-coverage:ignore-next-line -- Runtime type check: item.callback validated as function above */
+            callback: item.callback
+          };
+          options.push({
+            name: typedItem.name,
+            icon: typedItem.icon,
+            callback: typedItem.callback
+          });
+        }
+      }
+      return {
+        journalId: typedRecord.journalId,
+        options,
+        timestamp: typeof typedRecord.timestamp === "number" ? typedRecord.timestamp : Date.now()
       };
     }
     return null;
@@ -19100,6 +19148,73 @@ _DIShowAllHiddenJournalsUseCase.dependencies = [
   journalVisibilityConfigToken
 ];
 let DIShowAllHiddenJournalsUseCase = _DIShowAllHiddenJournalsUseCase;
+const _JournalOverviewService = class _JournalOverviewService {
+  constructor(journalCollection, journalVisibility, notifications) {
+    this.journalCollection = journalCollection;
+    this.journalVisibility = journalVisibility;
+    this.notifications = notifications;
+  }
+  /**
+   * Gets all journals with their visibility status.
+   *
+   * @returns Result with array of journals and their visibility status, or error
+   */
+  getAllJournalsWithVisibilityStatus() {
+    const allJournalsResult = this.journalCollection.getAll();
+    if (!allJournalsResult.ok) {
+      return {
+        ok: false,
+        error: new Error(`Failed to get all journals: ${allJournalsResult.error.message}`)
+      };
+    }
+    const allJournals = allJournalsResult.value;
+    const hiddenJournalsResult = this.journalVisibility.getHiddenJournalEntries();
+    if (!hiddenJournalsResult.ok) {
+      this.notifications.warn(
+        "Failed to get hidden journals, showing all as visible",
+        {
+          errorCode: hiddenJournalsResult.error.code,
+          errorMessage: hiddenJournalsResult.error.message
+        },
+        { channels: ["ConsoleChannel"] }
+      );
+    }
+    const hiddenJournals = hiddenJournalsResult.ok ? hiddenJournalsResult.value : [];
+    const hiddenJournalIds = new Set(hiddenJournals.map((j) => j.id));
+    const journalsWithVisibility = allJournals.map((journal) => ({
+      id: journal.id,
+      name: journal.name,
+      isHidden: hiddenJournalIds.has(journal.id)
+    }));
+    this.notifications.debug(
+      `Retrieved ${journalsWithVisibility.length} journals with visibility status`,
+      {
+        total: journalsWithVisibility.length,
+        hidden: hiddenJournalIds.size,
+        visible: journalsWithVisibility.length - hiddenJournalIds.size
+      },
+      { channels: ["ConsoleChannel"] }
+    );
+    return {
+      ok: true,
+      value: journalsWithVisibility
+    };
+  }
+};
+__name(_JournalOverviewService, "JournalOverviewService");
+let JournalOverviewService = _JournalOverviewService;
+const _DIJournalOverviewService = class _DIJournalOverviewService extends JournalOverviewService {
+  constructor(journalCollection, journalVisibility, notifications) {
+    super(journalCollection, journalVisibility, notifications);
+  }
+};
+__name(_DIJournalOverviewService, "DIJournalOverviewService");
+_DIJournalOverviewService.dependencies = [
+  platformJournalCollectionPortToken,
+  journalVisibilityServiceToken,
+  notificationPublisherPortToken
+];
+let DIJournalOverviewService = _DIJournalOverviewService;
 const _HideJournalContextMenuHandler = class _HideJournalContextMenuHandler {
   constructor(journalRepository, platformUI, notifications) {
     this.journalRepository = journalRepository;
@@ -19342,7 +19457,7 @@ function resolveMultipleServices(container, tokens) {
     if (!result.ok) {
       throw new Error(`Failed to resolve ${name}: ${result.error.message}`);
     }
-    results.push(castResolvedService(result.value));
+    results.push(castResolvedService$1(result.value));
   }
   return results;
 }
@@ -19447,6 +19562,16 @@ function registerEventPorts(container) {
   if (isErr(showAllHiddenJournalsUseCaseResult)) {
     return err(
       `Failed to register ShowAllHiddenJournalsUseCase: ${showAllHiddenJournalsUseCaseResult.error.message}`
+    );
+  }
+  const journalOverviewServiceResult = container.registerClass(
+    journalOverviewServiceToken,
+    DIJournalOverviewService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(journalOverviewServiceResult)) {
+    return err(
+      `Failed to register JournalOverviewService: ${journalOverviewServiceResult.error.message}`
     );
   }
   const eventRegistrarRegistryResult = container.registerFactory(
@@ -19875,7 +20000,7 @@ const _FoundryJournalCollectionAdapter = class _FoundryJournalCollectionAdapter 
       }
     }
     if (errors.length > 0) {
-      const firstError = errors[0];
+      const firstError = getFirstArrayElement(errors);
       return err(firstError);
     }
     return ok(results);
@@ -20190,7 +20315,7 @@ const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter 
       }
     }
     if (errors.length > 0) {
-      const firstError = errors[0];
+      const firstError = getFirstArrayElement(errors);
       return err(firstError);
     }
     return ok(results);
@@ -20269,7 +20394,7 @@ const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter 
       }
     }
     if (errors.length > 0) {
-      const firstError = errors[0];
+      const firstError = getFirstArrayElement(errors);
       return err(firstError);
     }
     return ok(results);
@@ -20289,7 +20414,8 @@ const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter 
     if (existsResult.value) {
       return this.update(id, data);
     } else {
-      return this.create({ ...data, id });
+      const createData = createEntityDataWithId(data, id);
+      return this.create(createData);
     }
   }
   // ===== DELETE Operations =====
@@ -20320,7 +20446,7 @@ const _FoundryJournalRepositoryAdapter = class _FoundryJournalRepositoryAdapter 
       }
     }
     if (errors.length > 0) {
-      const firstError = errors[0];
+      const firstError = getFirstArrayElement(errors);
       return err(firstError);
     }
     return ok(void 0);
@@ -20806,6 +20932,93 @@ const _WindowRegistry = class _WindowRegistry {
 };
 __name(_WindowRegistry, "WindowRegistry");
 let WindowRegistry = _WindowRegistry;
+function isRecord(value2) {
+  return value2 !== null && typeof value2 === "object" && !Array.isArray(value2);
+}
+__name(isRecord, "isRecord");
+function hasOwnProperty(obj, propertyName) {
+  if (obj === null || obj === void 0 || typeof obj !== "object") {
+    return false;
+  }
+  return Object.prototype.hasOwnProperty.call(obj, propertyName);
+}
+__name(hasOwnProperty, "hasOwnProperty");
+function getMapValueOrCreate(map2, key2, factory) {
+  let value2 = map2.get(key2);
+  if (value2 === void 0) {
+    value2 = factory();
+    map2.set(key2, value2);
+  }
+  return value2;
+}
+__name(getMapValueOrCreate, "getMapValueOrCreate");
+function getNestedValue(obj, path) {
+  if (!path.includes(".")) {
+    if (isRecord(obj)) {
+      return obj[path];
+    }
+    return void 0;
+  }
+  const keys = path.split(".");
+  let current = obj;
+  for (const key2 of keys) {
+    if (isRecord(current) && key2 in current) {
+      current = current[key2];
+    } else {
+      return void 0;
+    }
+  }
+  return current;
+}
+__name(getNestedValue, "getNestedValue");
+function createNestedObject(path, value2) {
+  if (!path.includes(".")) {
+    return { [path]: value2 };
+  }
+  const keys = path.split(".");
+  const nested = {};
+  let current = nested;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key2 = keys[i];
+    if (key2) {
+      current[key2] = {};
+      const next2 = current[key2];
+      current = next2;
+    }
+  }
+  const lastKey = keys[keys.length - 1];
+  if (lastKey) {
+    current[lastKey] = value2;
+  }
+  return nested;
+}
+__name(createNestedObject, "createNestedObject");
+function castEventHandlerForSet(handler) {
+  return handler;
+}
+__name(castEventHandlerForSet, "castEventHandlerForSet");
+function extractPersistMeta(options, key2) {
+  if (!options || !isRecord(options)) {
+    return void 0;
+  }
+  const metaValue = options[key2];
+  if (isRecord(metaValue) && typeof metaValue.originClientId === "string" && typeof metaValue.originWindowInstanceId === "string" && typeof metaValue.render === "boolean") {
+    return {
+      originClientId: metaValue.originClientId,
+      originWindowInstanceId: metaValue.originWindowInstanceId,
+      render: metaValue.render
+    };
+  }
+  return void 0;
+}
+__name(extractPersistMeta, "extractPersistMeta");
+function castSvelteComponent(component2) {
+  if (typeof component2 === "function") {
+    return component2;
+  }
+  return null;
+}
+__name(castSvelteComponent, "castSvelteComponent");
 const _EventBus = class _EventBus {
   constructor() {
     this.listeners = /* @__PURE__ */ new Map();
@@ -20818,13 +21031,15 @@ const _EventBus = class _EventBus {
     }
   }
   on(event2, handler) {
-    if (!this.listeners.has(event2)) {
-      this.listeners.set(event2, /* @__PURE__ */ new Set());
-    }
-    const eventListeners = this.listeners.get(event2);
-    eventListeners.add(handler);
+    const eventListeners = getMapValueOrCreate(
+      this.listeners,
+      event2,
+      () => /* @__PURE__ */ new Set()
+    );
+    const castHandler = castEventHandlerForSet(handler);
+    eventListeners.add(castHandler);
     return () => {
-      eventListeners.delete(handler);
+      eventListeners.delete(castHandler);
       if (eventListeners.size === 0) {
         this.listeners.delete(event2);
       }
@@ -20833,7 +21048,8 @@ const _EventBus = class _EventBus {
   off(event2, handler) {
     const eventListeners = this.listeners.get(event2);
     if (!eventListeners) return;
-    eventListeners.delete(handler);
+    const castHandler = castEventHandlerForSet(handler);
+    eventListeners.delete(castHandler);
     if (eventListeners.size === 0) {
       this.listeners.delete(event2);
     }
@@ -20853,10 +21069,11 @@ const _StateStore = class _StateStore {
     this.state = /* @__PURE__ */ new Map();
   }
   set(instanceId, key2, value2) {
-    if (!this.state.has(instanceId)) {
-      this.state.set(instanceId, /* @__PURE__ */ new Map());
-    }
-    const instanceState = this.state.get(instanceId);
+    const instanceState = getMapValueOrCreate(
+      this.state,
+      instanceId,
+      () => /* @__PURE__ */ new Map()
+    );
     instanceState.set(key2, value2);
     return ok(void 0);
   }
@@ -21083,10 +21300,11 @@ const _BindingEngine = class _BindingEngine {
   }
   initialize(definition, instanceId) {
     const normalized = this.getNormalizedBindings(definition);
-    if (!this.bindings.has(instanceId)) {
-      this.bindings.set(instanceId, /* @__PURE__ */ new Map());
-    }
-    const instanceBindings = this.bindings.get(instanceId);
+    const instanceBindings = getMapValueOrCreate(
+      this.bindings,
+      instanceId,
+      () => /* @__PURE__ */ new Map()
+    );
     for (const binding of normalized) {
       instanceBindings.set(binding.id || `${binding.source.key}-binding`, binding);
       this.loadBindingValue(binding.source, instanceId).then((valueResult) => {
@@ -21192,18 +21410,13 @@ const _BindingEngine = class _BindingEngine {
         }
         const data = loadResult.value;
         if (source2.key.includes(".")) {
-          const keys = source2.key.split(".");
-          let current = data;
-          for (const key2 of keys) {
-            if (current && typeof current === "object" && key2 in current) {
-              current = current[key2];
-            } else {
-              return ok(void 0);
-            }
-          }
-          return ok(current);
+          const nestedValue = getNestedValue(data, source2.key);
+          return ok(nestedValue);
         }
-        return ok(data[source2.key] ?? data);
+        if (isRecord(data)) {
+          return ok(data[source2.key] ?? data);
+        }
+        return ok(data);
       case "journal":
         return ok(void 0);
       default:
@@ -21227,26 +21440,7 @@ const _BindingEngine = class _BindingEngine {
         if (!persistConfig.ok) {
           return err(persistConfig.error);
         }
-        let data;
-        if (source2.key.includes(".")) {
-          const keys = source2.key.split(".");
-          const nested = {};
-          let current = nested;
-          for (let i = 0; i < keys.length - 1; i++) {
-            const key2 = keys[i];
-            if (key2) {
-              current[key2] = {};
-              current = current[key2];
-            }
-          }
-          const lastKey = keys[keys.length - 1];
-          if (lastKey) {
-            current[lastKey] = value2;
-          }
-          data = nested;
-        } else {
-          data = { [source2.key]: value2 };
-        }
+        const data = createNestedObject(source2.key, value2);
         const meta = this.remoteSyncGate?.makePersistMeta(instanceId);
         const saveResult = await this.persistAdapter.save(persistConfig.value, data, meta);
         if (!saveResult.ok) {
@@ -21316,8 +21510,7 @@ const _RemoteSyncGate = class _RemoteSyncGate {
     };
   }
   isFromWindow(options, instanceId) {
-    if (!options) return false;
-    const meta = options[this.OPT_KEY];
+    const meta = extractPersistMeta(options, this.OPT_KEY);
     return meta?.originWindowInstanceId === instanceId;
   }
   getClientId() {
@@ -21340,6 +21533,16 @@ const _ViewModelBuilder = class _ViewModelBuilder {
 };
 __name(_ViewModelBuilder, "ViewModelBuilder");
 let ViewModelBuilder = _ViewModelBuilder;
+function buildPositionObject(position) {
+  if (!position) return void 0;
+  const result = {};
+  if (position.top !== void 0) result.top = position.top;
+  if (position.left !== void 0) result.left = position.left;
+  if (position.width !== void 0) result.width = position.width;
+  if (position.height !== void 0) result.height = position.height;
+  return Object.keys(result).length > 0 ? result : void 0;
+}
+__name(buildPositionObject, "buildPositionObject");
 const _FoundryApplicationWrapper2 = class _FoundryApplicationWrapper2 {
   static build(definition, controller, instanceId) {
     var _a2;
@@ -21349,9 +21552,16 @@ const _FoundryApplicationWrapper2 = class _FoundryApplicationWrapper2 {
     const applicationBase = foundryApi.applications.api.ApplicationV2 ?? class {
     };
     const handlebarsMixin = foundryApi.applications.api.HandlebarsApplicationMixin ?? ((cls) => cls);
+    const positionObj = buildPositionObject(definition.position);
     const appClass = (_a2 = class extends handlebarsMixin(applicationBase) {
-      constructor(options) {
-        super(options);
+      // Kein static template - wir rendern direkt in _renderFrame
+      // static template wird nicht verwendet, da _renderHTML "" zurückgibt
+      // Override title getter (wie in Referenz-Implementierung)
+      get title() {
+        return definition.title ?? "";
+      }
+      constructor(...args2) {
+        super(...args2);
         const appInstance = this;
         controllerMap.set(appInstance, controller);
         mountedMap.set(appInstance, false);
@@ -21360,24 +21570,33 @@ const _FoundryApplicationWrapper2 = class _FoundryApplicationWrapper2 {
           _FoundryApplicationWrapper._testMountedMaps.set(appInstance, mountedMap);
         }
       }
-      // Verwendet _onRender lifecycle method (Best Practice für ApplicationV2)
-      // Wird nach dem Rendering aufgerufen, wenn das HTML bereits im DOM ist
-      async _onRender(context, options) {
-        await super._onRender(
-          context,
-          options
-        );
+      // Überschreibt _renderHTML um kein Handlebars-Template zu rendern
+      // (wie in SvelteApplicationMixin - gibt leeren String zurück)
+      async _renderHTML(_context, _options2) {
+        return {};
+      }
+      // Verwendet _renderFrame lifecycle method (wie SvelteApplicationMixin)
+      // Wird während des Rendering-Prozesses aufgerufen und gibt den Frame zurück
+      // Dies ermöglicht es, die Svelte-Komponente in .window-content zu mounten
+      async _renderFrame(options) {
+        const frame = await super._renderFrame(options);
+        const hasFrame = this.hasFrame ?? true;
+        const target = hasFrame ? frame.querySelector(".window-content") : frame;
+        if (!target) {
+          return frame;
+        }
+        target.innerHTML = '<div id="svelte-mount-point"></div>';
         const ctrl = controllerMap.get(this);
         const isMounted = mountedMap.get(this) ?? false;
-        const element2 = this.element;
-        if (ctrl && element2) {
+        if (ctrl) {
           if (!isMounted) {
-            await ctrl.onFoundryRender(element2);
+            await ctrl.onFoundryRender(target);
             mountedMap.set(this, true);
           } else {
-            await ctrl.onFoundryUpdate(element2);
+            await ctrl.onFoundryUpdate(target);
           }
         }
+        return frame;
       }
       async close(options) {
         const ctrl = controllerMap.get(this);
@@ -21398,15 +21617,8 @@ const _FoundryApplicationWrapper2 = class _FoundryApplicationWrapper2 {
         minimizable: definition.features?.minimizable ?? true,
         draggable: definition.features?.draggable ?? true
       },
-      ...definition.position && {
-        position: {
-          ...definition.position.top !== void 0 && { top: definition.position.top },
-          ...definition.position.left !== void 0 && { left: definition.position.left },
-          ...definition.position.width !== void 0 && { width: definition.position.width },
-          ...definition.position.height !== void 0 && { height: definition.position.height }
-        }
-      }
-    }, _a2.template = '<div id="svelte-mount-point"></div>', _a2);
+      ...positionObj && { position: positionObj }
+    }, _a2);
     return appClass;
   }
 };
@@ -21466,142 +21678,51 @@ const _FoundryWindowAdapter = class _FoundryWindowAdapter {
 };
 __name(_FoundryWindowAdapter, "FoundryWindowAdapter");
 let FoundryWindowAdapter = _FoundryWindowAdapter;
-const _RuneState = class _RuneState {
-  constructor(initial) {
-    const $stateResult = castSvelteStateRune();
-    if (!$stateResult.ok) {
-      throw new Error(`Svelte 5 $state rune not available: ${$stateResult.error.message}`);
-    }
-    this.runeState = $stateResult.value(initial);
-  }
-  get() {
-    return this.runeState;
-  }
-  patch(updates) {
-    for (const [key2, value2] of Object.entries(updates)) {
-      const currentValue = this.runeState[key2];
-      if (currentValue !== value2) {
-        this.runeState[key2] = value2;
-      }
-    }
-  }
-  subscribe(_fn) {
-    return () => {
-    };
-  }
-  snapshot() {
-    return { ...this.runeState };
-  }
-};
-__name(_RuneState, "RuneState");
-let RuneState = _RuneState;
-const _RuneStateFactory = class _RuneStateFactory {
-  create(instanceId, initial) {
-    return new RuneState(initial);
-  }
-};
-__name(_RuneStateFactory, "RuneStateFactory");
-let RuneStateFactory = _RuneStateFactory;
-const _GlobalDocumentCache = class _GlobalDocumentCache {
-  constructor() {
-    this.actorsById = (() => {
-      const $stateResult = castSvelteStateRune();
-      if ($stateResult.ok) {
-        return $stateResult.value(/* @__PURE__ */ new Map());
-      }
-      return /* @__PURE__ */ new Map();
-    })();
-    this.itemsById = (() => {
-      const $stateResult = castSvelteStateRune();
-      if ($stateResult.ok) {
-        return $stateResult.value(/* @__PURE__ */ new Map());
-      }
-      return /* @__PURE__ */ new Map();
-    })();
-    this.itemsByActorId = (() => {
-      const $stateResult = castSvelteStateRune();
-      if ($stateResult.ok) {
-        return $stateResult.value(/* @__PURE__ */ new Map());
-      }
-      return /* @__PURE__ */ new Map();
-    })();
-  }
-  static getInstance() {
-    if (!_GlobalDocumentCache.instance) {
-      _GlobalDocumentCache.instance = new _GlobalDocumentCache();
-    }
-    return _GlobalDocumentCache.instance;
-  }
-  // Idempotent Patch: nur ändern wenn value differs
-  patchActor(actorId, updates) {
-    const actor = this.actorsById.get(actorId);
-    if (!actor) {
-      this.actorsById.set(actorId, { ...updates, id: actorId });
-      return;
-    }
-    let hasChanges = false;
-    for (const [key2, value2] of Object.entries(updates)) {
-      const typedKey = key2;
-      if (actor[typedKey] !== value2) {
-        actor[key2] = value2;
-        hasChanges = true;
-      }
-    }
-    if (hasChanges) {
-      this.actorsById.set(actorId, actor);
-    }
-  }
-  patchItem(itemId, updates) {
-    const item = this.itemsById.get(itemId);
-    if (!item) {
-      this.itemsById.set(itemId, { ...updates, id: itemId });
-      if (updates.actorId) {
-        const actorItems = this.itemsByActorId.get(updates.actorId) || [];
-        if (!actorItems.includes(itemId)) {
-          this.itemsByActorId.set(updates.actorId, [...actorItems, itemId]);
-        }
-      }
-      return;
-    }
-    const oldActorId = item.actorId;
-    let hasChanges = false;
-    for (const [key2, value2] of Object.entries(updates)) {
-      const typedKey = key2;
-      if (item[typedKey] !== value2) {
-        item[key2] = value2;
-        hasChanges = true;
-      }
-    }
-    if (updates.actorId && updates.actorId !== oldActorId) {
-      if (oldActorId) {
-        const oldActorItems = this.itemsByActorId.get(oldActorId) || [];
-        this.itemsByActorId.set(
-          oldActorId,
-          oldActorItems.filter((id) => id !== itemId)
-        );
-      }
-      const newActorItems = this.itemsByActorId.get(updates.actorId) || [];
-      if (!newActorItems.includes(itemId)) {
-        this.itemsByActorId.set(updates.actorId, [...newActorItems, itemId]);
-      }
-    }
-    if (hasChanges) {
-      this.itemsById.set(itemId, item);
-    }
-  }
-  getActor(actorId) {
-    return this.actorsById.get(actorId);
-  }
-  getItem(itemId) {
-    return this.itemsById.get(itemId);
-  }
-  getItemsByActorId(actorId) {
-    return this.itemsByActorId.get(actorId) || [];
-  }
-};
-__name(_GlobalDocumentCache, "GlobalDocumentCache");
-_GlobalDocumentCache.instance = null;
-let GlobalDocumentCache = _GlobalDocumentCache;
+const EACH_ITEM_REACTIVE = 1;
+const EACH_INDEX_REACTIVE = 1 << 1;
+const EACH_IS_CONTROLLED = 1 << 2;
+const EACH_IS_ANIMATED = 1 << 3;
+const EACH_ITEM_IMMUTABLE = 1 << 4;
+const PROPS_IS_IMMUTABLE = 1;
+const PROPS_IS_RUNES = 1 << 1;
+const PROPS_IS_UPDATED = 1 << 2;
+const PROPS_IS_BINDABLE = 1 << 3;
+const PROPS_IS_LAZY_INITIAL = 1 << 4;
+const TRANSITION_IN = 1;
+const TRANSITION_OUT = 1 << 1;
+const TRANSITION_GLOBAL = 1 << 2;
+const TEMPLATE_FRAGMENT = 1;
+const TEMPLATE_USE_IMPORT_NODE = 1 << 1;
+const TEMPLATE_USE_SVG = 1 << 2;
+const TEMPLATE_USE_MATHML = 1 << 3;
+const HYDRATION_START = "[";
+const HYDRATION_START_ELSE = "[!";
+const HYDRATION_END = "]";
+const HYDRATION_ERROR = {};
+const ELEMENT_IS_NAMESPACED = 1;
+const ELEMENT_PRESERVE_ATTRIBUTE_CASE = 1 << 1;
+const ELEMENT_IS_INPUT = 1 << 2;
+const UNINITIALIZED = /* @__PURE__ */ Symbol();
+const FILENAME = /* @__PURE__ */ Symbol("filename");
+const HMR = /* @__PURE__ */ Symbol("hmr");
+const NAMESPACE_HTML = "http://www.w3.org/1999/xhtml";
+const NAMESPACE_SVG = "http://www.w3.org/2000/svg";
+const NAMESPACE_MATHML = "http://www.w3.org/1998/Math/MathML";
+const IGNORABLE_RUNTIME_WARNINGS = (
+  /** @type {const} */
+  [
+    "await_waterfall",
+    "await_reactivity_loss",
+    "state_snapshot_uncloneable",
+    "binding_property_non_reactive",
+    "hydration_attribute_changed",
+    "hydration_html_changed",
+    "ownership_invalid_binding",
+    "ownership_invalid_mutation"
+  ]
+);
+const ELEMENTS_WITHOUT_TEXT = ["audio", "datalist", "dl", "optgroup", "select", "video"];
+const ATTACHMENT_KEY = "@attach";
 var BROWSER = true;
 var DEV = false;
 var is_array = Array.isArray;
@@ -22154,51 +22275,6 @@ https://svelte.dev/e/svelte_boundary_reset_onerror`);
   }
 }
 __name(svelte_boundary_reset_onerror, "svelte_boundary_reset_onerror");
-const EACH_ITEM_REACTIVE = 1;
-const EACH_INDEX_REACTIVE = 1 << 1;
-const EACH_IS_CONTROLLED = 1 << 2;
-const EACH_IS_ANIMATED = 1 << 3;
-const EACH_ITEM_IMMUTABLE = 1 << 4;
-const PROPS_IS_IMMUTABLE = 1;
-const PROPS_IS_RUNES = 1 << 1;
-const PROPS_IS_UPDATED = 1 << 2;
-const PROPS_IS_BINDABLE = 1 << 3;
-const PROPS_IS_LAZY_INITIAL = 1 << 4;
-const TRANSITION_IN = 1;
-const TRANSITION_OUT = 1 << 1;
-const TRANSITION_GLOBAL = 1 << 2;
-const TEMPLATE_FRAGMENT = 1;
-const TEMPLATE_USE_IMPORT_NODE = 1 << 1;
-const TEMPLATE_USE_SVG = 1 << 2;
-const TEMPLATE_USE_MATHML = 1 << 3;
-const HYDRATION_START = "[";
-const HYDRATION_START_ELSE = "[!";
-const HYDRATION_END = "]";
-const HYDRATION_ERROR = {};
-const ELEMENT_IS_NAMESPACED = 1;
-const ELEMENT_PRESERVE_ATTRIBUTE_CASE = 1 << 1;
-const ELEMENT_IS_INPUT = 1 << 2;
-const UNINITIALIZED = /* @__PURE__ */ Symbol();
-const FILENAME = /* @__PURE__ */ Symbol("filename");
-const HMR = /* @__PURE__ */ Symbol("hmr");
-const NAMESPACE_HTML = "http://www.w3.org/1999/xhtml";
-const NAMESPACE_SVG = "http://www.w3.org/2000/svg";
-const NAMESPACE_MATHML = "http://www.w3.org/1998/Math/MathML";
-const IGNORABLE_RUNTIME_WARNINGS = (
-  /** @type {const} */
-  [
-    "await_waterfall",
-    "await_reactivity_loss",
-    "state_snapshot_uncloneable",
-    "binding_property_non_reactive",
-    "hydration_attribute_changed",
-    "hydration_html_changed",
-    "ownership_invalid_binding",
-    "ownership_invalid_mutation"
-  ]
-);
-const ELEMENTS_WITHOUT_TEXT = ["audio", "datalist", "dl", "optgroup", "select", "video"];
-const ATTACHMENT_KEY = "@attach";
 var bold$1 = "font-weight: bold";
 var normal$1 = "font-weight: normal";
 function assignment_value_stale(property, location) {
@@ -26377,551 +26453,27 @@ function deep_read(value2, visited = /* @__PURE__ */ new Set()) {
   }
 }
 __name(deep_read, "deep_read");
-function createAttachmentKey() {
-  return Symbol(ATTACHMENT_KEY);
-}
-__name(createAttachmentKey, "createAttachmentKey");
-function fromAction(action2, fn = (
-  /** @type {() => T} */
-  noop
-)) {
-  return (element2) => {
-    const { update: update2, destroy } = untrack(() => action2(element2, fn()) ?? {});
-    if (update2) {
-      var ran = false;
-      render_effect(() => {
-        const arg = fn();
-        if (ran) update2(arg);
-      });
-      ran = true;
-    }
-    if (destroy) {
-      teardown(destroy);
-    }
-  };
-}
-__name(fromAction, "fromAction");
-const regex_return_characters = /\r/g;
-function hash(str) {
-  str = str.replace(regex_return_characters, "");
-  let hash2 = 5381;
-  let i = str.length;
-  while (i--) hash2 = (hash2 << 5) - hash2 ^ str.charCodeAt(i);
-  return (hash2 >>> 0).toString(36);
-}
-__name(hash, "hash");
-const VOID_ELEMENT_NAMES = [
-  "area",
-  "base",
-  "br",
-  "col",
-  "command",
-  "embed",
-  "hr",
-  "img",
-  "input",
-  "keygen",
-  "link",
-  "meta",
-  "param",
-  "source",
-  "track",
-  "wbr"
-];
-function is_void(name) {
-  return VOID_ELEMENT_NAMES.includes(name) || name.toLowerCase() === "!doctype";
-}
-__name(is_void, "is_void");
-const RESERVED_WORDS = [
-  "arguments",
-  "await",
-  "break",
-  "case",
-  "catch",
-  "class",
-  "const",
-  "continue",
-  "debugger",
-  "default",
-  "delete",
-  "do",
-  "else",
-  "enum",
-  "eval",
-  "export",
-  "extends",
-  "false",
-  "finally",
-  "for",
-  "function",
-  "if",
-  "implements",
-  "import",
-  "in",
-  "instanceof",
-  "interface",
-  "let",
-  "new",
-  "null",
-  "package",
-  "private",
-  "protected",
-  "public",
-  "return",
-  "static",
-  "super",
-  "switch",
-  "this",
-  "throw",
-  "true",
-  "try",
-  "typeof",
-  "var",
-  "void",
-  "while",
-  "with",
-  "yield"
-];
-function is_reserved(word) {
-  return RESERVED_WORDS.includes(word);
-}
-__name(is_reserved, "is_reserved");
-function is_capture_event(name) {
-  return name.endsWith("capture") && name !== "gotpointercapture" && name !== "lostpointercapture";
-}
-__name(is_capture_event, "is_capture_event");
-const DELEGATED_EVENTS = [
-  "beforeinput",
-  "click",
-  "change",
-  "dblclick",
-  "contextmenu",
-  "focusin",
-  "focusout",
-  "input",
-  "keydown",
-  "keyup",
-  "mousedown",
-  "mousemove",
-  "mouseout",
-  "mouseover",
-  "mouseup",
-  "pointerdown",
-  "pointermove",
-  "pointerout",
-  "pointerover",
-  "pointerup",
-  "touchend",
-  "touchmove",
-  "touchstart"
-];
-function can_delegate_event(event_name) {
-  return DELEGATED_EVENTS.includes(event_name);
-}
-__name(can_delegate_event, "can_delegate_event");
-const DOM_BOOLEAN_ATTRIBUTES = [
-  "allowfullscreen",
-  "async",
-  "autofocus",
-  "autoplay",
-  "checked",
-  "controls",
-  "default",
-  "disabled",
-  "formnovalidate",
-  "indeterminate",
-  "inert",
-  "ismap",
-  "loop",
-  "multiple",
-  "muted",
-  "nomodule",
-  "novalidate",
-  "open",
-  "playsinline",
-  "readonly",
-  "required",
-  "reversed",
-  "seamless",
-  "selected",
-  "webkitdirectory",
-  "defer",
-  "disablepictureinpicture",
-  "disableremoteplayback"
-];
-function is_boolean_attribute(name) {
-  return DOM_BOOLEAN_ATTRIBUTES.includes(name);
-}
-__name(is_boolean_attribute, "is_boolean_attribute");
-const ATTRIBUTE_ALIASES = {
-  // no `class: 'className'` because we handle that separately
-  formnovalidate: "formNoValidate",
-  ismap: "isMap",
-  nomodule: "noModule",
-  playsinline: "playsInline",
-  readonly: "readOnly",
-  defaultvalue: "defaultValue",
-  defaultchecked: "defaultChecked",
-  srcobject: "srcObject",
-  novalidate: "noValidate",
-  allowfullscreen: "allowFullscreen",
-  disablepictureinpicture: "disablePictureInPicture",
-  disableremoteplayback: "disableRemotePlayback"
-};
-function normalize_attribute(name) {
-  name = name.toLowerCase();
-  return ATTRIBUTE_ALIASES[name] ?? name;
-}
-__name(normalize_attribute, "normalize_attribute");
-const DOM_PROPERTIES = [
-  ...DOM_BOOLEAN_ATTRIBUTES,
-  "formNoValidate",
-  "isMap",
-  "noModule",
-  "playsInline",
-  "readOnly",
-  "value",
-  "volume",
-  "defaultValue",
-  "defaultChecked",
-  "srcObject",
-  "noValidate",
-  "allowFullscreen",
-  "disablePictureInPicture",
-  "disableRemotePlayback"
-];
-function is_dom_property(name) {
-  return DOM_PROPERTIES.includes(name);
-}
-__name(is_dom_property, "is_dom_property");
-const NON_STATIC_PROPERTIES = ["autofocus", "muted", "defaultValue", "defaultChecked"];
-function cannot_be_set_statically(name) {
-  return NON_STATIC_PROPERTIES.includes(name);
-}
-__name(cannot_be_set_statically, "cannot_be_set_statically");
-const PASSIVE_EVENTS = ["touchstart", "touchmove"];
-function is_passive_event(name) {
-  return PASSIVE_EVENTS.includes(name);
-}
-__name(is_passive_event, "is_passive_event");
-const CONTENT_EDITABLE_BINDINGS = ["textContent", "innerHTML", "innerText"];
-function is_content_editable_binding(name) {
-  return CONTENT_EDITABLE_BINDINGS.includes(name);
-}
-__name(is_content_editable_binding, "is_content_editable_binding");
-const LOAD_ERROR_ELEMENTS = [
-  "body",
-  "embed",
-  "iframe",
-  "img",
-  "link",
-  "object",
-  "script",
-  "style",
-  "track"
-];
-function is_load_error_element(name) {
-  return LOAD_ERROR_ELEMENTS.includes(name);
-}
-__name(is_load_error_element, "is_load_error_element");
-const SVG_ELEMENTS = [
-  "altGlyph",
-  "altGlyphDef",
-  "altGlyphItem",
-  "animate",
-  "animateColor",
-  "animateMotion",
-  "animateTransform",
-  "circle",
-  "clipPath",
-  "color-profile",
-  "cursor",
-  "defs",
-  "desc",
-  "discard",
-  "ellipse",
-  "feBlend",
-  "feColorMatrix",
-  "feComponentTransfer",
-  "feComposite",
-  "feConvolveMatrix",
-  "feDiffuseLighting",
-  "feDisplacementMap",
-  "feDistantLight",
-  "feDropShadow",
-  "feFlood",
-  "feFuncA",
-  "feFuncB",
-  "feFuncG",
-  "feFuncR",
-  "feGaussianBlur",
-  "feImage",
-  "feMerge",
-  "feMergeNode",
-  "feMorphology",
-  "feOffset",
-  "fePointLight",
-  "feSpecularLighting",
-  "feSpotLight",
-  "feTile",
-  "feTurbulence",
-  "filter",
-  "font",
-  "font-face",
-  "font-face-format",
-  "font-face-name",
-  "font-face-src",
-  "font-face-uri",
-  "foreignObject",
-  "g",
-  "glyph",
-  "glyphRef",
-  "hatch",
-  "hatchpath",
-  "hkern",
-  "image",
-  "line",
-  "linearGradient",
-  "marker",
-  "mask",
-  "mesh",
-  "meshgradient",
-  "meshpatch",
-  "meshrow",
-  "metadata",
-  "missing-glyph",
-  "mpath",
-  "path",
-  "pattern",
-  "polygon",
-  "polyline",
-  "radialGradient",
-  "rect",
-  "set",
-  "solidcolor",
-  "stop",
-  "svg",
-  "switch",
-  "symbol",
-  "text",
-  "textPath",
-  "tref",
-  "tspan",
-  "unknown",
-  "use",
-  "view",
-  "vkern"
-];
-function is_svg(name) {
-  return SVG_ELEMENTS.includes(name);
-}
-__name(is_svg, "is_svg");
-const MATHML_ELEMENTS = [
-  "annotation",
-  "annotation-xml",
-  "maction",
-  "math",
-  "merror",
-  "mfrac",
-  "mi",
-  "mmultiscripts",
-  "mn",
-  "mo",
-  "mover",
-  "mpadded",
-  "mphantom",
-  "mprescripts",
-  "mroot",
-  "mrow",
-  "ms",
-  "mspace",
-  "msqrt",
-  "mstyle",
-  "msub",
-  "msubsup",
-  "msup",
-  "mtable",
-  "mtd",
-  "mtext",
-  "mtr",
-  "munder",
-  "munderover",
-  "semantics"
-];
-function is_mathml(name) {
-  return MATHML_ELEMENTS.includes(name);
-}
-__name(is_mathml, "is_mathml");
-const STATE_CREATION_RUNES = (
-  /** @type {const} */
-  [
-    "$state",
-    "$state.raw",
-    "$derived",
-    "$derived.by"
-  ]
-);
-const RUNES = (
-  /** @type {const} */
-  [
-    ...STATE_CREATION_RUNES,
-    "$state.eager",
-    "$state.snapshot",
-    "$props",
-    "$props.id",
-    "$bindable",
-    "$effect",
-    "$effect.pre",
-    "$effect.tracking",
-    "$effect.root",
-    "$effect.pending",
-    "$inspect",
-    "$inspect().with",
-    "$inspect.trace",
-    "$host"
-  ]
-);
-function is_rune(name) {
-  return RUNES.includes(
-    /** @type {RuneName} */
-    name
-  );
-}
-__name(is_rune, "is_rune");
-function is_state_creation_rune(name) {
-  return STATE_CREATION_RUNES.includes(
-    /** @type {StateCreationRuneName} */
-    name
-  );
-}
-__name(is_state_creation_rune, "is_state_creation_rune");
-const RAW_TEXT_ELEMENTS = (
-  /** @type {const} */
-  ["textarea", "script", "style", "title"]
-);
-function is_raw_text_element(name) {
-  return RAW_TEXT_ELEMENTS.includes(
-    /** @type {typeof RAW_TEXT_ELEMENTS[number]} */
-    name
-  );
-}
-__name(is_raw_text_element, "is_raw_text_element");
-function sanitize_location(location) {
-  return (
-    /** @type {T} */
-    location?.replace(/\//g, "/​")
-  );
-}
-__name(sanitize_location, "sanitize_location");
-function compare(a, b, property, location) {
-  if (a !== b) {
-    assignment_value_stale(
-      property,
-      /** @type {string} */
-      sanitize_location(location)
-    );
+function hydratable(key2, fn) {
+  if (!async_mode_flag) {
+    experimental_async_required("hydratable");
   }
-  return a;
-}
-__name(compare, "compare");
-function assign(object2, property, value2, location) {
-  return compare(
-    object2[property] = value2,
-    untrack(() => object2[property]),
-    property,
-    location
-  );
-}
-__name(assign, "assign");
-function assign_and(object2, property, value2, location) {
-  return compare(
-    object2[property] && (object2[property] = value2),
-    untrack(() => object2[property]),
-    property,
-    location
-  );
-}
-__name(assign_and, "assign_and");
-function assign_or(object2, property, value2, location) {
-  return compare(
-    object2[property] || (object2[property] = value2),
-    untrack(() => object2[property]),
-    property,
-    location
-  );
-}
-__name(assign_or, "assign_or");
-function assign_nullish(object2, property, value2, location) {
-  return compare(
-    object2[property] ?? (object2[property] = value2),
-    untrack(() => object2[property]),
-    property,
-    location
-  );
-}
-__name(assign_nullish, "assign_nullish");
-var all_styles = /* @__PURE__ */ new Map();
-function register_style(hash2, style) {
-  var styles = all_styles.get(hash2);
-  if (!styles) {
-    styles = /* @__PURE__ */ new Set();
-    all_styles.set(hash2, styles);
-  }
-  styles.add(style);
-}
-__name(register_style, "register_style");
-function cleanup_styles(hash2) {
-  var styles = all_styles.get(hash2);
-  if (!styles) return;
-  for (const style of styles) {
-    style.remove();
-  }
-  all_styles.delete(hash2);
-}
-__name(cleanup_styles, "cleanup_styles");
-function add_locations(fn, filename, locations) {
-  return (...args2) => {
-    const dom = fn(...args2);
-    var node = hydrating ? dom : dom.nodeType === DOCUMENT_FRAGMENT_NODE ? dom.firstChild : dom;
-    assign_locations(node, filename, locations);
-    return dom;
-  };
-}
-__name(add_locations, "add_locations");
-function assign_location(element2, filename, location) {
-  element2.__svelte_meta = {
-    parent: dev_stack,
-    loc: { file: filename, line: location[0], column: location[1] }
-  };
-  if (location[2]) {
-    assign_locations(element2.firstChild, filename, location[2]);
-  }
-}
-__name(assign_location, "assign_location");
-function assign_locations(node, filename, locations) {
-  var i = 0;
-  var depth = 0;
-  while (node && i < locations.length) {
-    if (hydrating && node.nodeType === COMMENT_NODE) {
-      var comment2 = (
-        /** @type {Comment} */
-        node
-      );
-      if (comment2.data === HYDRATION_START || comment2.data === HYDRATION_START_ELSE) depth += 1;
-      else if (comment2.data[0] === HYDRATION_END) depth -= 1;
-    }
-    if (depth === 0 && node.nodeType === ELEMENT_NODE) {
-      assign_location(
-        /** @type {Element} */
-        node,
-        filename,
-        locations[i++]
+  if (hydrating) {
+    const store2 = window.__svelte?.h;
+    if (store2?.has(key2)) {
+      return (
+        /** @type {T} */
+        store2.get(key2)
       );
     }
-    node = node.nextSibling;
+    if (DEV) {
+      hydratable_missing_but_required(key2);
+    } else {
+      hydratable_missing_but_expected(key2);
+    }
   }
+  return fn();
 }
-__name(assign_locations, "assign_locations");
+__name(hydratable, "hydratable");
 const all_registered_events = /* @__PURE__ */ new Set();
 const root_event_handles = /* @__PURE__ */ new Set();
 function replay_events(dom) {
@@ -27379,6 +26931,418 @@ function props_id() {
   return `c${window.__svelte.uid++}`;
 }
 __name(props_id, "props_id");
+const regex_return_characters = /\r/g;
+function hash(str) {
+  str = str.replace(regex_return_characters, "");
+  let hash2 = 5381;
+  let i = str.length;
+  while (i--) hash2 = (hash2 << 5) - hash2 ^ str.charCodeAt(i);
+  return (hash2 >>> 0).toString(36);
+}
+__name(hash, "hash");
+const VOID_ELEMENT_NAMES = [
+  "area",
+  "base",
+  "br",
+  "col",
+  "command",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "keygen",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr"
+];
+function is_void(name) {
+  return VOID_ELEMENT_NAMES.includes(name) || name.toLowerCase() === "!doctype";
+}
+__name(is_void, "is_void");
+const RESERVED_WORDS = [
+  "arguments",
+  "await",
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "enum",
+  "eval",
+  "export",
+  "extends",
+  "false",
+  "finally",
+  "for",
+  "function",
+  "if",
+  "implements",
+  "import",
+  "in",
+  "instanceof",
+  "interface",
+  "let",
+  "new",
+  "null",
+  "package",
+  "private",
+  "protected",
+  "public",
+  "return",
+  "static",
+  "super",
+  "switch",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "typeof",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield"
+];
+function is_reserved(word) {
+  return RESERVED_WORDS.includes(word);
+}
+__name(is_reserved, "is_reserved");
+function is_capture_event(name) {
+  return name.endsWith("capture") && name !== "gotpointercapture" && name !== "lostpointercapture";
+}
+__name(is_capture_event, "is_capture_event");
+const DELEGATED_EVENTS = [
+  "beforeinput",
+  "click",
+  "change",
+  "dblclick",
+  "contextmenu",
+  "focusin",
+  "focusout",
+  "input",
+  "keydown",
+  "keyup",
+  "mousedown",
+  "mousemove",
+  "mouseout",
+  "mouseover",
+  "mouseup",
+  "pointerdown",
+  "pointermove",
+  "pointerout",
+  "pointerover",
+  "pointerup",
+  "touchend",
+  "touchmove",
+  "touchstart"
+];
+function can_delegate_event(event_name) {
+  return DELEGATED_EVENTS.includes(event_name);
+}
+__name(can_delegate_event, "can_delegate_event");
+const DOM_BOOLEAN_ATTRIBUTES = [
+  "allowfullscreen",
+  "async",
+  "autofocus",
+  "autoplay",
+  "checked",
+  "controls",
+  "default",
+  "disabled",
+  "formnovalidate",
+  "indeterminate",
+  "inert",
+  "ismap",
+  "loop",
+  "multiple",
+  "muted",
+  "nomodule",
+  "novalidate",
+  "open",
+  "playsinline",
+  "readonly",
+  "required",
+  "reversed",
+  "seamless",
+  "selected",
+  "webkitdirectory",
+  "defer",
+  "disablepictureinpicture",
+  "disableremoteplayback"
+];
+function is_boolean_attribute(name) {
+  return DOM_BOOLEAN_ATTRIBUTES.includes(name);
+}
+__name(is_boolean_attribute, "is_boolean_attribute");
+const ATTRIBUTE_ALIASES = {
+  // no `class: 'className'` because we handle that separately
+  formnovalidate: "formNoValidate",
+  ismap: "isMap",
+  nomodule: "noModule",
+  playsinline: "playsInline",
+  readonly: "readOnly",
+  defaultvalue: "defaultValue",
+  defaultchecked: "defaultChecked",
+  srcobject: "srcObject",
+  novalidate: "noValidate",
+  allowfullscreen: "allowFullscreen",
+  disablepictureinpicture: "disablePictureInPicture",
+  disableremoteplayback: "disableRemotePlayback"
+};
+function normalize_attribute(name) {
+  name = name.toLowerCase();
+  return ATTRIBUTE_ALIASES[name] ?? name;
+}
+__name(normalize_attribute, "normalize_attribute");
+const DOM_PROPERTIES = [
+  ...DOM_BOOLEAN_ATTRIBUTES,
+  "formNoValidate",
+  "isMap",
+  "noModule",
+  "playsInline",
+  "readOnly",
+  "value",
+  "volume",
+  "defaultValue",
+  "defaultChecked",
+  "srcObject",
+  "noValidate",
+  "allowFullscreen",
+  "disablePictureInPicture",
+  "disableRemotePlayback"
+];
+function is_dom_property(name) {
+  return DOM_PROPERTIES.includes(name);
+}
+__name(is_dom_property, "is_dom_property");
+const NON_STATIC_PROPERTIES = ["autofocus", "muted", "defaultValue", "defaultChecked"];
+function cannot_be_set_statically(name) {
+  return NON_STATIC_PROPERTIES.includes(name);
+}
+__name(cannot_be_set_statically, "cannot_be_set_statically");
+const PASSIVE_EVENTS = ["touchstart", "touchmove"];
+function is_passive_event(name) {
+  return PASSIVE_EVENTS.includes(name);
+}
+__name(is_passive_event, "is_passive_event");
+const CONTENT_EDITABLE_BINDINGS = ["textContent", "innerHTML", "innerText"];
+function is_content_editable_binding(name) {
+  return CONTENT_EDITABLE_BINDINGS.includes(name);
+}
+__name(is_content_editable_binding, "is_content_editable_binding");
+const LOAD_ERROR_ELEMENTS = [
+  "body",
+  "embed",
+  "iframe",
+  "img",
+  "link",
+  "object",
+  "script",
+  "style",
+  "track"
+];
+function is_load_error_element(name) {
+  return LOAD_ERROR_ELEMENTS.includes(name);
+}
+__name(is_load_error_element, "is_load_error_element");
+const SVG_ELEMENTS = [
+  "altGlyph",
+  "altGlyphDef",
+  "altGlyphItem",
+  "animate",
+  "animateColor",
+  "animateMotion",
+  "animateTransform",
+  "circle",
+  "clipPath",
+  "color-profile",
+  "cursor",
+  "defs",
+  "desc",
+  "discard",
+  "ellipse",
+  "feBlend",
+  "feColorMatrix",
+  "feComponentTransfer",
+  "feComposite",
+  "feConvolveMatrix",
+  "feDiffuseLighting",
+  "feDisplacementMap",
+  "feDistantLight",
+  "feDropShadow",
+  "feFlood",
+  "feFuncA",
+  "feFuncB",
+  "feFuncG",
+  "feFuncR",
+  "feGaussianBlur",
+  "feImage",
+  "feMerge",
+  "feMergeNode",
+  "feMorphology",
+  "feOffset",
+  "fePointLight",
+  "feSpecularLighting",
+  "feSpotLight",
+  "feTile",
+  "feTurbulence",
+  "filter",
+  "font",
+  "font-face",
+  "font-face-format",
+  "font-face-name",
+  "font-face-src",
+  "font-face-uri",
+  "foreignObject",
+  "g",
+  "glyph",
+  "glyphRef",
+  "hatch",
+  "hatchpath",
+  "hkern",
+  "image",
+  "line",
+  "linearGradient",
+  "marker",
+  "mask",
+  "mesh",
+  "meshgradient",
+  "meshpatch",
+  "meshrow",
+  "metadata",
+  "missing-glyph",
+  "mpath",
+  "path",
+  "pattern",
+  "polygon",
+  "polyline",
+  "radialGradient",
+  "rect",
+  "set",
+  "solidcolor",
+  "stop",
+  "svg",
+  "switch",
+  "symbol",
+  "text",
+  "textPath",
+  "tref",
+  "tspan",
+  "unknown",
+  "use",
+  "view",
+  "vkern"
+];
+function is_svg(name) {
+  return SVG_ELEMENTS.includes(name);
+}
+__name(is_svg, "is_svg");
+const MATHML_ELEMENTS = [
+  "annotation",
+  "annotation-xml",
+  "maction",
+  "math",
+  "merror",
+  "mfrac",
+  "mi",
+  "mmultiscripts",
+  "mn",
+  "mo",
+  "mover",
+  "mpadded",
+  "mphantom",
+  "mprescripts",
+  "mroot",
+  "mrow",
+  "ms",
+  "mspace",
+  "msqrt",
+  "mstyle",
+  "msub",
+  "msubsup",
+  "msup",
+  "mtable",
+  "mtd",
+  "mtext",
+  "mtr",
+  "munder",
+  "munderover",
+  "semantics"
+];
+function is_mathml(name) {
+  return MATHML_ELEMENTS.includes(name);
+}
+__name(is_mathml, "is_mathml");
+const STATE_CREATION_RUNES = (
+  /** @type {const} */
+  [
+    "$state",
+    "$state.raw",
+    "$derived",
+    "$derived.by"
+  ]
+);
+const RUNES = (
+  /** @type {const} */
+  [
+    ...STATE_CREATION_RUNES,
+    "$state.eager",
+    "$state.snapshot",
+    "$props",
+    "$props.id",
+    "$bindable",
+    "$effect",
+    "$effect.pre",
+    "$effect.tracking",
+    "$effect.root",
+    "$effect.pending",
+    "$inspect",
+    "$inspect().with",
+    "$inspect.trace",
+    "$host"
+  ]
+);
+function is_rune(name) {
+  return RUNES.includes(
+    /** @type {RuneName} */
+    name
+  );
+}
+__name(is_rune, "is_rune");
+function is_state_creation_rune(name) {
+  return STATE_CREATION_RUNES.includes(
+    /** @type {StateCreationRuneName} */
+    name
+  );
+}
+__name(is_state_creation_rune, "is_state_creation_rune");
+const RAW_TEXT_ELEMENTS = (
+  /** @type {const} */
+  ["textarea", "script", "style", "title"]
+);
+function is_raw_text_element(name) {
+  return RAW_TEXT_ELEMENTS.includes(
+    /** @type {typeof RAW_TEXT_ELEMENTS[number]} */
+    name
+  );
+}
+__name(is_raw_text_element, "is_raw_text_element");
+function sanitize_location(location) {
+  return (
+    /** @type {T} */
+    location?.replace(/\//g, "/​")
+  );
+}
+__name(sanitize_location, "sanitize_location");
 let should_intro = true;
 function set_should_intro(value2) {
   should_intro = value2;
@@ -27550,6 +27514,515 @@ function unmount(component2, options) {
   return Promise.resolve();
 }
 __name(unmount, "unmount");
+function validate_void_dynamic_element(tag_fn) {
+  const tag2 = tag_fn();
+  if (tag2 && is_void(tag2)) {
+    dynamic_void_element_content(tag2);
+  }
+}
+__name(validate_void_dynamic_element, "validate_void_dynamic_element");
+function validate_dynamic_element_tag(tag_fn) {
+  const tag2 = tag_fn();
+  const is_string = typeof tag2 === "string";
+  if (tag2 && !is_string) {
+    svelte_element_invalid_this_value();
+  }
+}
+__name(validate_dynamic_element_tag, "validate_dynamic_element_tag");
+function validate_store(store2, name) {
+  if (store2 != null && typeof store2.subscribe !== "function") {
+    store_invalid_shape(name);
+  }
+}
+__name(validate_store, "validate_store");
+function prevent_snippet_stringification(fn) {
+  fn.toString = () => {
+    snippet_without_render_tag();
+    return "";
+  };
+  return fn;
+}
+__name(prevent_snippet_stringification, "prevent_snippet_stringification");
+const _BranchManager = class _BranchManager {
+  /**
+   * @param {TemplateNode} anchor
+   * @param {boolean} transition
+   */
+  constructor(anchor, transition2 = true) {
+    /** @type {TemplateNode} */
+    __publicField(this, "anchor");
+    /** @type {Map<Batch, Key>} */
+    __privateAdd(this, _batches, /* @__PURE__ */ new Map());
+    /**
+     * Map of keys to effects that are currently rendered in the DOM.
+     * These effects are visible and actively part of the document tree.
+     * Example:
+     * ```
+     * {#if condition}
+     * 	foo
+     * {:else}
+     * 	bar
+     * {/if}
+     * ```
+     * Can result in the entries `true->Effect` and `false->Effect`
+     * @type {Map<Key, Effect>}
+     */
+    __privateAdd(this, _onscreen, /* @__PURE__ */ new Map());
+    /**
+     * Similar to #onscreen with respect to the keys, but contains branches that are not yet
+     * in the DOM, because their insertion is deferred.
+     * @type {Map<Key, Branch>}
+     */
+    __privateAdd(this, _offscreen, /* @__PURE__ */ new Map());
+    /**
+     * Keys of effects that are currently outroing
+     * @type {Set<Key>}
+     */
+    __privateAdd(this, _outroing, /* @__PURE__ */ new Set());
+    /**
+     * Whether to pause (i.e. outro) on change, or destroy immediately.
+     * This is necessary for `<svelte:element>`
+     */
+    __privateAdd(this, _transition, true);
+    __privateAdd(this, _commit, /* @__PURE__ */ __name(() => {
+      var batch = (
+        /** @type {Batch} */
+        current_batch
+      );
+      if (!__privateGet(this, _batches).has(batch)) return;
+      var key2 = (
+        /** @type {Key} */
+        __privateGet(this, _batches).get(batch)
+      );
+      var onscreen = __privateGet(this, _onscreen).get(key2);
+      if (onscreen) {
+        resume_effect(onscreen);
+        __privateGet(this, _outroing).delete(key2);
+      } else {
+        var offscreen = __privateGet(this, _offscreen).get(key2);
+        if (offscreen) {
+          __privateGet(this, _onscreen).set(key2, offscreen.effect);
+          __privateGet(this, _offscreen).delete(key2);
+          offscreen.fragment.lastChild.remove();
+          this.anchor.before(offscreen.fragment);
+          onscreen = offscreen.effect;
+        }
+      }
+      for (const [b, k] of __privateGet(this, _batches)) {
+        __privateGet(this, _batches).delete(b);
+        if (b === batch) {
+          break;
+        }
+        const offscreen2 = __privateGet(this, _offscreen).get(k);
+        if (offscreen2) {
+          destroy_effect(offscreen2.effect);
+          __privateGet(this, _offscreen).delete(k);
+        }
+      }
+      for (const [k, effect2] of __privateGet(this, _onscreen)) {
+        if (k === key2 || __privateGet(this, _outroing).has(k)) continue;
+        const on_destroy = /* @__PURE__ */ __name(() => {
+          const keys = Array.from(__privateGet(this, _batches).values());
+          if (keys.includes(k)) {
+            var fragment = document.createDocumentFragment();
+            move_effect(effect2, fragment);
+            fragment.append(create_text());
+            __privateGet(this, _offscreen).set(k, { effect: effect2, fragment });
+          } else {
+            destroy_effect(effect2);
+          }
+          __privateGet(this, _outroing).delete(k);
+          __privateGet(this, _onscreen).delete(k);
+        }, "on_destroy");
+        if (__privateGet(this, _transition) || !onscreen) {
+          __privateGet(this, _outroing).add(k);
+          pause_effect(effect2, on_destroy, false);
+        } else {
+          on_destroy();
+        }
+      }
+    }, "#commit"));
+    /**
+     * @param {Batch} batch
+     */
+    __privateAdd(this, _discard, /* @__PURE__ */ __name((batch) => {
+      __privateGet(this, _batches).delete(batch);
+      const keys = Array.from(__privateGet(this, _batches).values());
+      for (const [k, branch2] of __privateGet(this, _offscreen)) {
+        if (!keys.includes(k)) {
+          destroy_effect(branch2.effect);
+          __privateGet(this, _offscreen).delete(k);
+        }
+      }
+    }, "#discard"));
+    this.anchor = anchor;
+    __privateSet(this, _transition, transition2);
+  }
+  /**
+   *
+   * @param {any} key
+   * @param {null | ((target: TemplateNode) => void)} fn
+   */
+  ensure(key2, fn) {
+    var batch = (
+      /** @type {Batch} */
+      current_batch
+    );
+    var defer = should_defer_append();
+    if (fn && !__privateGet(this, _onscreen).has(key2) && !__privateGet(this, _offscreen).has(key2)) {
+      if (defer) {
+        var fragment = document.createDocumentFragment();
+        var target = create_text();
+        fragment.append(target);
+        __privateGet(this, _offscreen).set(key2, {
+          effect: branch(() => fn(target)),
+          fragment
+        });
+      } else {
+        __privateGet(this, _onscreen).set(
+          key2,
+          branch(() => fn(this.anchor))
+        );
+      }
+    }
+    __privateGet(this, _batches).set(batch, key2);
+    if (defer) {
+      for (const [k, effect2] of __privateGet(this, _onscreen)) {
+        if (k === key2) {
+          batch.skipped_effects.delete(effect2);
+        } else {
+          batch.skipped_effects.add(effect2);
+        }
+      }
+      for (const [k, branch2] of __privateGet(this, _offscreen)) {
+        if (k === key2) {
+          batch.skipped_effects.delete(branch2.effect);
+        } else {
+          batch.skipped_effects.add(branch2.effect);
+        }
+      }
+      batch.oncommit(__privateGet(this, _commit));
+      batch.ondiscard(__privateGet(this, _discard));
+    } else {
+      if (hydrating) {
+        this.anchor = hydrate_node;
+      }
+      __privateGet(this, _commit).call(this);
+    }
+  }
+};
+_batches = new WeakMap();
+_onscreen = new WeakMap();
+_offscreen = new WeakMap();
+_outroing = new WeakMap();
+_transition = new WeakMap();
+_commit = new WeakMap();
+_discard = new WeakMap();
+__name(_BranchManager, "BranchManager");
+let BranchManager = _BranchManager;
+function snippet(node, get_snippet, ...args2) {
+  var branches = new BranchManager(node);
+  block(() => {
+    const snippet2 = get_snippet() ?? null;
+    if (DEV && snippet2 == null) {
+      invalid_snippet();
+    }
+    branches.ensure(snippet2, snippet2 && ((anchor) => snippet2(anchor, ...args2)));
+  }, EFFECT_TRANSPARENT);
+}
+__name(snippet, "snippet");
+function wrap_snippet(component2, fn) {
+  const snippet2 = /* @__PURE__ */ __name((node, ...args2) => {
+    var previous_component_function = dev_current_component_function;
+    set_dev_current_component_function(component2);
+    try {
+      return fn(node, ...args2);
+    } finally {
+      set_dev_current_component_function(previous_component_function);
+    }
+  }, "snippet");
+  prevent_snippet_stringification(snippet2);
+  return snippet2;
+}
+__name(wrap_snippet, "wrap_snippet");
+function createRawSnippet(fn) {
+  return (anchor, ...params) => {
+    var snippet2 = fn(...params);
+    var element2;
+    if (hydrating) {
+      element2 = /** @type {Element} */
+      hydrate_node;
+      hydrate_next();
+    } else {
+      var html2 = snippet2.render().trim();
+      var fragment = create_fragment_from_html(html2);
+      element2 = /** @type {Element} */
+      /* @__PURE__ */ get_first_child(fragment);
+      if (DEV && (/* @__PURE__ */ get_next_sibling(element2) !== null || element2.nodeType !== ELEMENT_NODE)) {
+        invalid_raw_snippet_render();
+      }
+      anchor.before(element2);
+    }
+    const result = snippet2.setup?.(element2);
+    assign_nodes(element2, element2);
+    if (typeof result === "function") {
+      teardown(result);
+    }
+  };
+}
+__name(createRawSnippet, "createRawSnippet");
+if (DEV) {
+  let throw_rune_error = /* @__PURE__ */ __name(function(rune) {
+    if (!(rune in globalThis)) {
+      let value2;
+      Object.defineProperty(globalThis, rune, {
+        configurable: true,
+        // eslint-disable-next-line getter-return
+        get: /* @__PURE__ */ __name(() => {
+          if (value2 !== void 0) {
+            return value2;
+          }
+          rune_outside_svelte(rune);
+        }, "get"),
+        set: /* @__PURE__ */ __name((v) => {
+          value2 = v;
+        }, "set")
+      });
+    }
+  }, "throw_rune_error");
+  throw_rune_error("$state");
+  throw_rune_error("$effect");
+  throw_rune_error("$derived");
+  throw_rune_error("$inspect");
+  throw_rune_error("$props");
+  throw_rune_error("$bindable");
+}
+function getAbortSignal() {
+  if (active_reaction === null) {
+    get_abort_signal_outside_reaction();
+  }
+  return (active_reaction.ac ?? (active_reaction.ac = new AbortController())).signal;
+}
+__name(getAbortSignal, "getAbortSignal");
+function onMount(fn) {
+  if (component_context === null) {
+    lifecycle_outside_component("onMount");
+  }
+  if (legacy_mode_flag && component_context.l !== null) {
+    init_update_callbacks(component_context).m.push(fn);
+  } else {
+    user_effect(() => {
+      const cleanup = untrack(fn);
+      if (typeof cleanup === "function") return (
+        /** @type {() => void} */
+        cleanup
+      );
+    });
+  }
+}
+__name(onMount, "onMount");
+function onDestroy(fn) {
+  if (component_context === null) {
+    lifecycle_outside_component("onDestroy");
+  }
+  onMount(() => () => untrack(fn));
+}
+__name(onDestroy, "onDestroy");
+function create_custom_event(type, detail, { bubbles = false, cancelable = false } = {}) {
+  return new CustomEvent(type, { detail, bubbles, cancelable });
+}
+__name(create_custom_event, "create_custom_event");
+function createEventDispatcher() {
+  const active_component_context = component_context;
+  if (active_component_context === null) {
+    lifecycle_outside_component("createEventDispatcher");
+  }
+  return (type, detail, options) => {
+    const events = (
+      /** @type {Record<string, Function | Function[]>} */
+      active_component_context.s.$$events?.[
+        /** @type {string} */
+        type
+      ]
+    );
+    if (events) {
+      const callbacks = is_array(events) ? events.slice() : [events];
+      const event2 = create_custom_event(
+        /** @type {string} */
+        type,
+        detail,
+        options
+      );
+      for (const fn of callbacks) {
+        fn.call(active_component_context.x, event2);
+      }
+      return !event2.defaultPrevented;
+    }
+    return true;
+  };
+}
+__name(createEventDispatcher, "createEventDispatcher");
+function beforeUpdate(fn) {
+  if (component_context === null) {
+    lifecycle_outside_component("beforeUpdate");
+  }
+  if (component_context.l === null) {
+    lifecycle_legacy_only("beforeUpdate");
+  }
+  init_update_callbacks(component_context).b.push(fn);
+}
+__name(beforeUpdate, "beforeUpdate");
+function afterUpdate(fn) {
+  if (component_context === null) {
+    lifecycle_outside_component("afterUpdate");
+  }
+  if (component_context.l === null) {
+    lifecycle_legacy_only("afterUpdate");
+  }
+  init_update_callbacks(component_context).a.push(fn);
+}
+__name(afterUpdate, "afterUpdate");
+function init_update_callbacks(context) {
+  var l = (
+    /** @type {ComponentContextLegacy} */
+    context.l
+  );
+  return l.u ?? (l.u = { a: [], b: [], m: [] });
+}
+__name(init_update_callbacks, "init_update_callbacks");
+function createAttachmentKey() {
+  return Symbol(ATTACHMENT_KEY);
+}
+__name(createAttachmentKey, "createAttachmentKey");
+function fromAction(action2, fn = (
+  /** @type {() => T} */
+  noop
+)) {
+  return (element2) => {
+    const { update: update2, destroy } = untrack(() => action2(element2, fn()) ?? {});
+    if (update2) {
+      var ran = false;
+      render_effect(() => {
+        const arg = fn();
+        if (ran) update2(arg);
+      });
+      ran = true;
+    }
+    if (destroy) {
+      teardown(destroy);
+    }
+  };
+}
+__name(fromAction, "fromAction");
+function compare(a, b, property, location) {
+  if (a !== b) {
+    assignment_value_stale(
+      property,
+      /** @type {string} */
+      sanitize_location(location)
+    );
+  }
+  return a;
+}
+__name(compare, "compare");
+function assign(object2, property, value2, location) {
+  return compare(
+    object2[property] = value2,
+    untrack(() => object2[property]),
+    property,
+    location
+  );
+}
+__name(assign, "assign");
+function assign_and(object2, property, value2, location) {
+  return compare(
+    object2[property] && (object2[property] = value2),
+    untrack(() => object2[property]),
+    property,
+    location
+  );
+}
+__name(assign_and, "assign_and");
+function assign_or(object2, property, value2, location) {
+  return compare(
+    object2[property] || (object2[property] = value2),
+    untrack(() => object2[property]),
+    property,
+    location
+  );
+}
+__name(assign_or, "assign_or");
+function assign_nullish(object2, property, value2, location) {
+  return compare(
+    object2[property] ?? (object2[property] = value2),
+    untrack(() => object2[property]),
+    property,
+    location
+  );
+}
+__name(assign_nullish, "assign_nullish");
+var all_styles = /* @__PURE__ */ new Map();
+function register_style(hash2, style) {
+  var styles = all_styles.get(hash2);
+  if (!styles) {
+    styles = /* @__PURE__ */ new Set();
+    all_styles.set(hash2, styles);
+  }
+  styles.add(style);
+}
+__name(register_style, "register_style");
+function cleanup_styles(hash2) {
+  var styles = all_styles.get(hash2);
+  if (!styles) return;
+  for (const style of styles) {
+    style.remove();
+  }
+  all_styles.delete(hash2);
+}
+__name(cleanup_styles, "cleanup_styles");
+function add_locations(fn, filename, locations) {
+  return (...args2) => {
+    const dom = fn(...args2);
+    var node = hydrating ? dom : dom.nodeType === DOCUMENT_FRAGMENT_NODE ? dom.firstChild : dom;
+    assign_locations(node, filename, locations);
+    return dom;
+  };
+}
+__name(add_locations, "add_locations");
+function assign_location(element2, filename, location) {
+  element2.__svelte_meta = {
+    parent: dev_stack,
+    loc: { file: filename, line: location[0], column: location[1] }
+  };
+  if (location[2]) {
+    assign_locations(element2.firstChild, filename, location[2]);
+  }
+}
+__name(assign_location, "assign_location");
+function assign_locations(node, filename, locations) {
+  var i = 0;
+  var depth = 0;
+  while (node && i < locations.length) {
+    if (hydrating && node.nodeType === COMMENT_NODE) {
+      var comment2 = (
+        /** @type {Comment} */
+        node
+      );
+      if (comment2.data === HYDRATION_START || comment2.data === HYDRATION_START_ELSE) depth += 1;
+      else if (comment2.data[0] === HYDRATION_END) depth -= 1;
+    }
+    if (depth === 0 && node.nodeType === ELEMENT_NODE) {
+      assign_location(
+        /** @type {Element} */
+        node,
+        filename,
+        locations[i++]
+      );
+    }
+    node = node.nextSibling;
+  }
+}
+__name(assign_locations, "assign_locations");
 function hmr(original, get_source) {
   function wrapper(anchor, props) {
     let instance2 = {};
@@ -27751,183 +28224,6 @@ function validate_snippet_args(anchor, ...args2) {
   }
 }
 __name(validate_snippet_args, "validate_snippet_args");
-const _BranchManager = class _BranchManager {
-  /**
-   * @param {TemplateNode} anchor
-   * @param {boolean} transition
-   */
-  constructor(anchor, transition2 = true) {
-    /** @type {TemplateNode} */
-    __publicField(this, "anchor");
-    /** @type {Map<Batch, Key>} */
-    __privateAdd(this, _batches, /* @__PURE__ */ new Map());
-    /**
-     * Map of keys to effects that are currently rendered in the DOM.
-     * These effects are visible and actively part of the document tree.
-     * Example:
-     * ```
-     * {#if condition}
-     * 	foo
-     * {:else}
-     * 	bar
-     * {/if}
-     * ```
-     * Can result in the entries `true->Effect` and `false->Effect`
-     * @type {Map<Key, Effect>}
-     */
-    __privateAdd(this, _onscreen, /* @__PURE__ */ new Map());
-    /**
-     * Similar to #onscreen with respect to the keys, but contains branches that are not yet
-     * in the DOM, because their insertion is deferred.
-     * @type {Map<Key, Branch>}
-     */
-    __privateAdd(this, _offscreen, /* @__PURE__ */ new Map());
-    /**
-     * Keys of effects that are currently outroing
-     * @type {Set<Key>}
-     */
-    __privateAdd(this, _outroing, /* @__PURE__ */ new Set());
-    /**
-     * Whether to pause (i.e. outro) on change, or destroy immediately.
-     * This is necessary for `<svelte:element>`
-     */
-    __privateAdd(this, _transition, true);
-    __privateAdd(this, _commit, /* @__PURE__ */ __name(() => {
-      var batch = (
-        /** @type {Batch} */
-        current_batch
-      );
-      if (!__privateGet(this, _batches).has(batch)) return;
-      var key2 = (
-        /** @type {Key} */
-        __privateGet(this, _batches).get(batch)
-      );
-      var onscreen = __privateGet(this, _onscreen).get(key2);
-      if (onscreen) {
-        resume_effect(onscreen);
-        __privateGet(this, _outroing).delete(key2);
-      } else {
-        var offscreen = __privateGet(this, _offscreen).get(key2);
-        if (offscreen) {
-          __privateGet(this, _onscreen).set(key2, offscreen.effect);
-          __privateGet(this, _offscreen).delete(key2);
-          offscreen.fragment.lastChild.remove();
-          this.anchor.before(offscreen.fragment);
-          onscreen = offscreen.effect;
-        }
-      }
-      for (const [b, k] of __privateGet(this, _batches)) {
-        __privateGet(this, _batches).delete(b);
-        if (b === batch) {
-          break;
-        }
-        const offscreen2 = __privateGet(this, _offscreen).get(k);
-        if (offscreen2) {
-          destroy_effect(offscreen2.effect);
-          __privateGet(this, _offscreen).delete(k);
-        }
-      }
-      for (const [k, effect2] of __privateGet(this, _onscreen)) {
-        if (k === key2 || __privateGet(this, _outroing).has(k)) continue;
-        const on_destroy = /* @__PURE__ */ __name(() => {
-          const keys = Array.from(__privateGet(this, _batches).values());
-          if (keys.includes(k)) {
-            var fragment = document.createDocumentFragment();
-            move_effect(effect2, fragment);
-            fragment.append(create_text());
-            __privateGet(this, _offscreen).set(k, { effect: effect2, fragment });
-          } else {
-            destroy_effect(effect2);
-          }
-          __privateGet(this, _outroing).delete(k);
-          __privateGet(this, _onscreen).delete(k);
-        }, "on_destroy");
-        if (__privateGet(this, _transition) || !onscreen) {
-          __privateGet(this, _outroing).add(k);
-          pause_effect(effect2, on_destroy, false);
-        } else {
-          on_destroy();
-        }
-      }
-    }, "#commit"));
-    /**
-     * @param {Batch} batch
-     */
-    __privateAdd(this, _discard, /* @__PURE__ */ __name((batch) => {
-      __privateGet(this, _batches).delete(batch);
-      const keys = Array.from(__privateGet(this, _batches).values());
-      for (const [k, branch2] of __privateGet(this, _offscreen)) {
-        if (!keys.includes(k)) {
-          destroy_effect(branch2.effect);
-          __privateGet(this, _offscreen).delete(k);
-        }
-      }
-    }, "#discard"));
-    this.anchor = anchor;
-    __privateSet(this, _transition, transition2);
-  }
-  /**
-   *
-   * @param {any} key
-   * @param {null | ((target: TemplateNode) => void)} fn
-   */
-  ensure(key2, fn) {
-    var batch = (
-      /** @type {Batch} */
-      current_batch
-    );
-    var defer = should_defer_append();
-    if (fn && !__privateGet(this, _onscreen).has(key2) && !__privateGet(this, _offscreen).has(key2)) {
-      if (defer) {
-        var fragment = document.createDocumentFragment();
-        var target = create_text();
-        fragment.append(target);
-        __privateGet(this, _offscreen).set(key2, {
-          effect: branch(() => fn(target)),
-          fragment
-        });
-      } else {
-        __privateGet(this, _onscreen).set(
-          key2,
-          branch(() => fn(this.anchor))
-        );
-      }
-    }
-    __privateGet(this, _batches).set(batch, key2);
-    if (defer) {
-      for (const [k, effect2] of __privateGet(this, _onscreen)) {
-        if (k === key2) {
-          batch.skipped_effects.delete(effect2);
-        } else {
-          batch.skipped_effects.add(effect2);
-        }
-      }
-      for (const [k, branch2] of __privateGet(this, _offscreen)) {
-        if (k === key2) {
-          batch.skipped_effects.delete(branch2.effect);
-        } else {
-          batch.skipped_effects.add(branch2.effect);
-        }
-      }
-      batch.oncommit(__privateGet(this, _commit));
-      batch.ondiscard(__privateGet(this, _discard));
-    } else {
-      if (hydrating) {
-        this.anchor = hydrate_node;
-      }
-      __privateGet(this, _commit).call(this);
-    }
-  }
-};
-_batches = new WeakMap();
-_onscreen = new WeakMap();
-_offscreen = new WeakMap();
-_outroing = new WeakMap();
-_transition = new WeakMap();
-_commit = new WeakMap();
-_discard = new WeakMap();
-__name(_BranchManager, "BranchManager");
-let BranchManager = _BranchManager;
 const PENDING = 0;
 const THEN = 1;
 const CATCH = 2;
@@ -28610,86 +28906,6 @@ function sanitize_slots(props) {
   return sanitized;
 }
 __name(sanitize_slots, "sanitize_slots");
-function validate_void_dynamic_element(tag_fn) {
-  const tag2 = tag_fn();
-  if (tag2 && is_void(tag2)) {
-    dynamic_void_element_content(tag2);
-  }
-}
-__name(validate_void_dynamic_element, "validate_void_dynamic_element");
-function validate_dynamic_element_tag(tag_fn) {
-  const tag2 = tag_fn();
-  const is_string = typeof tag2 === "string";
-  if (tag2 && !is_string) {
-    svelte_element_invalid_this_value();
-  }
-}
-__name(validate_dynamic_element_tag, "validate_dynamic_element_tag");
-function validate_store(store2, name) {
-  if (store2 != null && typeof store2.subscribe !== "function") {
-    store_invalid_shape(name);
-  }
-}
-__name(validate_store, "validate_store");
-function prevent_snippet_stringification(fn) {
-  fn.toString = () => {
-    snippet_without_render_tag();
-    return "";
-  };
-  return fn;
-}
-__name(prevent_snippet_stringification, "prevent_snippet_stringification");
-function snippet(node, get_snippet, ...args2) {
-  var branches = new BranchManager(node);
-  block(() => {
-    const snippet2 = get_snippet() ?? null;
-    if (DEV && snippet2 == null) {
-      invalid_snippet();
-    }
-    branches.ensure(snippet2, snippet2 && ((anchor) => snippet2(anchor, ...args2)));
-  }, EFFECT_TRANSPARENT);
-}
-__name(snippet, "snippet");
-function wrap_snippet(component2, fn) {
-  const snippet2 = /* @__PURE__ */ __name((node, ...args2) => {
-    var previous_component_function = dev_current_component_function;
-    set_dev_current_component_function(component2);
-    try {
-      return fn(node, ...args2);
-    } finally {
-      set_dev_current_component_function(previous_component_function);
-    }
-  }, "snippet");
-  prevent_snippet_stringification(snippet2);
-  return snippet2;
-}
-__name(wrap_snippet, "wrap_snippet");
-function createRawSnippet(fn) {
-  return (anchor, ...params) => {
-    var snippet2 = fn(...params);
-    var element2;
-    if (hydrating) {
-      element2 = /** @type {Element} */
-      hydrate_node;
-      hydrate_next();
-    } else {
-      var html2 = snippet2.render().trim();
-      var fragment = create_fragment_from_html(html2);
-      element2 = /** @type {Element} */
-      /* @__PURE__ */ get_first_child(fragment);
-      if (DEV && (/* @__PURE__ */ get_next_sibling(element2) !== null || element2.nodeType !== ELEMENT_NODE)) {
-        invalid_raw_snippet_render();
-      }
-      anchor.before(element2);
-    }
-    const result = snippet2.setup?.(element2);
-    assign_nodes(element2, element2);
-    if (typeof result === "function") {
-      teardown(result);
-    }
-  };
-}
-__name(createRawSnippet, "createRawSnippet");
 function component(node, get_component, render_fn) {
   if (hydrating) {
     hydrate_next();
@@ -31757,146 +31973,149 @@ function log_if_contains_state(method, ...objects) {
   return objects;
 }
 __name(log_if_contains_state, "log_if_contains_state");
-function hydratable(key2, fn) {
-  if (!async_mode_flag) {
-    experimental_async_required("hydratable");
+const _RuneState = class _RuneState {
+  constructor(initial) {
+    __privateAdd(this, _runeState);
+    __privateSet(this, _runeState, /* @__PURE__ */ state(proxy(initial)));
   }
-  if (hydrating) {
-    const store2 = window.__svelte?.h;
-    if (store2?.has(key2)) {
-      return (
-        /** @type {T} */
-        store2.get(key2)
-      );
-    }
-    if (DEV) {
-      hydratable_missing_but_required(key2);
-    } else {
-      hydratable_missing_but_expected(key2);
-    }
+  get runeState() {
+    return get$1(__privateGet(this, _runeState));
   }
-  return fn();
-}
-__name(hydratable, "hydratable");
-if (DEV) {
-  let throw_rune_error = /* @__PURE__ */ __name(function(rune) {
-    if (!(rune in globalThis)) {
-      let value2;
-      Object.defineProperty(globalThis, rune, {
-        configurable: true,
-        // eslint-disable-next-line getter-return
-        get: /* @__PURE__ */ __name(() => {
-          if (value2 !== void 0) {
-            return value2;
-          }
-          rune_outside_svelte(rune);
-        }, "get"),
-        set: /* @__PURE__ */ __name((v) => {
-          value2 = v;
-        }, "set")
-      });
-    }
-  }, "throw_rune_error");
-  throw_rune_error("$state");
-  throw_rune_error("$effect");
-  throw_rune_error("$derived");
-  throw_rune_error("$inspect");
-  throw_rune_error("$props");
-  throw_rune_error("$bindable");
-}
-function getAbortSignal() {
-  if (active_reaction === null) {
-    get_abort_signal_outside_reaction();
+  set runeState(value2) {
+    set(__privateGet(this, _runeState), value2, true);
   }
-  return (active_reaction.ac ?? (active_reaction.ac = new AbortController())).signal;
-}
-__name(getAbortSignal, "getAbortSignal");
-function onMount(fn) {
-  if (component_context === null) {
-    lifecycle_outside_component("onMount");
+  get() {
+    return this.runeState;
   }
-  if (legacy_mode_flag && component_context.l !== null) {
-    init_update_callbacks(component_context).m.push(fn);
-  } else {
-    user_effect(() => {
-      const cleanup = untrack(fn);
-      if (typeof cleanup === "function") return (
-        /** @type {() => void} */
-        cleanup
-      );
-    });
-  }
-}
-__name(onMount, "onMount");
-function onDestroy(fn) {
-  if (component_context === null) {
-    lifecycle_outside_component("onDestroy");
-  }
-  onMount(() => () => untrack(fn));
-}
-__name(onDestroy, "onDestroy");
-function create_custom_event(type, detail, { bubbles = false, cancelable = false } = {}) {
-  return new CustomEvent(type, { detail, bubbles, cancelable });
-}
-__name(create_custom_event, "create_custom_event");
-function createEventDispatcher() {
-  const active_component_context = component_context;
-  if (active_component_context === null) {
-    lifecycle_outside_component("createEventDispatcher");
-  }
-  return (type, detail, options) => {
-    const events = (
-      /** @type {Record<string, Function | Function[]>} */
-      active_component_context.s.$$events?.[
-        /** @type {string} */
-        type
-      ]
-    );
-    if (events) {
-      const callbacks = is_array(events) ? events.slice() : [events];
-      const event2 = create_custom_event(
-        /** @type {string} */
-        type,
-        detail,
-        options
-      );
-      for (const fn of callbacks) {
-        fn.call(active_component_context.x, event2);
+  patch(updates) {
+    for (const [key2, value2] of Object.entries(updates)) {
+      const currentValue = this.runeState[key2];
+      if (currentValue !== value2) {
+        this.runeState[key2] = value2;
       }
-      return !event2.defaultPrevented;
     }
-    return true;
-  };
-}
-__name(createEventDispatcher, "createEventDispatcher");
-function beforeUpdate(fn) {
-  if (component_context === null) {
-    lifecycle_outside_component("beforeUpdate");
   }
-  if (component_context.l === null) {
-    lifecycle_legacy_only("beforeUpdate");
+  subscribe(_fn) {
+    return () => {
+    };
   }
-  init_update_callbacks(component_context).b.push(fn);
-}
-__name(beforeUpdate, "beforeUpdate");
-function afterUpdate(fn) {
-  if (component_context === null) {
-    lifecycle_outside_component("afterUpdate");
+  snapshot() {
+    return { ...this.runeState };
   }
-  if (component_context.l === null) {
-    lifecycle_legacy_only("afterUpdate");
+};
+_runeState = new WeakMap();
+__name(_RuneState, "RuneState");
+let RuneState = _RuneState;
+const _RuneStateFactory = class _RuneStateFactory {
+  create(instanceId, initial) {
+    return new RuneState(initial);
   }
-  init_update_callbacks(component_context).a.push(fn);
-}
-__name(afterUpdate, "afterUpdate");
-function init_update_callbacks(context) {
-  var l = (
-    /** @type {ComponentContextLegacy} */
-    context.l
-  );
-  return l.u ?? (l.u = { a: [], b: [], m: [] });
-}
-__name(init_update_callbacks, "init_update_callbacks");
+};
+__name(_RuneStateFactory, "RuneStateFactory");
+let RuneStateFactory = _RuneStateFactory;
+const _GlobalDocumentCache = class _GlobalDocumentCache {
+  constructor() {
+    __privateAdd(this, _actorsById);
+    __privateAdd(this, _itemsById);
+    __privateAdd(this, _itemsByActorId);
+    __privateSet(this, _actorsById, /* @__PURE__ */ state(proxy(/* @__PURE__ */ new Map())));
+    __privateSet(this, _itemsById, /* @__PURE__ */ state(proxy(/* @__PURE__ */ new Map())));
+    __privateSet(this, _itemsByActorId, /* @__PURE__ */ state(proxy(/* @__PURE__ */ new Map())));
+  }
+  get actorsById() {
+    return get$1(__privateGet(this, _actorsById));
+  }
+  set actorsById(value2) {
+    set(__privateGet(this, _actorsById), value2, true);
+  }
+  get itemsById() {
+    return get$1(__privateGet(this, _itemsById));
+  }
+  set itemsById(value2) {
+    set(__privateGet(this, _itemsById), value2, true);
+  }
+  get itemsByActorId() {
+    return get$1(__privateGet(this, _itemsByActorId));
+  }
+  set itemsByActorId(value2) {
+    set(__privateGet(this, _itemsByActorId), value2, true);
+  }
+  static getInstance() {
+    if (!_GlobalDocumentCache.instance) {
+      _GlobalDocumentCache.instance = new _GlobalDocumentCache();
+    }
+    return _GlobalDocumentCache.instance;
+  }
+  // Idempotent Patch: nur ändern wenn value differs
+  patchActor(actorId, updates) {
+    const actor = this.actorsById.get(actorId);
+    if (!actor) {
+      this.actorsById.set(actorId, { ...updates, id: actorId });
+      return;
+    }
+    let hasChanges = false;
+    for (const [key2, value2] of Object.entries(updates)) {
+      const typedKey = key2;
+      if (actor[typedKey] !== value2) {
+        actor[key2] = value2;
+        hasChanges = true;
+      }
+    }
+    if (hasChanges) {
+      this.actorsById.set(actorId, actor);
+    }
+  }
+  patchItem(itemId, updates) {
+    const item = this.itemsById.get(itemId);
+    if (!item) {
+      this.itemsById.set(itemId, { ...updates, id: itemId });
+      if (updates.actorId) {
+        const actorItems = this.itemsByActorId.get(updates.actorId) || [];
+        if (!actorItems.includes(itemId)) {
+          this.itemsByActorId.set(updates.actorId, [...actorItems, itemId]);
+        }
+      }
+      return;
+    }
+    const oldActorId = item.actorId;
+    let hasChanges = false;
+    for (const [key2, value2] of Object.entries(updates)) {
+      const typedKey = key2;
+      if (item[typedKey] !== value2) {
+        item[key2] = value2;
+        hasChanges = true;
+      }
+    }
+    if (updates.actorId && updates.actorId !== oldActorId) {
+      if (oldActorId) {
+        const oldActorItems = this.itemsByActorId.get(oldActorId) || [];
+        this.itemsByActorId.set(oldActorId, oldActorItems.filter((id) => id !== itemId));
+      }
+      const newActorItems = this.itemsByActorId.get(updates.actorId) || [];
+      if (!newActorItems.includes(itemId)) {
+        this.itemsByActorId.set(updates.actorId, [...newActorItems, itemId]);
+      }
+    }
+    if (hasChanges) {
+      this.itemsById.set(itemId, item);
+    }
+  }
+  getActor(actorId) {
+    return this.actorsById.get(actorId);
+  }
+  getItem(itemId) {
+    return this.itemsById.get(itemId);
+  }
+  getItemsByActorId(actorId) {
+    return this.itemsByActorId.get(actorId) || [];
+  }
+};
+_actorsById = new WeakMap();
+_itemsById = new WeakMap();
+_itemsByActorId = new WeakMap();
+__name(_GlobalDocumentCache, "GlobalDocumentCache");
+_GlobalDocumentCache.instance = null;
+let GlobalDocumentCache = _GlobalDocumentCache;
 const _SvelteRenderer = class _SvelteRenderer {
   mount(descriptor, target, viewModel) {
     if (descriptor.type !== "svelte") {
@@ -31906,7 +32125,13 @@ const _SvelteRenderer = class _SvelteRenderer {
       });
     }
     try {
-      const component2 = descriptor.component;
+      const component2 = castSvelteComponent(descriptor.component);
+      if (!component2) {
+        return err({
+          code: "InvalidType",
+          message: "Component descriptor does not contain a valid Svelte component function"
+        });
+      }
       const mounted = mount(component2, {
         target,
         props: {
@@ -31993,7 +32218,15 @@ const _FlagsPersistAdapter = class _FlagsPersistAdapter {
           message: `Document ${config2.documentId} not found`
         });
       }
-      const documentWithUpdate = doc;
+      const documentWithUpdateResult = castFoundryDocumentWithUpdate(doc);
+      if (!documentWithUpdateResult.ok) {
+        return err({
+          code: "OPERATION_FAILED",
+          message: `Document does not support update: ${documentWithUpdateResult.error.message}`,
+          cause: documentWithUpdateResult.error
+        });
+      }
+      const documentWithUpdate = documentWithUpdateResult.value;
       const changes = {
         [`flags.${config2.namespace}.${config2.key}`]: data
       };
@@ -32046,18 +32279,27 @@ const _FlagsPersistAdapter = class _FlagsPersistAdapter {
           message: `Document ${config2.documentId} not found`
         });
       }
-      const documentWithFlags = doc;
+      const documentResult = castFoundryDocumentForFlag(doc);
       let flags2;
-      if (typeof documentWithFlags.getFlag === "function") {
+      if (documentResult.ok) {
         try {
-          flags2 = documentWithFlags.getFlag(config2.namespace, config2.key);
+          const flagValue = documentResult.value.getFlag(config2.namespace, config2.key);
+          if (isRecord$1(flagValue)) {
+            flags2 = flagValue;
+          }
         } catch {
           flags2 = void 0;
         }
       }
       if (!flags2) {
-        const docFlags = documentWithFlags.flags?.[config2.namespace];
-        flags2 = docFlags?.[config2.key];
+        const typedDoc = doc;
+        const docFlags = typedDoc.flags?.[config2.namespace];
+        if (docFlags && config2.key in docFlags) {
+          const flagValue = docFlags[config2.key];
+          if (isRecord$1(flagValue)) {
+            flags2 = flagValue;
+          }
+        }
       }
       return ok(flags2 || {});
     } catch (error) {
@@ -32073,7 +32315,7 @@ __name(_FlagsPersistAdapter, "FlagsPersistAdapter");
 let FlagsPersistAdapter = _FlagsPersistAdapter;
 const recordSchema = {
   validate(value2) {
-    if (value2 && typeof value2 === "object" && !Array.isArray(value2)) {
+    if (isRecord$1(value2)) {
       return ok(value2);
     }
     return err({
@@ -32156,8 +32398,12 @@ const _CompositePersistAdapter = class _CompositePersistAdapter {
 __name(_CompositePersistAdapter, "CompositePersistAdapter");
 _CompositePersistAdapter.dependencies = [platformSettingsPortToken];
 let CompositePersistAdapter = _CompositePersistAdapter;
+function castResolvedService(value2) {
+  return value2;
+}
+__name(castResolvedService, "castResolvedService");
 const _WindowController = class _WindowController {
-  constructor(instanceId, definitionId, definition, registry, stateStore, statePortFactory, actionDispatcher, rendererRegistry, bindingEngine, viewModelBuilder, eventBus, remoteSyncGate, persistAdapter) {
+  constructor(instanceId, definitionId, definition, registry, stateStore, statePortFactory, actionDispatcher, rendererRegistry, bindingEngine, viewModelBuilder, eventBus, remoteSyncGate, persistAdapter, container) {
     this.registry = registry;
     this.stateStore = stateStore;
     this.statePortFactory = statePortFactory;
@@ -32168,6 +32414,7 @@ const _WindowController = class _WindowController {
     this.eventBus = eventBus;
     this.remoteSyncGate = remoteSyncGate;
     this.persistAdapter = persistAdapter;
+    this.container = container;
     this.componentInstance = null;
     this.isMounted = false;
     this.instanceId = instanceId;
@@ -32184,6 +32431,14 @@ const _WindowController = class _WindowController {
       return ok(void 0);
     }
     this.element = element2;
+    const currentState = this.stateStore.getAll(this.instanceId);
+    if (currentState.ok && Object.keys(currentState.value).length === 0) {
+      this.statePort.patch({
+        journals: [],
+        isLoading: false,
+        error: null
+      });
+    }
     const bindResult = this.bindingEngine.initialize(this.definition, this.instanceId);
     if (!bindResult.ok) return err(bindResult.error);
     const viewModel = this.viewModelBuilder.build(
@@ -32212,12 +32467,28 @@ const _WindowController = class _WindowController {
     this.isMounted = true;
     this.registerEventListeners();
     this.eventBus.emit("window:rendered", { instanceId: this.instanceId });
+    const onOpenAction = this.definition.actions?.find((a) => a.id === "onOpen");
+    if (onOpenAction) {
+      this.dispatchAction("onOpen").catch((error) => {
+        console.error("Failed to execute onOpen action:", error);
+      });
+    }
     return ok(void 0);
   }
   async onFoundryUpdate(_element) {
     return ok(void 0);
   }
   async onFoundryClose() {
+    if (this.journalEventRegistrationId && this.container) {
+      const journalEventsResult = this.container.resolveWithError(platformJournalEventPortToken);
+      if (journalEventsResult.ok) {
+        const journalEvents = castResolvedService(
+          journalEventsResult.value
+        );
+        journalEvents.unregisterListener(this.journalEventRegistrationId);
+        delete this.journalEventRegistrationId;
+      }
+    }
     if (this.componentInstance !== null) {
       const rendererResult = this.rendererRegistry.get(this.definition.component.type);
       if (rendererResult.ok) {
@@ -32264,7 +32535,11 @@ const _WindowController = class _WindowController {
       windowInstanceId: this.instanceId,
       ...controlId !== void 0 && { controlId },
       state: this.state,
-      ...event2 !== void 0 && { event: event2 }
+      ...event2 !== void 0 && { event: event2 },
+      metadata: {
+        controller: this,
+        ...this.container !== void 0 && { container: this.container }
+      }
     };
     const result = await this.actionDispatcher.dispatch(actionId, context);
     if (!result.ok) return err(result.error);
@@ -32330,6 +32605,41 @@ const _WindowController = class _WindowController {
         this.dispatchAction(payload.actionId, payload.controlId, payload.event);
       }
     });
+    if (this.definitionId === "journal-overview" && this.container) {
+      const journalEventsResult = this.container.resolveWithError(platformJournalEventPortToken);
+      if (journalEventsResult.ok) {
+        const journalEvents = castResolvedService(
+          journalEventsResult.value
+        );
+        const registrationResult = journalEvents.onJournalUpdated((event2) => {
+          const moduleId = MODULE_METADATA.ID;
+          const flagKey = DOMAIN_FLAGS.HIDDEN;
+          const moduleFlags = event2.changes.flags?.[moduleId];
+          if (moduleFlags && typeof moduleFlags === "object" && flagKey in moduleFlags) {
+            this.reloadJournalOverviewData();
+          }
+        });
+        if (registrationResult.ok) {
+          this.journalEventRegistrationId = registrationResult.value;
+        }
+      }
+    }
+  }
+  /**
+   * Lädt die Journal-Übersichtsdaten neu und aktualisiert den State.
+   * Wird aufgerufen, wenn sich die Visibility eines Journals ändert.
+   */
+  async reloadJournalOverviewData() {
+    if (!this.container) return;
+    const serviceResult = this.container.resolveWithError(journalOverviewServiceToken);
+    if (!serviceResult.ok) return;
+    const service = castResolvedService(serviceResult.value);
+    const result = service.getAllJournalsWithVisibilityStatus();
+    if (result.ok) {
+      await this.updateStateLocal({
+        journals: result.value
+      });
+    }
   }
 };
 __name(_WindowController, "WindowController");
@@ -32342,7 +32652,9 @@ const _WindowFactory = class _WindowFactory {
   }
   async createWindow(definitionId, instanceKey, overrides) {
     const definitionResult = this.registry.getDefinition(definitionId);
-    if (!definitionResult.ok) return err(definitionResult.error);
+    if (!definitionResult.ok) {
+      return err(definitionResult.error);
+    }
     let definition = definitionResult.value;
     if (overrides) {
       definition = { ...definition, ...overrides };
@@ -32354,7 +32666,9 @@ const _WindowFactory = class _WindowFactory {
       controller,
       instanceId
     );
-    if (!appClassResult.ok) return err(appClassResult.error);
+    if (!appClassResult.ok) {
+      return err(appClassResult.error);
+    }
     const appClass = appClassResult.value;
     const app = new appClass();
     const instance2 = {
@@ -32373,7 +32687,7 @@ const _WindowFactory = class _WindowFactory {
       controller,
       definition,
       async show() {
-        await app.render();
+        await app.render({ force: true });
         return ok(void 0);
       },
       async hide() {
@@ -32398,32 +32712,61 @@ const _WindowFactory = class _WindowFactory {
     return ok(handle);
   }
   createController(instanceId, definitionId, definition) {
-    const registry = this.container.resolve(windowRegistryToken);
-    const stateStore = this.container.resolve(
-      stateStoreToken
-    );
-    const statePortFactory = this.container.resolve(
-      statePortFactoryToken
-    );
-    const actionDispatcher = this.container.resolve(
-      actionDispatcherToken
-    );
-    const rendererRegistry = this.container.resolve(
-      rendererRegistryToken
-    );
-    const bindingEngine = this.container.resolve(
-      bindingEngineToken
-    );
-    const viewModelBuilder = this.container.resolve(
-      viewModelBuilderToken
-    );
-    const eventBus = this.container.resolve(
-      eventBusToken
-    );
-    const remoteSyncGate = this.container.resolve(
-      remoteSyncGateToken
-    );
-    const persistAdapter = this.container.resolve(persistAdapterToken);
+    const registryResult = this.container.resolveWithError(windowRegistryToken);
+    if (!registryResult.ok) {
+      throw new Error(`Failed to resolve WindowRegistry: ${registryResult.error.message}`);
+    }
+    const registry = castResolvedService(registryResult.value);
+    const stateStoreResult = this.container.resolveWithError(stateStoreToken);
+    if (!stateStoreResult.ok) {
+      throw new Error(`Failed to resolve StateStore: ${stateStoreResult.error.message}`);
+    }
+    const stateStore = castResolvedService(stateStoreResult.value);
+    const statePortFactoryResult = this.container.resolveWithError(statePortFactoryToken);
+    if (!statePortFactoryResult.ok) {
+      throw new Error(
+        `Failed to resolve StatePortFactory: ${statePortFactoryResult.error.message}`
+      );
+    }
+    const statePortFactory = castResolvedService(statePortFactoryResult.value);
+    const actionDispatcherResult = this.container.resolveWithError(actionDispatcherToken);
+    if (!actionDispatcherResult.ok) {
+      throw new Error(
+        `Failed to resolve ActionDispatcher: ${actionDispatcherResult.error.message}`
+      );
+    }
+    const actionDispatcher = castResolvedService(actionDispatcherResult.value);
+    const rendererRegistryResult = this.container.resolveWithError(rendererRegistryToken);
+    if (!rendererRegistryResult.ok) {
+      throw new Error(
+        `Failed to resolve RendererRegistry: ${rendererRegistryResult.error.message}`
+      );
+    }
+    const rendererRegistry = castResolvedService(rendererRegistryResult.value);
+    const bindingEngineResult = this.container.resolveWithError(bindingEngineToken);
+    if (!bindingEngineResult.ok) {
+      throw new Error(`Failed to resolve BindingEngine: ${bindingEngineResult.error.message}`);
+    }
+    const bindingEngine = castResolvedService(bindingEngineResult.value);
+    const viewModelBuilderResult = this.container.resolveWithError(viewModelBuilderToken);
+    if (!viewModelBuilderResult.ok) {
+      throw new Error(
+        `Failed to resolve ViewModelBuilder: ${viewModelBuilderResult.error.message}`
+      );
+    }
+    const viewModelBuilder = castResolvedService(viewModelBuilderResult.value);
+    const eventBusResult = this.container.resolveWithError(eventBusToken);
+    if (!eventBusResult.ok) {
+      throw new Error(`Failed to resolve EventBus: ${eventBusResult.error.message}`);
+    }
+    const eventBus = castResolvedService(eventBusResult.value);
+    const remoteSyncGateResult = this.container.resolveWithError(remoteSyncGateToken);
+    if (!remoteSyncGateResult.ok) {
+      throw new Error(`Failed to resolve RemoteSyncGate: ${remoteSyncGateResult.error.message}`);
+    }
+    const remoteSyncGate = castResolvedService(remoteSyncGateResult.value);
+    const persistAdapterResult = this.container.resolveWithError(persistAdapterToken);
+    const persistAdapter = persistAdapterResult.ok ? castResolvedService(persistAdapterResult.value) : void 0;
     return new WindowController(
       instanceId,
       definitionId,
@@ -32437,7 +32780,9 @@ const _WindowFactory = class _WindowFactory {
       viewModelBuilder,
       eventBus,
       remoteSyncGate,
-      persistAdapter
+      persistAdapter,
+      this.container
+      // Pass container for action handlers
     );
   }
 };
@@ -32719,14 +33064,13 @@ function registerWindowServices(container) {
   if (isErr(remoteSyncGateResult)) {
     return err(`Failed to register RemoteSyncGate: ${remoteSyncGateResult.error.message}`);
   }
-  const rendererRegistryResult = container.registerClass(
-    rendererRegistryToken,
-    RendererRegistry,
-    ServiceLifecycle.SINGLETON
-  );
+  const rendererRegistry = new RendererRegistry();
+  const rendererRegistryResult = container.registerValue(rendererRegistryToken, rendererRegistry);
   if (isErr(rendererRegistryResult)) {
     return err(`Failed to register RendererRegistry: ${rendererRegistryResult.error.message}`);
   }
+  const svelteRenderer = new SvelteRenderer();
+  rendererRegistry.register("svelte", svelteRenderer);
   const statePortFactoryResult = container.registerClass(
     statePortFactoryToken,
     RuneStateFactory,
@@ -32783,15 +33127,25 @@ function registerWindowServices(container) {
   const windowFactoryFactoryResult = container.registerFactory(
     windowFactoryToken,
     () => {
-      const registry = container.resolve(
-        windowRegistryToken
-      );
-      const foundryAdapter = container.resolve(
-        foundryWindowAdapterToken
-      );
-      const containerPort = container.resolve(
-        platformContainerPortToken
-      );
+      const registryResult = container.resolveWithError(windowRegistryToken);
+      if (!registryResult.ok) {
+        throw new Error(`Failed to resolve WindowRegistry: ${registryResult.error.message}`);
+      }
+      const registry = castResolvedService$1(registryResult.value);
+      const foundryAdapterResult2 = container.resolveWithError(foundryWindowAdapterToken);
+      if (!foundryAdapterResult2.ok) {
+        throw new Error(
+          `Failed to resolve FoundryWindowAdapter: ${foundryAdapterResult2.error.message}`
+        );
+      }
+      const foundryAdapter = castResolvedService$1(foundryAdapterResult2.value);
+      const containerPortResult = container.resolveWithError(platformContainerPortToken);
+      if (!containerPortResult.ok) {
+        throw new Error(
+          `Failed to resolve PlatformContainerPort: ${containerPortResult.error.message}`
+        );
+      }
+      const containerPort = castResolvedService$1(containerPortResult.value);
       return new WindowFactory(registry, foundryAdapter, containerPort);
     },
     ServiceLifecycle.SINGLETON,
@@ -32818,12 +33172,6 @@ function registerWindowServices(container) {
   if (isErr(windowHooksServiceResult)) {
     return err(`Failed to register WindowHooksService: ${windowHooksServiceResult.error.message}`);
   }
-  const rendererRegistryResolvedResult = container.resolveWithError(rendererRegistryToken);
-  if (rendererRegistryResolvedResult.ok) {
-    const rendererRegistryResolved = castResolvedService(rendererRegistryResolvedResult.value);
-    const svelteRenderer = new SvelteRenderer();
-    rendererRegistryResolved.register("svelte", svelteRenderer);
-  }
   return ok(void 0);
 }
 __name(registerWindowServices, "registerWindowServices");
@@ -32832,6 +33180,243 @@ dependencyRegistry.register({
   priority: 150,
   // After core services (140), before validation (170)
   execute: registerWindowServices
+});
+function getControllerFromContext(context) {
+  return context.metadata?.controller;
+}
+__name(getControllerFromContext, "getControllerFromContext");
+function getContainerFromContext(context) {
+  return context.metadata?.container;
+}
+__name(getContainerFromContext, "getContainerFromContext");
+function createJournalOverviewWindowDefinition(component2) {
+  return {
+    definitionId: "journal-overview",
+    title: "Journal-Übersicht",
+    icon: "fas fa-list",
+    component: {
+      type: "svelte",
+      component: component2,
+      props: {}
+    },
+    features: {
+      resizable: true,
+      minimizable: true,
+      draggable: true,
+      closable: true
+    },
+    position: {
+      width: 800,
+      height: 600,
+      centered: true
+    },
+    actions: [
+      {
+        id: "onOpen",
+        handler: /* @__PURE__ */ __name(async (context) => {
+          try {
+            const controller = getControllerFromContext(context);
+            const container = getContainerFromContext(context);
+            if (!controller) {
+              return err({
+                code: "InvalidContext",
+                message: "Controller not found in context"
+              });
+            }
+            if (!container) {
+              return err({
+                code: "InvalidContext",
+                message: "Container not found in context"
+              });
+            }
+            await controller.updateStateLocal({
+              isLoading: true,
+              error: null
+            });
+            const serviceResult = container.resolveWithError(journalOverviewServiceToken);
+            if (!serviceResult.ok) {
+              await controller.updateStateLocal({
+                isLoading: false,
+                error: `Failed to resolve JournalOverviewService: ${serviceResult.error.message}`
+              });
+              return err({
+                code: "ServiceNotFound",
+                message: `Failed to resolve JournalOverviewService: ${serviceResult.error.message}`
+              });
+            }
+            const service = castResolvedService(serviceResult.value);
+            const result = service.getAllJournalsWithVisibilityStatus();
+            if (!result.ok) {
+              await controller.updateStateLocal({
+                isLoading: false,
+                error: result.error.message
+              });
+              return err({
+                code: "LoadFailed",
+                message: result.error.message
+              });
+            }
+            await controller.updateStateLocal({
+              isLoading: false,
+              error: null,
+              journals: result.value
+            });
+            return ok(void 0);
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            return err({
+              code: "UnexpectedError",
+              message: errorMessage
+            });
+          }
+        }, "handler")
+      }
+    ]
+  };
+}
+__name(createJournalOverviewWindowDefinition, "createJournalOverviewWindowDefinition");
+const VERSION = "5.46.0";
+const PUBLIC_VERSION = "5";
+if (typeof window !== "undefined") {
+  ((_d = window.__svelte ?? (window.__svelte = {})).v ?? (_d.v = /* @__PURE__ */ new Set())).add(PUBLIC_VERSION);
+}
+var root_1 = /* @__PURE__ */ from_html(`<div class="loading svelte-k12gen"><i class="fas fa-spinner fa-spin"></i> Lade Journale...</div>`);
+var root_3 = /* @__PURE__ */ from_html(`<div class="error svelte-k12gen"><i class="fas fa-exclamation-triangle"></i> </div>`);
+var root_5 = /* @__PURE__ */ from_html(`<div class="empty svelte-k12gen"><i class="fas fa-inbox"></i> Keine Journale gefunden</div>`);
+var root_7 = /* @__PURE__ */ from_html(`<tr class="svelte-k12gen"><td class="journal-name svelte-k12gen"> </td><td class="journal-status svelte-k12gen"><span><i></i> </span></td></tr>`);
+var root_6 = /* @__PURE__ */ from_html(`<table class="journal-table svelte-k12gen"><thead class="svelte-k12gen"><tr><th class="svelte-k12gen">Name</th><th class="svelte-k12gen">Sichtbarkeitsstatus</th></tr></thead><tbody class="svelte-k12gen"></tbody></table>`);
+var root$1 = /* @__PURE__ */ from_html(`<div class="journal-overview-window svelte-k12gen"><!></div>`);
+function JournalOverviewWindow($$anchor, $$props) {
+  push($$props, true);
+  const state2 = /* @__PURE__ */ user_derived(() => $$props.viewModel.state.get());
+  function getStatusText(isHidden, i18n) {
+    if (i18n) {
+      return isHidden ? i18n.translate("journalOverview.status.hidden", "Versteckt") : i18n.translate("journalOverview.status.visible", "Sichtbar");
+    }
+    return isHidden ? "Versteckt" : "Sichtbar";
+  }
+  __name(getStatusText, "getStatusText");
+  function getStatusIcon(isHidden) {
+    return isHidden ? "fas fa-eye-slash" : "fas fa-eye";
+  }
+  __name(getStatusIcon, "getStatusIcon");
+  function getStatusClass(isHidden) {
+    return isHidden ? "status-hidden" : "status-visible";
+  }
+  __name(getStatusClass, "getStatusClass");
+  var div = root$1();
+  var node = child(div);
+  {
+    var consequent = /* @__PURE__ */ __name(($$anchor2) => {
+      var div_1 = root_1();
+      append($$anchor2, div_1);
+    }, "consequent");
+    var alternate_2 = /* @__PURE__ */ __name(($$anchor2) => {
+      var fragment = comment();
+      var node_1 = first_child(fragment);
+      {
+        var consequent_1 = /* @__PURE__ */ __name(($$anchor3) => {
+          var div_2 = root_3();
+          var text2 = sibling(child(div_2));
+          reset(div_2);
+          template_effect(() => set_text(text2, ` ${get$1(state2).error ?? ""}`));
+          append($$anchor3, div_2);
+        }, "consequent_1");
+        var alternate_1 = /* @__PURE__ */ __name(($$anchor3) => {
+          var fragment_1 = comment();
+          var node_2 = first_child(fragment_1);
+          {
+            var consequent_2 = /* @__PURE__ */ __name(($$anchor4) => {
+              var div_3 = root_5();
+              append($$anchor4, div_3);
+            }, "consequent_2");
+            var alternate = /* @__PURE__ */ __name(($$anchor4) => {
+              var table = root_6();
+              var tbody = sibling(child(table));
+              each(tbody, 21, () => get$1(state2).journals, (journal) => journal.id, ($$anchor5, journal) => {
+                var tr = root_7();
+                var td = child(tr);
+                var text_1 = child(td, true);
+                reset(td);
+                var td_1 = sibling(td);
+                var span = child(td_1);
+                var i = child(span);
+                var text_2 = sibling(i);
+                reset(span);
+                reset(td_1);
+                reset(tr);
+                template_effect(
+                  ($0, $1, $2) => {
+                    set_text(text_1, get$1(journal).name || get$1(journal).id);
+                    set_class(span, 1, `status-badge ${$0 ?? ""}`, "svelte-k12gen");
+                    set_class(i, 1, $1, "svelte-k12gen");
+                    set_text(text_2, ` ${$2 ?? ""}`);
+                  },
+                  [
+                    () => getStatusClass(get$1(journal).isHidden),
+                    () => clsx(getStatusIcon(get$1(journal).isHidden)),
+                    () => getStatusText(get$1(journal).isHidden, $$props.viewModel.i18n)
+                  ]
+                );
+                append($$anchor5, tr);
+              });
+              reset(tbody);
+              reset(table);
+              append($$anchor4, table);
+            }, "alternate");
+            if_block(
+              node_2,
+              ($$render) => {
+                if (get$1(state2).journals.length === 0) $$render(consequent_2);
+                else $$render(alternate, false);
+              },
+              true
+            );
+          }
+          append($$anchor3, fragment_1);
+        }, "alternate_1");
+        if_block(
+          node_1,
+          ($$render) => {
+            if (get$1(state2).error) $$render(consequent_1);
+            else $$render(alternate_1, false);
+          },
+          true
+        );
+      }
+      append($$anchor2, fragment);
+    }, "alternate_2");
+    if_block(node, ($$render) => {
+      if (get$1(state2).isLoading) $$render(consequent);
+      else $$render(alternate_2, false);
+    });
+  }
+  reset(div);
+  append($$anchor, div);
+  pop();
+}
+__name(JournalOverviewWindow, "JournalOverviewWindow");
+function registerJournalOverviewWindow(container) {
+  const registryResult = container.resolveWithError(windowRegistryToken);
+  if (!registryResult.ok) {
+    return err(`Failed to resolve WindowRegistry: ${registryResult.error.message}`);
+  }
+  const registry = castResolvedService$1(registryResult.value);
+  const definition = createJournalOverviewWindowDefinition(JournalOverviewWindow);
+  const registerResult = registry.registerDefinition(definition);
+  if (isErr(registerResult)) {
+    return err(
+      `Failed to register Journal Overview Window Definition: ${registerResult.error.message}`
+    );
+  }
+  return ok(void 0);
+}
+__name(registerJournalOverviewWindow, "registerJournalOverviewWindow");
+dependencyRegistry.register({
+  name: "JournalOverviewWindow",
+  priority: 180,
+  // After validation (170), same as Loop Prevention Init
+  execute: registerJournalOverviewWindow
 });
 let internalStepsRegistered = false;
 function createDependencyRegistrationRegistry() {
@@ -33028,7 +33613,7 @@ const _CompositionRoot = class _CompositionRoot {
   tryLogBootstrapCompletion(container, duration) {
     const loggerResult = container.resolveWithError(loggerToken);
     if (loggerResult.ok) {
-      const logger = castResolvedService(loggerResult.value);
+      const logger = castResolvedService$1(loggerResult.value);
       logger.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
     } else {
     }
@@ -33092,7 +33677,7 @@ function initializeFoundryModule() {
     console.error(`${LOG_PREFIX} Failed to resolve logger: ${loggerResult.error.message}`);
     return;
   }
-  const logger = castResolvedService(loggerResult.value);
+  const logger = castResolvedService$1(loggerResult.value);
   const initHookServiceResult = containerResult.value.resolveWithError(
     bootstrapInitHookServiceToken
   );
@@ -33102,7 +33687,7 @@ function initializeFoundryModule() {
     );
     return;
   }
-  const initHookService = castResolvedService(
+  const initHookService = castResolvedService$1(
     initHookServiceResult.value
   );
   initHookService.register();
@@ -33115,7 +33700,7 @@ function initializeFoundryModule() {
     );
     return;
   }
-  const readyHookService = castResolvedService(
+  const readyHookService = castResolvedService$1(
     readyHookServiceResult.value
   );
   readyHookService.register();

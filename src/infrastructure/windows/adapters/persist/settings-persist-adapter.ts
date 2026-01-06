@@ -5,6 +5,7 @@ import type { PlatformSettingsPort } from "@/domain/ports/platform-settings-port
 import type { ValidationSchema } from "@/domain/types/validation-schema.interface";
 import type { SettingsError } from "@/domain/types/settings-error";
 import { ok, err } from "@/domain/utils/result";
+import { isRecord } from "@/infrastructure/adapters/foundry/runtime-casts";
 
 /**
  * ValidationSchema für Record<string, unknown> - akzeptiert jedes Objekt
@@ -13,9 +14,8 @@ const recordSchema: ValidationSchema<Record<string, unknown>> = {
   validate(
     value: unknown
   ): import("@/domain/types/result").Result<Record<string, unknown>, SettingsError> {
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      // type-coverage:ignore-next-line
-      return ok(value as Record<string, unknown>);
+    if (isRecord(value)) {
+      return ok(value);
     }
     return err({
       code: "SETTING_VALIDATION_FAILED",

@@ -3,8 +3,11 @@ import { SidebarButtonBootstrapper } from "../sidebar-button-bootstrapper";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { ShowAllHiddenJournalsUseCase } from "@/application/use-cases/show-all-hidden-journals.use-case";
 import type { FoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
+import type { IWindowFactory } from "@/domain/windows/ports/window-factory-port.interface";
+import type { WindowHandle } from "@/domain/windows/types/window-handle.interface";
 import { showAllHiddenJournalsUseCaseToken } from "@/application/tokens/event.tokens";
 import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";
+import { windowFactoryToken } from "@/application/windows/tokens/window.tokens";
 import { ok, err } from "@/domain/utils/result";
 
 describe("SidebarButtonBootstrapper", () => {
@@ -269,6 +272,376 @@ describe("SidebarButtonBootstrapper", () => {
       if (!result.ok) {
         expect(result.error).toContain("Failed to register sidebar button hook");
       }
+    });
+
+    it("should add journal overview button to journal directory", () => {
+      const mockWindowFactory: IWindowFactory = {
+        createWindow: vi.fn().mockResolvedValue(
+          ok({
+            instanceId: "journal-overview:1",
+            definitionId: "journal-overview",
+            controller: {} as any,
+            definition: {} as any,
+            show: vi.fn().mockResolvedValue(ok(undefined)),
+            hide: vi.fn().mockResolvedValue(ok(undefined)),
+            close: vi.fn().mockResolvedValue(ok(undefined)),
+            update: vi.fn().mockResolvedValue(ok(undefined)),
+            persist: vi.fn().mockResolvedValue(ok(undefined)),
+            restore: vi.fn().mockResolvedValue(ok(undefined)),
+          } as WindowHandle)
+        ),
+      } as unknown as IWindowFactory;
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === showAllHiddenJournalsUseCaseToken) {
+          return ok(mockUseCase);
+        }
+        if (token === foundryHooksToken) {
+          return ok(mockHooks);
+        }
+        if (token === windowFactoryToken) {
+          return ok(mockWindowFactory);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      SidebarButtonBootstrapper.registerSidebarButton(mockContainer);
+
+      const hookCallback = vi.mocked(mockHooks.on).mock.calls[0]![1] as (
+        ...args: unknown[]
+      ) => void;
+
+      const mockHtml = document.createElement("div");
+      const mockDirectoryHeader = document.createElement("div");
+      mockDirectoryHeader.className = "directory-header";
+      const mockActionButtons = document.createElement("div");
+      mockActionButtons.className = "header-actions action-buttons";
+      mockDirectoryHeader.appendChild(mockActionButtons);
+      mockHtml.appendChild(mockDirectoryHeader);
+
+      hookCallback({}, mockHtml);
+
+      const overviewButton = mockActionButtons.querySelector(".journal-overview-button");
+      expect(overviewButton).not.toBeNull();
+      expect(overviewButton?.tagName).toBe("BUTTON");
+    });
+
+    it("should not add duplicate journal overview buttons on re-render", () => {
+      const mockWindowFactory: IWindowFactory = {
+        createWindow: vi.fn().mockResolvedValue(
+          ok({
+            instanceId: "journal-overview:1",
+            definitionId: "journal-overview",
+            controller: {} as any,
+            definition: {} as any,
+            show: vi.fn().mockResolvedValue(ok(undefined)),
+            hide: vi.fn().mockResolvedValue(ok(undefined)),
+            close: vi.fn().mockResolvedValue(ok(undefined)),
+            update: vi.fn().mockResolvedValue(ok(undefined)),
+            persist: vi.fn().mockResolvedValue(ok(undefined)),
+            restore: vi.fn().mockResolvedValue(ok(undefined)),
+          } as WindowHandle)
+        ),
+      } as unknown as IWindowFactory;
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === showAllHiddenJournalsUseCaseToken) {
+          return ok(mockUseCase);
+        }
+        if (token === foundryHooksToken) {
+          return ok(mockHooks);
+        }
+        if (token === windowFactoryToken) {
+          return ok(mockWindowFactory);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      SidebarButtonBootstrapper.registerSidebarButton(mockContainer);
+
+      const hookCallback = vi.mocked(mockHooks.on).mock.calls[0]![1] as (
+        ...args: unknown[]
+      ) => void;
+
+      const mockHtml = document.createElement("div");
+      const mockDirectoryHeader = document.createElement("div");
+      mockDirectoryHeader.className = "directory-header";
+      const mockActionButtons = document.createElement("div");
+      mockActionButtons.className = "header-actions action-buttons";
+      const existingOverviewButton = document.createElement("button");
+      existingOverviewButton.className = "journal-overview-button";
+      mockActionButtons.appendChild(existingOverviewButton);
+      mockDirectoryHeader.appendChild(mockActionButtons);
+      mockHtml.appendChild(mockDirectoryHeader);
+
+      hookCallback({}, mockHtml);
+
+      // Should only have one button
+      const buttons = mockHtml.querySelectorAll(".journal-overview-button");
+      expect(buttons.length).toBe(1);
+    });
+
+    it("should open journal overview window when button is clicked", async () => {
+      const mockShow = vi.fn().mockResolvedValue(ok(undefined));
+      const mockWindowFactory: IWindowFactory = {
+        createWindow: vi.fn().mockResolvedValue(
+          ok({
+            instanceId: "journal-overview:1",
+            definitionId: "journal-overview",
+            controller: {} as any,
+            definition: {} as any,
+            show: mockShow,
+            hide: vi.fn().mockResolvedValue(ok(undefined)),
+            close: vi.fn().mockResolvedValue(ok(undefined)),
+            update: vi.fn().mockResolvedValue(ok(undefined)),
+            persist: vi.fn().mockResolvedValue(ok(undefined)),
+            restore: vi.fn().mockResolvedValue(ok(undefined)),
+          } as WindowHandle)
+        ),
+      } as unknown as IWindowFactory;
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === showAllHiddenJournalsUseCaseToken) {
+          return ok(mockUseCase);
+        }
+        if (token === foundryHooksToken) {
+          return ok(mockHooks);
+        }
+        if (token === windowFactoryToken) {
+          return ok(mockWindowFactory);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      SidebarButtonBootstrapper.registerSidebarButton(mockContainer);
+
+      const hookCallback = vi.mocked(mockHooks.on).mock.calls[0]![1] as (
+        ...args: unknown[]
+      ) => void;
+
+      const mockHtml = document.createElement("div");
+      const mockDirectoryHeader = document.createElement("div");
+      mockDirectoryHeader.className = "directory-header";
+      const mockActionButtons = document.createElement("div");
+      mockActionButtons.className = "header-actions action-buttons";
+      mockDirectoryHeader.appendChild(mockActionButtons);
+      mockHtml.appendChild(mockDirectoryHeader);
+
+      hookCallback({}, mockHtml);
+
+      const overviewButton = mockActionButtons.querySelector(
+        ".journal-overview-button"
+      ) as HTMLButtonElement;
+      expect(overviewButton).not.toBeNull();
+
+      // Simulate button click
+      overviewButton.click();
+      await vi.waitFor(() => {
+        expect(mockWindowFactory.createWindow).toHaveBeenCalledWith("journal-overview");
+        expect(mockShow).toHaveBeenCalled();
+      });
+    });
+
+    it("should handle window factory not available gracefully", () => {
+      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === showAllHiddenJournalsUseCaseToken) {
+          return ok(mockUseCase);
+        }
+        if (token === foundryHooksToken) {
+          return ok(mockHooks);
+        }
+        if (token === windowFactoryToken) {
+          return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      SidebarButtonBootstrapper.registerSidebarButton(mockContainer);
+
+      const hookCallback = vi.mocked(mockHooks.on).mock.calls[0]![1] as (
+        ...args: unknown[]
+      ) => void;
+
+      const mockHtml = document.createElement("div");
+      const mockDirectoryHeader = document.createElement("div");
+      mockDirectoryHeader.className = "directory-header";
+      const mockActionButtons = document.createElement("div");
+      mockActionButtons.className = "header-actions action-buttons";
+      mockDirectoryHeader.appendChild(mockActionButtons);
+      mockHtml.appendChild(mockDirectoryHeader);
+
+      hookCallback({}, mockHtml);
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "[Journal Overview] WindowFactory not available:",
+        "Service not found"
+      );
+
+      // Should not add overview button
+      const overviewButton = mockHtml.querySelector(".journal-overview-button");
+      expect(overviewButton).toBeNull();
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it("should add journal overview button to directory-header if action-buttons not found", () => {
+      const mockWindowFactory: IWindowFactory = {
+        createWindow: vi.fn().mockResolvedValue(
+          ok({
+            instanceId: "journal-overview:1",
+            definitionId: "journal-overview",
+            controller: {} as any,
+            definition: {} as any,
+            show: vi.fn().mockResolvedValue(ok(undefined)),
+            hide: vi.fn().mockResolvedValue(ok(undefined)),
+            close: vi.fn().mockResolvedValue(ok(undefined)),
+            update: vi.fn().mockResolvedValue(ok(undefined)),
+            persist: vi.fn().mockResolvedValue(ok(undefined)),
+            restore: vi.fn().mockResolvedValue(ok(undefined)),
+          } as WindowHandle)
+        ),
+      } as unknown as IWindowFactory;
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === showAllHiddenJournalsUseCaseToken) {
+          return ok(mockUseCase);
+        }
+        if (token === foundryHooksToken) {
+          return ok(mockHooks);
+        }
+        if (token === windowFactoryToken) {
+          return ok(mockWindowFactory);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      SidebarButtonBootstrapper.registerSidebarButton(mockContainer);
+
+      const hookCallback = vi.mocked(mockHooks.on).mock.calls[0]![1] as (
+        ...args: unknown[]
+      ) => void;
+
+      const mockHtml = document.createElement("div");
+      const mockDirectoryHeader = document.createElement("div");
+      mockDirectoryHeader.className = "directory-header";
+      // No action-buttons element
+      mockHtml.appendChild(mockDirectoryHeader);
+
+      hookCallback({}, mockHtml);
+
+      const overviewButton = mockDirectoryHeader.querySelector(".journal-overview-button");
+      expect(overviewButton).not.toBeNull();
+      expect(overviewButton?.parentElement).toBe(mockDirectoryHeader);
+    });
+
+    it("should add journal overview button to top of sidebar if neither action-buttons nor directory-header found", () => {
+      const mockWindowFactory: IWindowFactory = {
+        createWindow: vi.fn().mockResolvedValue(
+          ok({
+            instanceId: "journal-overview:1",
+            definitionId: "journal-overview",
+            controller: {} as any,
+            definition: {} as any,
+            show: vi.fn().mockResolvedValue(ok(undefined)),
+            hide: vi.fn().mockResolvedValue(ok(undefined)),
+            close: vi.fn().mockResolvedValue(ok(undefined)),
+            update: vi.fn().mockResolvedValue(ok(undefined)),
+            persist: vi.fn().mockResolvedValue(ok(undefined)),
+            restore: vi.fn().mockResolvedValue(ok(undefined)),
+          } as WindowHandle)
+        ),
+      } as unknown as IWindowFactory;
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === showAllHiddenJournalsUseCaseToken) {
+          return ok(mockUseCase);
+        }
+        if (token === foundryHooksToken) {
+          return ok(mockHooks);
+        }
+        if (token === windowFactoryToken) {
+          return ok(mockWindowFactory);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      SidebarButtonBootstrapper.registerSidebarButton(mockContainer);
+
+      const hookCallback = vi.mocked(mockHooks.on).mock.calls[0]![1] as (
+        ...args: unknown[]
+      ) => void;
+
+      const mockHtml = document.createElement("div");
+      // No action-buttons and no directory-header element
+
+      hookCallback({}, mockHtml);
+
+      const overviewButton = mockHtml.querySelector(".journal-overview-button");
+      expect(overviewButton).not.toBeNull();
+      expect(overviewButton?.parentElement).toBe(mockHtml);
+      // Button should be the first child
+      expect(mockHtml.firstChild).toBe(overviewButton);
+    });
+
+    it("should handle window creation error gracefully", async () => {
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const mockWindowFactory: IWindowFactory = {
+        createWindow: vi.fn().mockResolvedValue(
+          err({
+            code: "WindowCreationFailed",
+            message: "Failed to create window",
+          })
+        ),
+      } as unknown as IWindowFactory;
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === showAllHiddenJournalsUseCaseToken) {
+          return ok(mockUseCase);
+        }
+        if (token === foundryHooksToken) {
+          return ok(mockHooks);
+        }
+        if (token === windowFactoryToken) {
+          return ok(mockWindowFactory);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      SidebarButtonBootstrapper.registerSidebarButton(mockContainer);
+
+      const hookCallback = vi.mocked(mockHooks.on).mock.calls[0]![1] as (
+        ...args: unknown[]
+      ) => void;
+
+      const mockHtml = document.createElement("div");
+      const mockDirectoryHeader = document.createElement("div");
+      mockDirectoryHeader.className = "directory-header";
+      const mockActionButtons = document.createElement("div");
+      mockActionButtons.className = "header-actions action-buttons";
+      mockDirectoryHeader.appendChild(mockActionButtons);
+      mockHtml.appendChild(mockDirectoryHeader);
+
+      hookCallback({}, mockHtml);
+
+      const overviewButton = mockActionButtons.querySelector(
+        ".journal-overview-button"
+      ) as HTMLButtonElement;
+      expect(overviewButton).not.toBeNull();
+
+      // Simulate button click
+      overviewButton.click();
+      await vi.waitFor(() => {
+        expect(mockWindowFactory.createWindow).toHaveBeenCalledWith("journal-overview");
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          "Failed to open journal overview window:",
+          expect.any(Object)
+        );
+      });
+
+      consoleErrorSpy.mockRestore();
     });
   });
 });

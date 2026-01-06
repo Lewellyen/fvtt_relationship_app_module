@@ -102,6 +102,22 @@ describe("SvelteRenderer", () => {
       expect(result.error.message).toContain("SvelteRenderer can only mount svelte components");
     });
 
+    it("should return error when component is not a valid Svelte component function", () => {
+      const descriptor: ComponentDescriptor = {
+        type: "svelte",
+        component: "not-a-function" as unknown,
+        props: {},
+      };
+
+      const result = renderer.mount(descriptor, mockTarget, mockViewModel);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("InvalidType");
+      expect(result.error.message).toContain(
+        "Component descriptor does not contain a valid Svelte component function"
+      );
+    });
+
     it("should return error if mount fails", () => {
       const descriptor: ComponentDescriptor = {
         type: "svelte",

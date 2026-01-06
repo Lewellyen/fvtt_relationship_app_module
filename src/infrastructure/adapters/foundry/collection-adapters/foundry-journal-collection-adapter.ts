@@ -9,6 +9,7 @@ import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/F
 import { JournalMapperRegistry } from "../mappers/journal-mapper-registry";
 import { DefaultJournalMapper } from "../mappers/default-journal-mapper";
 import { ok, err } from "@/domain/utils/result";
+import { getFirstArrayElement } from "@/application/utils/array-utils";
 import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
 import { FilterOperatorRegistry } from "./filter-operator-registry";
 import { createDefaultFilterOperators } from "./default-filter-operators";
@@ -106,9 +107,8 @@ export class FoundryJournalCollectionAdapter implements PlatformJournalCollectio
     }
 
     if (errors.length > 0) {
-      // Guaranteed to exist due to length > 0 check
-      // type-coverage:ignore-next-line - Array with length > 0 guarantees element at index 0
-      const firstError = errors[0]!;
+      // errors array is guaranteed to be non-empty here, so getFirstArrayElement is safe
+      const firstError = getFirstArrayElement(errors);
       return err(firstError);
     }
 
@@ -275,7 +275,9 @@ class FoundryJournalQueryBuilder implements EntityQueryBuilder<JournalEntry> {
       this.currentOrGroup = [];
       // Move the last where() filter into the OR group
       if (this.query.filters && this.query.filters.length > 0) {
-        // type-coverage:ignore-next-line - Array with length > 0 guarantees element from pop()
+        // pop() is guaranteed to return a value here because length > 0 was checked
+        // Type assertion is safe: TypeScript cannot prove that pop() returns non-undefined
+        /* type-coverage:ignore-next-line -- Type narrowing: pop() is guaranteed to return a value because length > 0 was checked above */
         const lastFilter = this.query.filters.pop()!;
         this.currentOrGroup.push({
           field: lastFilter.field,
@@ -302,7 +304,9 @@ class FoundryJournalQueryBuilder implements EntityQueryBuilder<JournalEntry> {
 
     // Move the last where() filter into the OR group
     if (this.query.filters && this.query.filters.length > 0) {
-      // type-coverage:ignore-next-line - Array with length > 0 guarantees element from pop()
+      // pop() is guaranteed to return a value here because length > 0 was checked
+      // Type assertion is safe: TypeScript cannot prove that pop() returns non-undefined
+      /* type-coverage:ignore-next-line -- Type narrowing: pop() is guaranteed to return a value because length > 0 was checked above */
       const lastFilter = this.query.filters.pop()!;
       orGroup.push({
         field: lastFilter.field,

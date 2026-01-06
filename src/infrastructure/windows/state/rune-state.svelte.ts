@@ -1,10 +1,9 @@
 import type { IWindowState } from "@/domain/windows/types/view-model.interface";
-import { castSvelteStateRune } from "@/infrastructure/adapters/foundry/runtime-casts";
 
 /**
  * RuneState<T> - Reference Implementation von IWindowState für Svelte (Svelte 5 Runes)
  *
- * Nutzt Svelte 5 `$state()` intern.
+ * Nutzt Svelte 5 `$state()` direkt (möglich, weil diese Datei .svelte.ts ist).
  * `get()` liefert bewusst den reaktiven $state-Proxy zurück, nicht einen Snapshot!
  * Svelte reagiert automatisch auf Änderungen am Proxy.
  */
@@ -12,15 +11,9 @@ export class RuneState<T extends Record<string, unknown>> implements IWindowStat
   private readonly runeState: T;
 
   constructor(initial: T) {
-    // $state is a Svelte 5 rune, available at compile time
-    // Intern: $state-Objekt (Svelte 5 Runes)
-    // Type-safe cast: Use runtime cast helper for Svelte 5 $state rune
-    const $stateResult = castSvelteStateRune();
-    if (!$stateResult.ok) {
-      throw new Error(`Svelte 5 $state rune not available: ${$stateResult.error.message}`);
-    }
-
-    this.runeState = $stateResult.value(initial);
+    // $state rune is available here because this is a .svelte.ts file
+    // The Svelte compiler will transform this at compile time
+    this.runeState = $state(initial);
   }
 
   get(): Readonly<T> {

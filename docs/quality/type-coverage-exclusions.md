@@ -34,10 +34,19 @@ This document records all intentional gaps in the TypeScript type coverage repor
 | `src/services/RetryService.ts` (2 assertions) | Non-null assertions: lastError guaranteed defined after loop (maxAttempts >= 1). |
 | `src/core/api/readonly-wrapper.ts` (2 casts) | 1) Type narrowing: (keyof T)[] to string[] safe when T uses string keys. 2) Proxy trap: prop to keyof T after allowedMethods membership check. |
 | `src/foundry/facades/foundry-journal-facade.ts` (1 cast) | Type widening: fvtt-types restrictive scope type ("core" only), cast necessary for module flags with module ID scope. |
+| `src/application/services/RuntimeConfigEventEmitter.ts` (1 cast) | Type variance: Set<RuntimeConfigListener<K>> is compatible with Set<RuntimeConfigListener<RuntimeConfigKey>> at runtime. |
+| `src/infrastructure/shared/utils/type-guards.ts` (1 cast) | Object.prototype.hasOwnProperty is a standard JavaScript method with known signature. |
+| `src/domain/utils/type-guards.ts` (1 cast) | Object.prototype.hasOwnProperty is a standard JavaScript method with known signature. |
+| `src/infrastructure/adapters/foundry/event-adapters/foundry-journal-ui-event-adapter.ts` (2 casts) | Runtime type checks: record.options validated as array, item.callback validated as function above. |
+| `src/infrastructure/adapters/foundry/repository-adapters/foundry-journal-repository-adapter.ts` (1 cast) | Type narrowing: createEntityDataWithId guarantees CreateEntityData<JournalEntry> & { id: string }. |
+| `src/application/windows/utils/window-state-casts.ts` (2 casts) | Type variance and runtime type checks: handler and component validated above. |
+| `src/infrastructure/windows/adapters/persist/flags-persist-adapter.ts` (1 cast) | Runtime type check: doc validated as Foundry document with flags property. |
+| `src/application/windows/utils/window-casts.ts` (2 casts) | Type narrowing: WindowController contract guarantees controller and container in metadata. |
+| `src/application/windows/utils/patch-utils.ts` (1 cast) | Type narrowing: key validated as keyof T above, updates[typedKey] is T[keyof T]. |
 
 Each inline exclusion is paired with a descriptive comment in code referencing the invariant that justifies the cast or assertion. Automated tests covering these paths are located beside the relevant modules (e.g. `PortSelector.test.ts`, `FoundryHooksService.test.ts`, `RetryService.test.ts`).
 
-**Total:** 30 inline exclusions across 16 files, all documented with justifications inline using `/* type-coverage:ignore-next-line -- reason */` format.
+**Total:** 42 inline exclusions across 25 files, all documented with justifications inline using `/* type-coverage:ignore-next-line -- reason */` format.
 
 **Eliminiert in früheren Releases:**
 - ✅ jQuery compatibility casts (2) - jQuery support removed

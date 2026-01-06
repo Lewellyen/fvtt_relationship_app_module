@@ -3,6 +3,7 @@ import type {
   PlatformJournalUiEventPort,
   JournalDirectoryRenderedEvent,
   JournalUiEvent,
+  ContextMenuOption,
 } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
 import type {
   EventRegistrationId,
@@ -114,11 +115,55 @@ export class FoundryJournalUiEventAdapter implements PlatformJournalUiEventPort 
       "options" in record &&
       Array.isArray(record.options)
     ) {
+      // Validate options array elements
+      type ContextMenuItem = {
+        name: string;
+        icon: string;
+        callback: (journalId: string) => void | Promise<void>;
+      };
+      type JournalContextMenuRecord = {
+        journalId: string;
+        options: unknown[];
+        timestamp?: number | undefined;
+      };
+
+      const options: ContextMenuOption[] = [];
+      const typedRecord: JournalContextMenuRecord = {
+        journalId: record.journalId as string,
+        /* type-coverage:ignore-next-line -- Runtime type check: record.options validated as array above */
+        options: record.options as unknown[],
+        timestamp: typeof record.timestamp === "number" ? record.timestamp : undefined,
+      };
+
+      for (const item of typedRecord.options) {
+        if (
+          typeof item === "object" &&
+          item !== null &&
+          "name" in item &&
+          typeof item.name === "string" &&
+          "icon" in item &&
+          typeof item.icon === "string" &&
+          "callback" in item &&
+          typeof item.callback === "function"
+        ) {
+          const typedItem: ContextMenuItem = {
+            name: item.name as string,
+            icon: item.icon as string,
+            /* type-coverage:ignore-next-line -- Runtime type check: item.callback validated as function above */
+            callback: item.callback as (journalId: string) => void | Promise<void>,
+          };
+          options.push({
+            name: typedItem.name,
+            icon: typedItem.icon,
+            callback: typedItem.callback,
+          });
+        }
+      }
+
       return {
-        journalId: record.journalId,
-        // type-coverage:ignore-next-line - Fallback path for generic registerListener, not used in practice
-        options: record.options,
-        timestamp: typeof record.timestamp === "number" ? record.timestamp : Date.now(),
+        journalId: typedRecord.journalId,
+        options,
+        timestamp: typeof typedRecord.timestamp === "number" ? typedRecord.timestamp : Date.now(),
       };
     }
 

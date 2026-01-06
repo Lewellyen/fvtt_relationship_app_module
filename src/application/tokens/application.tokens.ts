@@ -161,3 +161,13 @@ export const journalDirectoryRerenderSchedulerToken = createInjectionToken<any>(
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
 export const eventRegistrarRegistryToken = createInjectionToken<any>("EventRegistrarRegistry");
+
+/**
+ * Injection token for the JournalOverviewService.
+ *
+ * Service for retrieving all journals with their visibility status.
+ * Combines data from PlatformJournalCollectionPort and JournalVisibilityService.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const journalOverviewServiceToken = createInjectionToken<any>("JournalOverviewService");

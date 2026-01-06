@@ -1,4 +1,4 @@
-﻿{
+{
   "RELATIONSHIP_APP.RELATIONSHIP_GRAPH": "Beziehungsgraph",
   "RELATIONSHIP_APP.RELATIONSHIP_GRAPH_TYPE": "Beziehungsgraph",
   "TYPES.JournalEntryPage.relationship_app_graph": "Beziehungsgraph",
@@ -22,5 +22,9 @@
   "MODULE.SETTINGS.metricsPersistenceEnabled.name": "Metriken persistieren",
   "MODULE.SETTINGS.metricsPersistenceEnabled.hint": "Behält Observability-Metriken über Neustarts hinweg (nutzt LocalStorage).",
   "MODULE.SETTINGS.metricsPersistenceKey.name": "Metrik-Speicherschlüssel",
-  "MODULE.SETTINGS.metricsPersistenceKey.hint": "LocalStorage-Schlüssel, der bei aktivierter Persistenz verwendet wird."
+  "MODULE.SETTINGS.metricsPersistenceKey.hint": "LocalStorage-Schlüssel, der bei aktivierter Persistenz verwendet wird.",
+  "journalOverview.title": "Journal-Übersicht",
+  "journalOverview.buttonTooltip": "Journal-Übersicht anzeigen",
+  "journalOverview.status.visible": "Sichtbar",
+  "journalOverview.status.hidden": "Versteckt"
 }

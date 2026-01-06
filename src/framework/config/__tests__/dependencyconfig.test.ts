@@ -34,7 +34,8 @@ import {
   platformSettingsPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { ConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerService";
-import { err } from "@/domain/utils/result";
+import { err, ok } from "@/domain/utils/result";
+import { windowRegistryToken } from "@/application/windows/tokens/window.tokens";
 import {
   expectResultOk,
   expectResultErr,
@@ -396,6 +397,21 @@ describe("dependencyconfig", () => {
         if (token === runtimeConfigToken) {
           return { ok: true as const, value: createMockRuntimeConfig() };
         }
+        // Mock WindowRegistry for JournalOverviewWindow registration (priority 180)
+        if (token === windowRegistryToken) {
+          return {
+            ok: true as const,
+            value: {
+              getDefinition: vi.fn(),
+              registerInstance: vi.fn(),
+              registerDefinition: vi.fn().mockReturnValue(ok(undefined)),
+              getInstance: vi.fn(),
+              unregisterInstance: vi.fn(),
+              listInstances: vi.fn(),
+              listInstancesByDefinition: vi.fn(),
+            } as any,
+          };
+        }
         if (token === healthCheckRegistryToken) {
           return err({
             code: "TokenNotRegistered",
@@ -424,6 +440,21 @@ describe("dependencyconfig", () => {
         }
         if (token === healthCheckRegistryToken) {
           return { ok: true as const, value: {} as any };
+        }
+        // Mock WindowRegistry for JournalOverviewWindow registration (priority 180)
+        if (token === windowRegistryToken) {
+          return {
+            ok: true as const,
+            value: {
+              getDefinition: vi.fn(),
+              registerInstance: vi.fn(),
+              registerDefinition: vi.fn().mockReturnValue(ok(undefined)),
+              getInstance: vi.fn(),
+              unregisterInstance: vi.fn(),
+              listInstances: vi.fn(),
+              listInstancesByDefinition: vi.fn(),
+            } as any,
+          };
         }
         if (token === metricsCollectorToken) {
           return err({
@@ -497,6 +528,21 @@ describe("dependencyconfig", () => {
         if (token === healthCheckRegistryToken || token === metricsCollectorToken) {
           return { ok: true as const, value: {} as any };
         }
+        // Mock WindowRegistry for JournalOverviewWindow registration (priority 180)
+        if (token === windowRegistryToken) {
+          return {
+            ok: true as const,
+            value: {
+              getDefinition: vi.fn(),
+              registerInstance: vi.fn(),
+              registerDefinition: vi.fn().mockReturnValue(ok(undefined)),
+              getInstance: vi.fn(),
+              unregisterInstance: vi.fn(),
+              listInstances: vi.fn(),
+              listInstancesByDefinition: vi.fn(),
+            } as any,
+          };
+        }
         if (token === containerHealthCheckToken) {
           return err({
             code: "TokenNotRegistered",
@@ -530,6 +576,21 @@ describe("dependencyconfig", () => {
           token === containerHealthCheckToken
         ) {
           return { ok: true as const, value: {} as any };
+        }
+        // Mock WindowRegistry for JournalOverviewWindow registration (priority 180)
+        if (token === windowRegistryToken) {
+          return {
+            ok: true as const,
+            value: {
+              getDefinition: vi.fn(),
+              registerInstance: vi.fn(),
+              registerDefinition: vi.fn().mockReturnValue(ok(undefined)),
+              getInstance: vi.fn(),
+              unregisterInstance: vi.fn(),
+              listInstances: vi.fn(),
+              listInstancesByDefinition: vi.fn(),
+            } as any,
+          };
         }
         if (token === metricsHealthCheckToken) {
           return err({

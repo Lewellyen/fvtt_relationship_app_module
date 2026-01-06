@@ -15,6 +15,14 @@ import type { IEventBus } from "@/domain/windows/ports/event-bus-port.interface"
 import type { IRemoteSyncGate } from "@/domain/windows/ports/remote-sync-gate-port.interface";
 import type { IPersistAdapter } from "@/domain/windows/ports/persist-adapter-port.interface";
 import type { IStatePortFactory } from "../ports/state-port-factory-port.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
+import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { JournalOverviewService } from "@/application/services/JournalOverviewService";
+import { platformJournalEventPortToken } from "@/application/tokens/domain-ports.tokens";
+import { journalOverviewServiceToken } from "@/application/tokens/application.tokens";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
+import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
+import { castResolvedService } from "@/application/windows/utils/service-casts";
 import { ok, err } from "@/domain/utils/result";
 
 /**
@@ -33,6 +41,7 @@ export class WindowController implements IWindowController {
   private cachedViewModel?: ViewModel;
   private statePort: IWindowState<Record<string, unknown>>;
   private isMounted = false;
+  private journalEventRegistrationId?: import("@/domain/ports/events/platform-event-port.interface").EventRegistrationId;
 
   constructor(
     instanceId: string,
@@ -47,7 +56,8 @@ export class WindowController implements IWindowController {
     private readonly viewModelBuilder: IViewModelBuilder,
     private readonly eventBus: IEventBus,
     private readonly remoteSyncGate: IRemoteSyncGate,
-    private readonly persistAdapter?: IPersistAdapter
+    private readonly persistAdapter: IPersistAdapter | undefined,
+    private readonly container?: PlatformContainerPort
   ) {
     this.instanceId = instanceId;
     this.definitionId = definitionId;
@@ -71,6 +81,17 @@ export class WindowController implements IWindowController {
     }
 
     this.element = element;
+
+    // 0. Initialize state if not already set (for windows that need initial state)
+    const currentState = this.stateStore.getAll(this.instanceId);
+    if (currentState.ok && Object.keys(currentState.value).length === 0) {
+      // Initialize with default state if empty
+      this.statePort.patch({
+        journals: [],
+        isLoading: false,
+        error: null,
+      });
+    }
 
     // 1. Bindings initialisieren
     const bindResult = this.bindingEngine.initialize(this.definition, this.instanceId);
@@ -114,6 +135,16 @@ export class WindowController implements IWindowController {
     // 7. Event emittieren
     this.eventBus.emit("window:rendered", { instanceId: this.instanceId });
 
+    // 8. Call "onOpen" action if it exists (for initial data loading)
+    const onOpenAction = this.definition.actions?.find((a) => a.id === "onOpen");
+    if (onOpenAction) {
+      // Call asynchronously to not block render
+      this.dispatchAction("onOpen").catch((error: unknown) => {
+        // Log error but don't fail render
+        console.error("Failed to execute onOpen action:", error);
+      });
+    }
+
     return ok(undefined);
   }
 
@@ -126,7 +157,19 @@ export class WindowController implements IWindowController {
   }
 
   async onFoundryClose(): Promise<import("@/domain/types/result").Result<void, WindowError>> {
-    // 1. Component unmounten
+    // 1. Journal-Event-Listener entfernen (falls registriert)
+    if (this.journalEventRegistrationId && this.container) {
+      const journalEventsResult = this.container.resolveWithError(platformJournalEventPortToken);
+      if (journalEventsResult.ok) {
+        const journalEvents = castResolvedService<PlatformJournalEventPort>(
+          journalEventsResult.value
+        );
+        journalEvents.unregisterListener(this.journalEventRegistrationId);
+        delete this.journalEventRegistrationId;
+      }
+    }
+
+    // 2. Component unmounten
     if (this.componentInstance !== null) {
       const rendererResult = this.rendererRegistry.get(this.definition.component.type);
       if (rendererResult.ok) {
@@ -210,6 +253,10 @@ export class WindowController implements IWindowController {
       ...(controlId !== undefined && { controlId }),
       state: this.state,
       ...(event !== undefined && { event }),
+      metadata: {
+        controller: this,
+        ...(this.container !== undefined && { container: this.container }),
+      },
     };
 
     const result = await this.actionDispatcher.dispatch(actionId, context);
@@ -299,5 +346,55 @@ export class WindowController implements IWindowController {
         this.dispatchAction(payload.actionId, payload.controlId, payload.event);
       }
     });
+
+    // Für journal-overview Fenster: Auf Journal-Update-Events hören
+    if (this.definitionId === "journal-overview" && this.container) {
+      const journalEventsResult = this.container.resolveWithError(platformJournalEventPortToken);
+      if (journalEventsResult.ok) {
+        const journalEvents = castResolvedService<PlatformJournalEventPort>(
+          journalEventsResult.value
+        );
+
+        // Listener für Journal-Update-Events registrieren
+        const registrationResult = journalEvents.onJournalUpdated((event) => {
+          // Prüfe, ob hidden flag geändert wurde
+          const moduleId = MODULE_METADATA.ID;
+          const flagKey = DOMAIN_FLAGS.HIDDEN;
+
+          const moduleFlags = event.changes.flags?.[moduleId];
+          if (moduleFlags && typeof moduleFlags === "object" && flagKey in moduleFlags) {
+            // Hidden-Flag wurde geändert - Daten neu laden
+            this.reloadJournalOverviewData();
+          }
+        });
+
+        if (registrationResult.ok) {
+          this.journalEventRegistrationId = registrationResult.value;
+        }
+      }
+    }
+  }
+
+  /**
+   * Lädt die Journal-Übersichtsdaten neu und aktualisiert den State.
+   * Wird aufgerufen, wenn sich die Visibility eines Journals ändert.
+   */
+  private async reloadJournalOverviewData(): Promise<void> {
+    if (!this.container) return;
+
+    // Service auflösen
+    const serviceResult = this.container.resolveWithError(journalOverviewServiceToken);
+    if (!serviceResult.ok) return;
+
+    const service = castResolvedService<JournalOverviewService>(serviceResult.value);
+
+    // Daten neu laden
+    const result = service.getAllJournalsWithVisibilityStatus();
+    if (result.ok) {
+      // State aktualisieren
+      await this.updateStateLocal({
+        journals: result.value,
+      });
+    }
   }
 }

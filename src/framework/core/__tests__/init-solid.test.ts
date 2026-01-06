@@ -426,6 +426,170 @@ describe("init-solid Bootstrap", () => {
       cleanup();
     });
 
+    it("should handle ui without notifications property", async () => {
+      vi.resetModules();
+
+      // Mock ui object without notifications property
+      const mockUIWithoutNotifications = {} as any;
+      const cleanup = withFoundryGlobals({
+        game: createMockGame(),
+        Hooks: createMockHooks(),
+        ui: mockUIWithoutNotifications,
+      });
+
+      // Mock configureDependencies um Fehler zu provozieren
+      vi.doMock("@/framework/config/dependencyconfig", () => ({
+        configureDependencies: vi.fn().mockReturnValue({
+          ok: false,
+          error: "Test bootstrap error",
+        }),
+      }));
+
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      // Sollte nicht crashen, auch wenn ui.notifications fehlt
+      await expect(import("@/framework/core/init-solid")).resolves.toBeDefined();
+
+      // Sollte trotzdem Console-Fehler loggen
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
+      cleanup();
+    });
+
+    it("should handle PORT_SELECTION_FAILED error with undefined foundryVersion", async () => {
+      vi.resetModules();
+
+      const versioningModule = await vi.importActual<
+        typeof import("@/infrastructure/adapters/foundry/versioning/versiondetector")
+      >("@/infrastructure/adapters/foundry/versioning/versiondetector");
+      versioningModule.resetVersionCache();
+
+      const mockUI = createMockUI();
+      const cleanup = withFoundryGlobals({
+        game: {} as any, // game without version
+        Hooks: createMockHooks(),
+        ui: mockUI,
+      });
+
+      // Mock configureDependencies to return PORT_SELECTION_FAILED error
+      vi.doMock("@/framework/config/dependencyconfig", () => ({
+        configureDependencies: vi.fn().mockReturnValue({
+          ok: false,
+          error: "PORT_SELECTION_FAILED - Compatibility issue",
+        }),
+      }));
+
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      await import("@/framework/core/init-solid");
+
+      // When foundryVersion is undefined, the version-specific notification should not be shown
+      // but the generic error notification should still be shown
+      const errorCalls = (mockUI.notifications?.error as ReturnType<typeof vi.fn>).mock.calls;
+      const genericCall = errorCalls.find(
+        ([message]) => typeof message === "string" && message.includes("failed to initialize")
+      );
+      expect(genericCall).toBeDefined();
+
+      // Version-specific notification should NOT be shown when foundryVersion is undefined
+      const versionSpecificCall = errorCalls.find(
+        ([message]) =>
+          typeof message === "string" &&
+          message.includes("benötigt mindestens Foundry VTT Version 13")
+      );
+      expect(versionSpecificCall).toBeUndefined();
+
+      consoleErrorSpy.mockRestore();
+      versioningModule.resetVersionCache();
+      cleanup();
+    });
+
+    it("should handle PORT_SELECTION_FAILED error with Foundry v13+ (no version notification)", async () => {
+      vi.resetModules();
+
+      const versioningModule = await vi.importActual<
+        typeof import("@/infrastructure/adapters/foundry/versioning/versiondetector")
+      >("@/infrastructure/adapters/foundry/versioning/versiondetector");
+      versioningModule.resetVersionCache();
+
+      const mockUI = createMockUI();
+      const cleanup = withFoundryGlobals({
+        game: { version: "13.350" } as any, // Foundry v13+
+        Hooks: createMockHooks(),
+        ui: mockUI,
+      });
+
+      // Mock configureDependencies to return PORT_SELECTION_FAILED error
+      vi.doMock("@/framework/config/dependencyconfig", () => ({
+        configureDependencies: vi.fn().mockReturnValue({
+          ok: false,
+          error: "PORT_SELECTION_FAILED - Compatibility issue",
+        }),
+      }));
+
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      await import("@/framework/core/init-solid");
+
+      // When Foundry version is >= 13, version-specific notification should NOT be shown
+      // but generic error notification should be shown
+      const errorCalls = (mockUI.notifications?.error as ReturnType<typeof vi.fn>).mock.calls;
+      const genericCall = errorCalls.find(
+        ([message]) => typeof message === "string" && message.includes("failed to initialize")
+      );
+      expect(genericCall).toBeDefined();
+
+      // Version-specific notification should NOT be shown for v13+
+      const versionSpecificCall = errorCalls.find(
+        ([message]) =>
+          typeof message === "string" &&
+          message.includes("benötigt mindestens Foundry VTT Version 13")
+      );
+      expect(versionSpecificCall).toBeUndefined();
+
+      consoleErrorSpy.mockRestore();
+      versioningModule.resetVersionCache();
+      cleanup();
+    });
+
+    it("should handle PORT_SELECTION_FAILED error with v12 and missing ui.notifications", async () => {
+      vi.resetModules();
+
+      const versioningModule = await vi.importActual<
+        typeof import("@/infrastructure/adapters/foundry/versioning/versiondetector")
+      >("@/infrastructure/adapters/foundry/versioning/versiondetector");
+      versioningModule.resetVersionCache();
+
+      // Mock ui without notifications property
+      const mockUIWithoutNotifications = {} as any;
+      const cleanup = withFoundryGlobals({
+        game: { version: "12.331" } as any, // Foundry v12
+        Hooks: createMockHooks(),
+        ui: mockUIWithoutNotifications,
+      });
+
+      // Mock configureDependencies to return PORT_SELECTION_FAILED error
+      vi.doMock("@/framework/config/dependencyconfig", () => ({
+        configureDependencies: vi.fn().mockReturnValue({
+          ok: false,
+          error: "PORT_SELECTION_FAILED - Compatibility issue",
+        }),
+      }));
+
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      // Should not crash even if ui.notifications is missing
+      await expect(import("@/framework/core/init-solid")).resolves.toBeDefined();
+
+      // Should still log console error
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
+      versioningModule.resetVersionCache();
+      cleanup();
+    });
+
     it("should show version-specific error for Foundry v12", async () => {
       vi.resetModules();
 

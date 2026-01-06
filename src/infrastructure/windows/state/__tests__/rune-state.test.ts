@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { RuneState } from "../rune-state";
+import { RuneState } from "../rune-state.svelte";
 
 describe("RuneState", () => {
   beforeEach(() => {
@@ -23,14 +23,6 @@ describe("RuneState", () => {
       const state = new RuneState({});
 
       expect(state.get()).toEqual({});
-    });
-
-    it("should throw error if $state rune is not available", () => {
-      delete (globalThis as Record<string, unknown>).$state;
-
-      expect(() => {
-        new RuneState({ count: 0 });
-      }).toThrow("Svelte 5 $state rune not available");
     });
   });
 

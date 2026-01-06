@@ -1,5 +1,6 @@
 import type { IEventBus } from "@/domain/windows/ports/event-bus-port.interface";
 import type { WindowEventMap } from "@/domain/windows/types/event-map.interface";
+import { getMapValueOrCreate, castEventHandlerForSet } from "../utils/window-state-casts";
 
 /**
  * EventBus - Typisiertes Event-System für Window-Framework
@@ -22,19 +23,17 @@ export class EventBus implements IEventBus {
     event: K,
     handler: (payload: WindowEventMap[K]) => void
   ): () => void {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
-
-    // type-coverage:ignore-next-line
-    const eventListeners = this.listeners.get(event)!;
-    // type-coverage:ignore-next-line
-    eventListeners.add(handler as (payload: unknown) => void);
+    const eventListeners = getMapValueOrCreate(
+      this.listeners,
+      event,
+      () => new Set<(payload: unknown) => void>()
+    );
+    const castHandler = castEventHandlerForSet(handler);
+    eventListeners.add(castHandler);
 
     // Return unsubscribe function
     return () => {
-      // type-coverage:ignore-next-line
-      eventListeners.delete(handler as (payload: unknown) => void);
+      eventListeners.delete(castHandler);
       if (eventListeners.size === 0) {
         this.listeners.delete(event);
       }
@@ -48,8 +47,8 @@ export class EventBus implements IEventBus {
     const eventListeners = this.listeners.get(event);
     if (!eventListeners) return;
 
-    // type-coverage:ignore-next-line
-    eventListeners.delete(handler as (payload: unknown) => void);
+    const castHandler = castEventHandlerForSet(handler);
+    eventListeners.delete(castHandler);
     if (eventListeners.size === 0) {
       this.listeners.delete(event);
     }

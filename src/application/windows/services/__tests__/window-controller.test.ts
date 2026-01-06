@@ -12,6 +12,13 @@ import type { IRemoteSyncGate } from "@/domain/windows/ports/remote-sync-gate-po
 import type { IPersistAdapter } from "@/domain/windows/ports/persist-adapter-port.interface";
 import type { WindowDefinition } from "@/domain/windows/types/window-definition.interface";
 import type { IWindowState } from "@/domain/windows/types/view-model.interface";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
+import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
+import type { JournalOverviewService } from "@/application/services/JournalOverviewService";
+import { platformJournalEventPortToken } from "@/application/tokens/domain-ports.tokens";
+import { journalOverviewServiceToken } from "@/application/tokens/application.tokens";
+import { MODULE_METADATA } from "@/application/constants/app-constants";
+import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { ok, err } from "@/domain/utils/result";
 
@@ -584,21 +591,33 @@ describe("WindowController", () => {
       const result = await controller.dispatchAction("test-action");
 
       expectResultOk(result);
-      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith("test-action", {
-        windowInstanceId: "instance-1",
-        state: {},
-      });
+      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith(
+        "test-action",
+        expect.objectContaining({
+          windowInstanceId: "instance-1",
+          state: {},
+          metadata: expect.objectContaining({
+            controller: controller,
+          }),
+        })
+      );
     });
 
     it("should dispatch action with controlId", async () => {
       const result = await controller.dispatchAction("test-action", "control-1");
 
       expectResultOk(result);
-      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith("test-action", {
-        windowInstanceId: "instance-1",
-        controlId: "control-1",
-        state: {},
-      });
+      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith(
+        "test-action",
+        expect.objectContaining({
+          windowInstanceId: "instance-1",
+          controlId: "control-1",
+          state: {},
+          metadata: expect.objectContaining({
+            controller: controller,
+          }),
+        })
+      );
     });
 
     it("should dispatch action with event", async () => {
@@ -606,11 +625,17 @@ describe("WindowController", () => {
       const result = await controller.dispatchAction("test-action", undefined, event);
 
       expectResultOk(result);
-      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith("test-action", {
-        windowInstanceId: "instance-1",
-        state: {},
-        event,
-      });
+      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith(
+        "test-action",
+        expect.objectContaining({
+          windowInstanceId: "instance-1",
+          state: {},
+          event,
+          metadata: expect.objectContaining({
+            controller: controller,
+          }),
+        })
+      );
     });
 
     it("should return error if dispatch fails", async () => {
@@ -1125,11 +1150,17 @@ describe("WindowController", () => {
         });
       }
 
-      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith("test-action", {
-        windowInstanceId: "instance-1",
-        controlId: "control-1",
-        state: {},
-      });
+      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith(
+        "test-action",
+        expect.objectContaining({
+          windowInstanceId: "instance-1",
+          controlId: "control-1",
+          state: {},
+          metadata: expect.objectContaining({
+            controller: controller,
+          }),
+        })
+      );
     });
 
     it("should not dispatch action if instanceId does not match", async () => {
@@ -1158,6 +1189,989 @@ describe("WindowController", () => {
 
       // Should not be called because instanceId doesn't match
       expect(mockActionDispatcher.dispatch).not.toHaveBeenCalled();
+    });
+
+    it("should register journal event listener for journal-overview window", async () => {
+      const mockContainer: PlatformContainerPort = {
+        resolveWithError: vi.fn(),
+        resolve: vi.fn(),
+        getValidationState: vi.fn(),
+        isRegistered: vi.fn(),
+      } as unknown as PlatformContainerPort;
+
+      const mockJournalEvents: PlatformJournalEventPort = {
+        onJournalUpdated: vi.fn().mockReturnValue(ok("registration-id")),
+        onJournalCreated: vi.fn(),
+        onJournalDeleted: vi.fn(),
+        unregisterListener: vi.fn(),
+      } as unknown as PlatformJournalEventPort;
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === platformJournalEventPortToken) {
+          return ok(mockJournalEvents);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      const journalOverviewDefinition: WindowDefinition = {
+        definitionId: "journal-overview",
+        title: "Journal Overview",
+        component: {
+          type: "svelte",
+          component: vi.fn(),
+          props: {},
+        },
+      };
+
+      const journalOverviewController = new WindowController(
+        "journal-overview:1",
+        "journal-overview",
+        journalOverviewDefinition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter,
+        mockContainer
+      );
+
+      const element = document.createElement("div");
+      const mountPoint = document.createElement("div");
+      mountPoint.id = "svelte-mount-point";
+      element.appendChild(mountPoint);
+      await journalOverviewController.onFoundryRender(element);
+
+      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(platformJournalEventPortToken);
+      expect(mockJournalEvents.onJournalUpdated).toHaveBeenCalled();
+    });
+
+    it("should reload journal overview data when journal visibility changes", async () => {
+      const mockContainer: PlatformContainerPort = {
+        resolveWithError: vi.fn(),
+        resolve: vi.fn(),
+        getValidationState: vi.fn(),
+        isRegistered: vi.fn(),
+      } as unknown as PlatformContainerPort;
+
+      const mockJournalEvents: PlatformJournalEventPort = {
+        onJournalUpdated: vi.fn().mockReturnValue(ok("registration-id")),
+        onJournalCreated: vi.fn(),
+        onJournalDeleted: vi.fn(),
+        unregisterListener: vi.fn(),
+      } as unknown as PlatformJournalEventPort;
+
+      const mockJournalOverviewService: JournalOverviewService = {
+        getAllJournalsWithVisibilityStatus: vi.fn().mockReturnValue(
+          ok([
+            { id: "journal-1", name: "Journal 1", visible: true },
+            { id: "journal-2", name: "Journal 2", visible: false },
+          ])
+        ),
+      } as unknown as JournalOverviewService;
+
+      let journalUpdateCallback: ((event: unknown) => void) | undefined;
+      vi.mocked(mockJournalEvents.onJournalUpdated).mockImplementation((callback) => {
+        journalUpdateCallback = callback as (event: unknown) => void;
+        return ok("registration-id");
+      });
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === platformJournalEventPortToken) {
+          return ok(mockJournalEvents);
+        }
+        if (token === journalOverviewServiceToken) {
+          return ok(mockJournalOverviewService);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      const journalOverviewDefinition: WindowDefinition = {
+        definitionId: "journal-overview",
+        title: "Journal Overview",
+        component: {
+          type: "svelte",
+          component: vi.fn(),
+          props: {},
+        },
+      };
+
+      const journalOverviewController = new WindowController(
+        "journal-overview:1",
+        "journal-overview",
+        journalOverviewDefinition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter,
+        mockContainer
+      );
+
+      const element = document.createElement("div");
+      const mountPoint = document.createElement("div");
+      mountPoint.id = "svelte-mount-point";
+      element.appendChild(mountPoint);
+      await journalOverviewController.onFoundryRender(element);
+
+      // Simulate journal update event with hidden flag change
+      if (journalUpdateCallback) {
+        journalUpdateCallback({
+          changes: {
+            flags: {
+              [MODULE_METADATA.ID]: {
+                [DOMAIN_FLAGS.HIDDEN]: false,
+              },
+            },
+          },
+        });
+      }
+
+      // Wait for async reload
+      await vi.waitFor(() => {
+        expect(mockJournalOverviewService.getAllJournalsWithVisibilityStatus).toHaveBeenCalled();
+      });
+
+      expect(mockStatePort.patch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          journals: expect.any(Array),
+        })
+      );
+    });
+
+    it("should not register journal event listener if container is not provided", async () => {
+      const journalOverviewDefinition: WindowDefinition = {
+        definitionId: "journal-overview",
+        title: "Journal Overview",
+        component: {
+          type: "svelte",
+          component: vi.fn(),
+          props: {},
+        },
+      };
+
+      const journalOverviewController = new WindowController(
+        "journal-overview:1",
+        "journal-overview",
+        journalOverviewDefinition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter
+        // No container provided
+      );
+
+      const element = document.createElement("div");
+      const mountPoint = document.createElement("div");
+      mountPoint.id = "svelte-mount-point";
+      element.appendChild(mountPoint);
+      await journalOverviewController.onFoundryRender(element);
+
+      // Should not throw and should still work
+      expectResultOk(await journalOverviewController.onFoundryRender(element));
+    });
+
+    it("should not initialize state if currentState is not ok", async () => {
+      vi.mocked(mockStateStore.getAll).mockReturnValue(
+        err({
+          code: "StateStoreError",
+          message: "Failed to get state",
+        })
+      );
+
+      const element = document.createElement("div");
+      const mountPoint = document.createElement("div");
+      mountPoint.id = "svelte-mount-point";
+      element.appendChild(mountPoint);
+
+      const result = await controller.onFoundryRender(element);
+
+      expectResultOk(result);
+      // State should not be initialized when getAll fails
+      expect(mockStatePort.patch).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          journals: [],
+          isLoading: false,
+          error: null,
+        })
+      );
+    });
+
+    it("should not initialize state if currentState is not empty", async () => {
+      vi.mocked(mockStateStore.getAll).mockReturnValue(ok({ count: 42 }));
+
+      const element = document.createElement("div");
+      const mountPoint = document.createElement("div");
+      mountPoint.id = "svelte-mount-point";
+      element.appendChild(mountPoint);
+
+      const result = await controller.onFoundryRender(element);
+
+      expectResultOk(result);
+      // State should not be initialized when state is not empty
+      expect(mockStatePort.patch).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          journals: [],
+          isLoading: false,
+          error: null,
+        })
+      );
+    });
+
+    it("should handle journal event resolution failure in onFoundryClose", async () => {
+      const mockContainer: PlatformContainerPort = {
+        resolveWithError: vi.fn(),
+        resolve: vi.fn(),
+        getValidationState: vi.fn(),
+        isRegistered: vi.fn(),
+      } as unknown as PlatformContainerPort;
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === platformJournalEventPortToken) {
+          return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      const journalOverviewDefinition: WindowDefinition = {
+        definitionId: "journal-overview",
+        title: "Journal Overview",
+        component: {
+          type: "svelte",
+          component: vi.fn(),
+          props: {},
+        },
+      };
+
+      const journalOverviewController = new WindowController(
+        "journal-overview:1",
+        "journal-overview",
+        journalOverviewDefinition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter,
+        mockContainer
+      );
+
+      // Set registration ID manually to test unregister path
+      const controllerAny = journalOverviewController as any;
+      controllerAny.journalEventRegistrationId = "test-registration-id";
+
+      const result = await journalOverviewController.onFoundryClose();
+
+      expectResultOk(result);
+      // Should handle error gracefully
+    });
+
+    it("should handle journal update event without hidden flag change", async () => {
+      const mockContainer: PlatformContainerPort = {
+        resolveWithError: vi.fn(),
+        resolve: vi.fn(),
+        getValidationState: vi.fn(),
+        isRegistered: vi.fn(),
+      } as unknown as PlatformContainerPort;
+
+      const mockJournalEvents: PlatformJournalEventPort = {
+        onJournalUpdated: vi.fn().mockReturnValue(ok("registration-id")),
+        onJournalCreated: vi.fn(),
+        onJournalDeleted: vi.fn(),
+        unregisterListener: vi.fn(),
+      } as unknown as PlatformJournalEventPort;
+
+      let journalUpdateCallback: ((event: unknown) => void) | undefined;
+      vi.mocked(mockJournalEvents.onJournalUpdated).mockImplementation((callback) => {
+        journalUpdateCallback = callback as (event: unknown) => void;
+        return ok("registration-id");
+      });
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === platformJournalEventPortToken) {
+          return ok(mockJournalEvents);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      const journalOverviewDefinition: WindowDefinition = {
+        definitionId: "journal-overview",
+        title: "Journal Overview",
+        component: {
+          type: "svelte",
+          component: vi.fn(),
+          props: {},
+        },
+      };
+
+      const journalOverviewController = new WindowController(
+        "journal-overview:1",
+        "journal-overview",
+        journalOverviewDefinition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter,
+        mockContainer
+      );
+
+      const element = document.createElement("div");
+      const mountPoint = document.createElement("div");
+      mountPoint.id = "svelte-mount-point";
+      element.appendChild(mountPoint);
+      await journalOverviewController.onFoundryRender(element);
+
+      // Simulate journal update event WITHOUT hidden flag change
+      if (journalUpdateCallback) {
+        journalUpdateCallback({
+          changes: {
+            flags: {
+              [MODULE_METADATA.ID]: {
+                // Different flag, not HIDDEN
+                someOtherFlag: true,
+              },
+            },
+          },
+        });
+      }
+
+      // Should not reload data
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+
+    it("should handle journal event registration failure", async () => {
+      const mockContainer: PlatformContainerPort = {
+        resolveWithError: vi.fn(),
+        resolve: vi.fn(),
+        getValidationState: vi.fn(),
+        isRegistered: vi.fn(),
+      } as unknown as PlatformContainerPort;
+
+      const mockJournalEvents: PlatformJournalEventPort = {
+        onJournalUpdated: vi
+          .fn()
+          .mockReturnValue(err({ code: "REGISTRATION_FAILED", message: "Registration failed" })),
+        onJournalCreated: vi.fn(),
+        onJournalDeleted: vi.fn(),
+        unregisterListener: vi.fn(),
+      } as unknown as PlatformJournalEventPort;
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === platformJournalEventPortToken) {
+          return ok(mockJournalEvents);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      const journalOverviewDefinition: WindowDefinition = {
+        definitionId: "journal-overview",
+        title: "Journal Overview",
+        component: {
+          type: "svelte",
+          component: vi.fn(),
+          props: {},
+        },
+      };
+
+      const journalOverviewController = new WindowController(
+        "journal-overview:1",
+        "journal-overview",
+        journalOverviewDefinition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter,
+        mockContainer
+      );
+
+      const element = document.createElement("div");
+      const mountPoint = document.createElement("div");
+      mountPoint.id = "svelte-mount-point";
+      element.appendChild(mountPoint);
+
+      const result = await journalOverviewController.onFoundryRender(element);
+
+      expectResultOk(result);
+      // Should handle registration failure gracefully
+      const controllerAny = journalOverviewController as any;
+      expect(controllerAny.journalEventRegistrationId).toBeUndefined();
+    });
+
+    it("should handle reloadJournalOverviewData when container is undefined", async () => {
+      const mockContainer: PlatformContainerPort = {
+        resolveWithError: vi.fn(),
+        resolve: vi.fn(),
+        getValidationState: vi.fn(),
+        isRegistered: vi.fn(),
+      } as unknown as PlatformContainerPort;
+
+      const mockJournalEvents: PlatformJournalEventPort = {
+        onJournalUpdated: vi.fn().mockReturnValue(ok("registration-id")),
+        onJournalCreated: vi.fn(),
+        onJournalDeleted: vi.fn(),
+        unregisterListener: vi.fn(),
+      } as unknown as PlatformJournalEventPort;
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === platformJournalEventPortToken) {
+          return ok(mockJournalEvents);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      const journalOverviewDefinition: WindowDefinition = {
+        definitionId: "journal-overview",
+        title: "Journal Overview",
+        component: {
+          type: "svelte",
+          component: vi.fn(),
+          props: {},
+        },
+      };
+
+      // Create controller without container to test the container check in reloadJournalOverviewData
+      const journalOverviewControllerWithoutContainer = new WindowController(
+        "journal-overview:1",
+        "journal-overview",
+        journalOverviewDefinition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter
+        // No container
+      );
+
+      // Access private method via type assertion
+      const controllerAny = journalOverviewControllerWithoutContainer as any;
+      await controllerAny.reloadJournalOverviewData();
+
+      // Should return early without error
+    });
+
+    it("should handle reloadJournalOverviewData when service resolution fails", async () => {
+      const mockContainer: PlatformContainerPort = {
+        resolveWithError: vi.fn(),
+        resolve: vi.fn(),
+        getValidationState: vi.fn(),
+        isRegistered: vi.fn(),
+      } as unknown as PlatformContainerPort;
+
+      const mockJournalEvents: PlatformJournalEventPort = {
+        onJournalUpdated: vi.fn().mockReturnValue(ok("registration-id")),
+        onJournalCreated: vi.fn(),
+        onJournalDeleted: vi.fn(),
+        unregisterListener: vi.fn(),
+      } as unknown as PlatformJournalEventPort;
+
+      let journalUpdateCallback: ((event: unknown) => void) | undefined;
+      vi.mocked(mockJournalEvents.onJournalUpdated).mockImplementation((callback) => {
+        journalUpdateCallback = callback as (event: unknown) => void;
+        return ok("registration-id");
+      });
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === platformJournalEventPortToken) {
+          return ok(mockJournalEvents);
+        }
+        if (token === journalOverviewServiceToken) {
+          return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      const journalOverviewDefinition: WindowDefinition = {
+        definitionId: "journal-overview",
+        title: "Journal Overview",
+        component: {
+          type: "svelte",
+          component: vi.fn(),
+          props: {},
+        },
+      };
+
+      const journalOverviewController = new WindowController(
+        "journal-overview:1",
+        "journal-overview",
+        journalOverviewDefinition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter,
+        mockContainer
+      );
+
+      const element = document.createElement("div");
+      const mountPoint = document.createElement("div");
+      mountPoint.id = "svelte-mount-point";
+      element.appendChild(mountPoint);
+      await journalOverviewController.onFoundryRender(element);
+
+      // Simulate journal update event with hidden flag change
+      if (journalUpdateCallback) {
+        journalUpdateCallback({
+          changes: {
+            flags: {
+              [MODULE_METADATA.ID]: {
+                [DOMAIN_FLAGS.HIDDEN]: false,
+              },
+            },
+          },
+        });
+      }
+
+      // Wait for async reload
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Should handle service resolution failure gracefully
+    });
+
+    it("should handle reloadJournalOverviewData when service returns error", async () => {
+      const mockContainer: PlatformContainerPort = {
+        resolveWithError: vi.fn(),
+        resolve: vi.fn(),
+        getValidationState: vi.fn(),
+        isRegistered: vi.fn(),
+      } as unknown as PlatformContainerPort;
+
+      const mockJournalEvents: PlatformJournalEventPort = {
+        onJournalUpdated: vi.fn().mockReturnValue(ok("registration-id")),
+        onJournalCreated: vi.fn(),
+        onJournalDeleted: vi.fn(),
+        unregisterListener: vi.fn(),
+      } as unknown as PlatformJournalEventPort;
+
+      const mockJournalOverviewService: JournalOverviewService = {
+        getAllJournalsWithVisibilityStatus: vi.fn().mockReturnValue(
+          err({
+            code: "SERVICE_ERROR",
+            message: "Failed to get journals",
+          })
+        ),
+      } as unknown as JournalOverviewService;
+
+      let journalUpdateCallback: ((event: unknown) => void) | undefined;
+      vi.mocked(mockJournalEvents.onJournalUpdated).mockImplementation((callback) => {
+        journalUpdateCallback = callback as (event: unknown) => void;
+        return ok("registration-id");
+      });
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === platformJournalEventPortToken) {
+          return ok(mockJournalEvents);
+        }
+        if (token === journalOverviewServiceToken) {
+          return ok(mockJournalOverviewService);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      const journalOverviewDefinition: WindowDefinition = {
+        definitionId: "journal-overview",
+        title: "Journal Overview",
+        component: {
+          type: "svelte",
+          component: vi.fn(),
+          props: {},
+        },
+      };
+
+      const journalOverviewController = new WindowController(
+        "journal-overview:1",
+        "journal-overview",
+        journalOverviewDefinition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter,
+        mockContainer
+      );
+
+      const element = document.createElement("div");
+      const mountPoint = document.createElement("div");
+      mountPoint.id = "svelte-mount-point";
+      element.appendChild(mountPoint);
+      await journalOverviewController.onFoundryRender(element);
+
+      // Clear mock calls after render (state initialization happens during render)
+      vi.mocked(mockStatePort.patch).mockClear();
+      vi.mocked(mockJournalOverviewService.getAllJournalsWithVisibilityStatus).mockClear();
+
+      // Simulate journal update event with hidden flag change
+      if (journalUpdateCallback) {
+        journalUpdateCallback({
+          changes: {
+            flags: {
+              [MODULE_METADATA.ID]: {
+                [DOMAIN_FLAGS.HIDDEN]: false,
+              },
+            },
+          },
+        });
+      }
+
+      // Wait for async reload
+      await vi.waitFor(() => {
+        expect(mockJournalOverviewService.getAllJournalsWithVisibilityStatus).toHaveBeenCalled();
+      });
+
+      // Should handle service error gracefully (no state update since service returned error)
+      expect(mockStatePort.patch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("dispatchAction with container", () => {
+    it("should include container in metadata when container is provided", async () => {
+      const mockContainer: PlatformContainerPort = {
+        resolveWithError: vi.fn(),
+        resolve: vi.fn(),
+        getValidationState: vi.fn(),
+        isRegistered: vi.fn(),
+      } as unknown as PlatformContainerPort;
+
+      const controllerWithContainer = new WindowController(
+        "instance-1",
+        "test-window",
+        mockDefinition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter,
+        mockContainer
+      );
+
+      const result = await controllerWithContainer.dispatchAction("test-action");
+
+      expectResultOk(result);
+      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith(
+        "test-action",
+        expect.objectContaining({
+          windowInstanceId: "instance-1",
+          state: {},
+          metadata: expect.objectContaining({
+            controller: controllerWithContainer,
+            container: mockContainer,
+          }),
+        })
+      );
+    });
+
+    it("should not include container in metadata when container is undefined", async () => {
+      // Controller without container (default in beforeEach)
+      const result = await controller.dispatchAction("test-action");
+
+      expectResultOk(result);
+      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith(
+        "test-action",
+        expect.objectContaining({
+          windowInstanceId: "instance-1",
+          state: {},
+          metadata: expect.objectContaining({
+            controller: controller,
+          }),
+        })
+      );
+      // Should not have container property
+      const callArgs = vi.mocked(mockActionDispatcher.dispatch).mock.calls[0];
+      if (callArgs && callArgs[1]) {
+        expect(callArgs[1].metadata).not.toHaveProperty("container");
+      }
+    });
+  });
+
+  describe("onOpen action", () => {
+    it("should call onOpen action when definition has onOpen action", async () => {
+      const definitionWithOnOpen: WindowDefinition = {
+        ...mockDefinition,
+        actions: [
+          {
+            id: "onOpen",
+            label: "On Open",
+            handler: vi.fn().mockResolvedValue(ok(undefined)),
+          },
+        ],
+      };
+
+      const controllerWithOnOpen = new WindowController(
+        "instance-1",
+        "test-window",
+        definitionWithOnOpen,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter
+      );
+
+      const element = document.createElement("div");
+      const mountPoint = document.createElement("div");
+      mountPoint.id = "svelte-mount-point";
+      element.appendChild(mountPoint);
+
+      const result = await controllerWithOnOpen.onFoundryRender(element);
+
+      expectResultOk(result);
+      // Wait for async onOpen action
+      await vi.waitFor(() => {
+        expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith(
+          "onOpen",
+          expect.objectContaining({
+            windowInstanceId: "instance-1",
+          })
+        );
+      });
+    });
+
+    it("should handle onOpen action errors gracefully", async () => {
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const definitionWithOnOpen: WindowDefinition = {
+        ...mockDefinition,
+        actions: [
+          {
+            id: "onOpen",
+            label: "On Open",
+            handler: vi.fn().mockResolvedValue(ok(undefined)),
+          },
+        ],
+      };
+
+      // Mock dispatchAction to throw an error (which will trigger catch block)
+      vi.mocked(mockActionDispatcher.dispatch).mockRejectedValue(
+        new Error("Action execution failed")
+      );
+
+      const controllerWithOnOpen = new WindowController(
+        "instance-1",
+        "test-window",
+        definitionWithOnOpen,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter
+      );
+
+      const element = document.createElement("div");
+      const mountPoint = document.createElement("div");
+      mountPoint.id = "svelte-mount-point";
+      element.appendChild(mountPoint);
+
+      const result = await controllerWithOnOpen.onFoundryRender(element);
+
+      expectResultOk(result);
+      // Wait for async onOpen action to complete
+      await vi.waitFor(
+        () => {
+          expect(consoleErrorSpy).toHaveBeenCalledWith(
+            "Failed to execute onOpen action:",
+            expect.any(Error)
+          );
+        },
+        { timeout: 1000 }
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe("onFoundryClose with journal event registration", () => {
+    it("should unregister journal event listener on close", async () => {
+      const mockContainer: PlatformContainerPort = {
+        resolveWithError: vi.fn(),
+        resolve: vi.fn(),
+        getValidationState: vi.fn(),
+        isRegistered: vi.fn(),
+      } as unknown as PlatformContainerPort;
+
+      const mockJournalEvents: PlatformJournalEventPort = {
+        onJournalUpdated: vi.fn().mockReturnValue(ok("registration-id")),
+        onJournalCreated: vi.fn(),
+        onJournalDeleted: vi.fn(),
+        unregisterListener: vi.fn(),
+      } as unknown as PlatformJournalEventPort;
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === platformJournalEventPortToken) {
+          return ok(mockJournalEvents);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      const journalOverviewDefinition: WindowDefinition = {
+        definitionId: "journal-overview",
+        title: "Journal Overview",
+        component: {
+          type: "svelte",
+          component: vi.fn(),
+          props: {},
+        },
+      };
+
+      const journalOverviewController = new WindowController(
+        "journal-overview:1",
+        "journal-overview",
+        journalOverviewDefinition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter,
+        mockContainer
+      );
+
+      const element = document.createElement("div");
+      const mountPoint = document.createElement("div");
+      mountPoint.id = "svelte-mount-point";
+      element.appendChild(mountPoint);
+      await journalOverviewController.onFoundryRender(element);
+
+      const result = await journalOverviewController.onFoundryClose();
+
+      expectResultOk(result);
+      expect(mockJournalEvents.unregisterListener).toHaveBeenCalledWith("registration-id");
+    });
+
+    it("should handle unregister failure gracefully", async () => {
+      const mockContainer: PlatformContainerPort = {
+        resolveWithError: vi.fn(),
+        resolve: vi.fn(),
+        getValidationState: vi.fn(),
+        isRegistered: vi.fn(),
+      } as unknown as PlatformContainerPort;
+
+      const mockJournalEvents: PlatformJournalEventPort = {
+        onJournalUpdated: vi.fn().mockReturnValue(ok("registration-id")),
+        onJournalCreated: vi.fn(),
+        onJournalDeleted: vi.fn(),
+        unregisterListener: vi.fn(),
+      } as unknown as PlatformJournalEventPort;
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === platformJournalEventPortToken) {
+          return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      const journalOverviewDefinition: WindowDefinition = {
+        definitionId: "journal-overview",
+        title: "Journal Overview",
+        component: {
+          type: "svelte",
+          component: vi.fn(),
+          props: {},
+        },
+      };
+
+      const journalOverviewController = new WindowController(
+        "journal-overview:1",
+        "journal-overview",
+        journalOverviewDefinition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter,
+        mockContainer
+      );
+
+      const element = document.createElement("div");
+      const mountPoint = document.createElement("div");
+      mountPoint.id = "svelte-mount-point";
+      element.appendChild(mountPoint);
+      await journalOverviewController.onFoundryRender(element);
+
+      // Set registration ID manually to test unregister path
+      const controllerAny = journalOverviewController as any;
+      controllerAny.journalEventRegistrationId = "test-registration-id";
+
+      // Mock resolveWithError to succeed on close
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === platformJournalEventPortToken) {
+          return ok(mockJournalEvents);
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      const result = await journalOverviewController.onFoundryClose();
+
+      expectResultOk(result);
+      expect(mockJournalEvents.unregisterListener).toHaveBeenCalledWith("test-registration-id");
     });
   });
 

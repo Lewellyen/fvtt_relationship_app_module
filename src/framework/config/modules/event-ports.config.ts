@@ -26,6 +26,8 @@ import { DIProcessJournalDirectoryOnRenderUseCase } from "@/application/use-case
 import { DITriggerJournalDirectoryReRenderUseCase } from "@/application/use-cases/trigger-journal-directory-rerender.use-case";
 import { DIRegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
 import { DIShowAllHiddenJournalsUseCase } from "@/application/use-cases/show-all-hidden-journals.use-case";
+import { DIJournalOverviewService } from "@/application/services/JournalOverviewService";
+import { journalOverviewServiceToken } from "@/application/tokens/application.tokens";
 import { DIHideJournalContextMenuHandler } from "@/application/handlers/hide-journal-context-menu-handler";
 import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 import { DIJournalDirectoryRerenderScheduler } from "@/application/services/JournalDirectoryRerenderScheduler";
@@ -74,6 +76,7 @@ function resolveMultipleServices<T>(
  * - HideJournalContextMenuHandler (singleton) - Handler for "Journal ausblenden" context menu item
  * - RegisterContextMenuUseCase (singleton) - Context menu callback registration (NOT an event registrar)
  * - ShowAllHiddenJournalsUseCase (singleton) - Use-case for showing all hidden journals
+ * - JournalOverviewService (singleton) - Service for retrieving all journals with visibility status
  * - EventRegistrarRegistry (singleton) - Registry providing all event registrars
  * - ModuleEventRegistrar (singleton) - Manages all event listeners
  *
@@ -208,6 +211,18 @@ export function registerEventPorts(container: ServiceContainer): Result<void, st
   if (isErr(showAllHiddenJournalsUseCaseResult)) {
     return err(
       `Failed to register ShowAllHiddenJournalsUseCase: ${showAllHiddenJournalsUseCaseResult.error.message}`
+    );
+  }
+
+  // Register JournalOverviewService
+  const journalOverviewServiceResult = container.registerClass(
+    journalOverviewServiceToken,
+    DIJournalOverviewService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(journalOverviewServiceResult)) {
+    return err(
+      `Failed to register JournalOverviewService: ${journalOverviewServiceResult.error.message}`
     );
   }
 

@@ -54,61 +54,74 @@ describe("WindowFactory", () => {
     };
 
     // Mock container with all required dependencies
-    mockContainer = {
-      resolve: vi.fn((token) => {
-        if (token === windowRegistryToken) return mockRegistry;
-        if (token === stateStoreToken)
-          return {
-            set: vi.fn().mockReturnValue(ok(undefined)),
+    const resolveService = (token: symbol) => {
+      if (token === windowRegistryToken) return mockRegistry;
+      if (token === stateStoreToken)
+        return {
+          set: vi.fn().mockReturnValue(ok(undefined)),
+          get: vi.fn(),
+          getAll: vi.fn().mockReturnValue(ok({})),
+          clear: vi.fn(),
+        };
+      if (token === statePortFactoryToken)
+        return {
+          create: vi.fn().mockReturnValue({
             get: vi.fn(),
-            getAll: vi.fn().mockReturnValue(ok({})),
-            clear: vi.fn(),
-          };
-        if (token === statePortFactoryToken)
-          return {
-            create: vi.fn().mockReturnValue({
-              get: vi.fn(),
-              patch: vi.fn().mockReturnValue(ok(undefined)),
-              subscribe: vi.fn(),
-            }),
-          };
-        if (token === actionDispatcherToken)
-          return {
-            dispatch: vi.fn().mockResolvedValue(ok(undefined)),
-          };
-        if (token === rendererRegistryToken)
-          return {
-            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
-          };
-        if (token === bindingEngineToken)
-          return {
-            initialize: vi.fn().mockReturnValue(ok(undefined)),
-            sync: vi.fn().mockResolvedValue(ok(undefined)),
-            getNormalizedBindings: vi.fn().mockReturnValue([]),
-          };
-        if (token === viewModelBuilderToken)
-          return {
-            build: vi.fn().mockReturnValue({
-              state: { get: vi.fn(), patch: vi.fn(), subscribe: vi.fn() },
-              computed: {},
-              actions: {},
-            }),
-          };
-        if (token === eventBusToken)
-          return {
-            emit: vi.fn(),
-            on: vi.fn(() => () => {}),
-            off: vi.fn(),
-            once: vi.fn(),
-          };
-        if (token === remoteSyncGateToken)
-          return {
-            makePersistMeta: vi.fn().mockReturnValue({}),
-            isFromWindow: vi.fn().mockReturnValue(false),
-            getClientId: vi.fn().mockReturnValue("client-1"),
-          };
-        if (token === persistAdapterToken) return undefined;
-        return undefined;
+            patch: vi.fn().mockReturnValue(ok(undefined)),
+            subscribe: vi.fn(),
+          }),
+        };
+      if (token === actionDispatcherToken)
+        return {
+          dispatch: vi.fn().mockResolvedValue(ok(undefined)),
+        };
+      if (token === rendererRegistryToken)
+        return {
+          get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+        };
+      if (token === bindingEngineToken)
+        return {
+          initialize: vi.fn().mockReturnValue(ok(undefined)),
+          sync: vi.fn().mockResolvedValue(ok(undefined)),
+          getNormalizedBindings: vi.fn().mockReturnValue([]),
+        };
+      if (token === viewModelBuilderToken)
+        return {
+          build: vi.fn().mockReturnValue({
+            state: { get: vi.fn(), patch: vi.fn(), subscribe: vi.fn() },
+            computed: {},
+            actions: {},
+          }),
+        };
+      if (token === eventBusToken)
+        return {
+          emit: vi.fn(),
+          on: vi.fn(() => () => {}),
+          off: vi.fn(),
+          once: vi.fn(),
+        };
+      if (token === remoteSyncGateToken)
+        return {
+          makePersistMeta: vi.fn().mockReturnValue({}),
+          isFromWindow: vi.fn().mockReturnValue(false),
+          getClientId: vi.fn().mockReturnValue("client-1"),
+        };
+      if (token === persistAdapterToken) return undefined;
+      return undefined;
+    };
+
+    mockContainer = {
+      resolve: vi.fn((token) => resolveService(token)),
+      resolveWithError: vi.fn((token) => {
+        const service = resolveService(token);
+        if (service === undefined) {
+          return err({
+            code: "TokenNotRegistered",
+            message: `Token not registered: ${String(token)}`,
+            details: {},
+          });
+        }
+        return ok(service);
       }),
     } as unknown as PlatformContainerPort;
 
@@ -124,6 +137,14 @@ describe("WindowFactory", () => {
             async render(_options?: unknown) {}
             async close(_options?: unknown) {
               return this;
+            }
+            protected async _renderFrame(_options?: unknown): Promise<HTMLElement> {
+              // Mock implementation - creates a frame with .window-content
+              const frame = document.createElement("div");
+              const content = document.createElement("div");
+              content.className = "window-content";
+              frame.appendChild(content);
+              return frame;
             }
           },
           HandlebarsApplicationMixin: (cls: unknown) => cls,
@@ -392,57 +413,69 @@ describe("WindowFactory", () => {
         create: vi.fn().mockReturnValue(mockStatePort),
       };
 
+      // Helper function for resolve logic
+      const resolveService = (token: symbol) => {
+        if (token === windowRegistryToken) return mockRegistry;
+        if (token === stateStoreToken)
+          return {
+            set: vi.fn().mockReturnValue(ok(undefined)),
+            get: vi.fn(),
+            getAll: vi.fn().mockReturnValue(ok({})),
+            clear: vi.fn(),
+          };
+        if (token === statePortFactoryToken) return mockStatePortFactory;
+        if (token === actionDispatcherToken)
+          return {
+            dispatch: vi.fn().mockResolvedValue(ok(undefined)),
+          };
+        if (token === rendererRegistryToken)
+          return {
+            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+          };
+        if (token === bindingEngineToken)
+          return {
+            initialize: vi.fn().mockReturnValue(ok(undefined)),
+            sync: vi.fn().mockResolvedValue(ok(undefined)),
+            getNormalizedBindings: vi.fn().mockReturnValue([]),
+          };
+        if (token === viewModelBuilderToken)
+          return {
+            build: vi.fn().mockReturnValue({
+              state: mockStatePort,
+              computed: {},
+              actions: {},
+            }),
+          };
+        if (token === eventBusToken)
+          return {
+            emit: vi.fn(),
+            on: vi.fn(() => () => {}),
+            off: vi.fn(),
+            once: vi.fn(),
+          };
+        if (token === remoteSyncGateToken)
+          return {
+            makePersistMeta: vi.fn().mockReturnValue({}),
+            isFromWindow: vi.fn().mockReturnValue(false),
+            getClientId: vi.fn().mockReturnValue("client-1"),
+          };
+        if (token === persistAdapterToken) return undefined;
+        return undefined;
+      };
+
       // Create new container with updated mocks
       const testContainer = {
-        resolve: vi.fn((token) => {
-          if (token === windowRegistryToken) return mockRegistry;
-          if (token === stateStoreToken)
-            return {
-              set: vi.fn().mockReturnValue(ok(undefined)),
-              get: vi.fn(),
-              getAll: vi.fn().mockReturnValue(ok({})),
-              clear: vi.fn(),
-            };
-          if (token === statePortFactoryToken) return mockStatePortFactory;
-          if (token === actionDispatcherToken)
-            return {
-              dispatch: vi.fn().mockResolvedValue(ok(undefined)),
-            };
-          if (token === rendererRegistryToken)
-            return {
-              get: vi
-                .fn()
-                .mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
-            };
-          if (token === bindingEngineToken)
-            return {
-              initialize: vi.fn().mockReturnValue(ok(undefined)),
-              sync: vi.fn().mockResolvedValue(ok(undefined)),
-              getNormalizedBindings: vi.fn().mockReturnValue([]),
-            };
-          if (token === viewModelBuilderToken)
-            return {
-              build: vi.fn().mockReturnValue({
-                state: mockStatePort,
-                computed: {},
-                actions: {},
-              }),
-            };
-          if (token === eventBusToken)
-            return {
-              emit: vi.fn(),
-              on: vi.fn(() => () => {}),
-              off: vi.fn(),
-              once: vi.fn(),
-            };
-          if (token === remoteSyncGateToken)
-            return {
-              makePersistMeta: vi.fn().mockReturnValue({}),
-              isFromWindow: vi.fn().mockReturnValue(false),
-              getClientId: vi.fn().mockReturnValue("client-1"),
-            };
-          if (token === persistAdapterToken) return undefined;
-          return undefined;
+        resolve: vi.fn((token) => resolveService(token)),
+        resolveWithError: vi.fn((token) => {
+          const service = resolveService(token);
+          if (service === undefined) {
+            return err({
+              code: "TokenNotRegistered",
+              message: `Token not registered: ${String(token)}`,
+              details: {},
+            });
+          }
+          return ok(service);
         }),
       } as unknown as PlatformContainerPort;
 
@@ -488,57 +521,69 @@ describe("WindowFactory", () => {
         create: vi.fn().mockReturnValue(mockStatePort),
       };
 
+      // Helper function for resolve logic
+      const resolveService2 = (token: symbol) => {
+        if (token === windowRegistryToken) return mockRegistry;
+        if (token === stateStoreToken)
+          return {
+            set: vi.fn().mockReturnValue(ok(undefined)),
+            get: vi.fn(),
+            getAll: vi.fn().mockReturnValue(ok({})),
+            clear: vi.fn(),
+          };
+        if (token === statePortFactoryToken) return mockStatePortFactory;
+        if (token === actionDispatcherToken)
+          return {
+            dispatch: vi.fn().mockResolvedValue(ok(undefined)),
+          };
+        if (token === rendererRegistryToken)
+          return {
+            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+          };
+        if (token === bindingEngineToken)
+          return {
+            initialize: vi.fn().mockReturnValue(ok(undefined)),
+            sync: vi.fn().mockResolvedValue(ok(undefined)),
+            getNormalizedBindings: vi.fn().mockReturnValue([]),
+          };
+        if (token === viewModelBuilderToken)
+          return {
+            build: vi.fn().mockReturnValue({
+              state: mockStatePort,
+              computed: {},
+              actions: {},
+            }),
+          };
+        if (token === eventBusToken)
+          return {
+            emit: vi.fn(),
+            on: vi.fn(() => () => {}),
+            off: vi.fn(),
+            once: vi.fn(),
+          };
+        if (token === remoteSyncGateToken)
+          return {
+            makePersistMeta: vi.fn().mockReturnValue({}),
+            isFromWindow: vi.fn().mockReturnValue(false),
+            getClientId: vi.fn().mockReturnValue("client-1"),
+          };
+        if (token === persistAdapterToken) return mockPersistAdapter;
+        return undefined;
+      };
+
       // Create new container with updated mocks
       const testContainer = {
-        resolve: vi.fn((token) => {
-          if (token === windowRegistryToken) return mockRegistry;
-          if (token === stateStoreToken)
-            return {
-              set: vi.fn().mockReturnValue(ok(undefined)),
-              get: vi.fn(),
-              getAll: vi.fn().mockReturnValue(ok({})),
-              clear: vi.fn(),
-            };
-          if (token === statePortFactoryToken) return mockStatePortFactory;
-          if (token === actionDispatcherToken)
-            return {
-              dispatch: vi.fn().mockResolvedValue(ok(undefined)),
-            };
-          if (token === rendererRegistryToken)
-            return {
-              get: vi
-                .fn()
-                .mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
-            };
-          if (token === bindingEngineToken)
-            return {
-              initialize: vi.fn().mockReturnValue(ok(undefined)),
-              sync: vi.fn().mockResolvedValue(ok(undefined)),
-              getNormalizedBindings: vi.fn().mockReturnValue([]),
-            };
-          if (token === viewModelBuilderToken)
-            return {
-              build: vi.fn().mockReturnValue({
-                state: mockStatePort,
-                computed: {},
-                actions: {},
-              }),
-            };
-          if (token === eventBusToken)
-            return {
-              emit: vi.fn(),
-              on: vi.fn(() => () => {}),
-              off: vi.fn(),
-              once: vi.fn(),
-            };
-          if (token === remoteSyncGateToken)
-            return {
-              makePersistMeta: vi.fn().mockReturnValue({}),
-              isFromWindow: vi.fn().mockReturnValue(false),
-              getClientId: vi.fn().mockReturnValue("client-1"),
-            };
-          if (token === persistAdapterToken) return mockPersistAdapter;
-          return undefined;
+        resolve: vi.fn((token) => resolveService2(token)),
+        resolveWithError: vi.fn((token) => {
+          const service = resolveService2(token);
+          if (service === undefined) {
+            return err({
+              code: "TokenNotRegistered",
+              message: `Token not registered: ${String(token)}`,
+              details: {},
+            });
+          }
+          return ok(service);
         }),
       } as unknown as PlatformContainerPort;
 
@@ -657,6 +702,439 @@ describe("WindowFactory", () => {
       // Actually call restore to cover line 109
       const restoreResult = await result.value.restore();
       expectResultOk(restoreResult);
+    });
+  });
+
+  describe("createController error handling", () => {
+    it("should throw error when WindowRegistry cannot be resolved", async () => {
+      vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === windowRegistryToken) {
+          return err({
+            code: "SERVICE_NOT_FOUND",
+            message: "WindowRegistry not found",
+            details: {},
+          });
+        }
+        // Return ok for other services to reach the error path
+        return ok({});
+      });
+
+      await expect(factory.createWindow("test-window")).rejects.toThrow(
+        "Failed to resolve WindowRegistry: WindowRegistry not found"
+      );
+    });
+
+    it("should throw error when StateStore cannot be resolved", async () => {
+      vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === windowRegistryToken) {
+          return ok(mockRegistry);
+        }
+        if (token === stateStoreToken) {
+          return err({
+            code: "SERVICE_NOT_FOUND",
+            message: "StateStore not found",
+            details: {},
+          });
+        }
+        return ok({});
+      });
+
+      await expect(factory.createWindow("test-window")).rejects.toThrow(
+        "Failed to resolve StateStore: StateStore not found"
+      );
+    });
+
+    it("should throw error when StatePortFactory cannot be resolved", async () => {
+      vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === windowRegistryToken) {
+          return ok(mockRegistry);
+        }
+        if (token === stateStoreToken) {
+          return ok({
+            set: vi.fn().mockReturnValue(ok(undefined)),
+            get: vi.fn(),
+            getAll: vi.fn().mockReturnValue(ok({})),
+            clear: vi.fn(),
+          });
+        }
+        if (token === statePortFactoryToken) {
+          return err({
+            code: "SERVICE_NOT_FOUND",
+            message: "StatePortFactory not found",
+            details: {},
+          });
+        }
+        return ok({});
+      });
+
+      await expect(factory.createWindow("test-window")).rejects.toThrow(
+        "Failed to resolve StatePortFactory: StatePortFactory not found"
+      );
+    });
+
+    it("should throw error when ActionDispatcher cannot be resolved", async () => {
+      vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
+
+      const resolveService = (token: symbol) => {
+        if (token === windowRegistryToken) return mockRegistry;
+        if (token === stateStoreToken)
+          return {
+            set: vi.fn().mockReturnValue(ok(undefined)),
+            get: vi.fn(),
+            getAll: vi.fn().mockReturnValue(ok({})),
+            clear: vi.fn(),
+          };
+        if (token === statePortFactoryToken)
+          return {
+            create: vi.fn().mockReturnValue({
+              get: vi.fn(),
+              patch: vi.fn().mockReturnValue(ok(undefined)),
+              subscribe: vi.fn(),
+            }),
+          };
+        return undefined;
+      };
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        const service = resolveService(token);
+        if (service !== undefined) {
+          return ok(service);
+        }
+        if (token === actionDispatcherToken) {
+          return err({
+            code: "SERVICE_NOT_FOUND",
+            message: "ActionDispatcher not found",
+            details: {},
+          });
+        }
+        return err({
+          code: "SERVICE_NOT_FOUND",
+          message: `Token not registered: ${String(token)}`,
+          details: {},
+        });
+      });
+
+      await expect(factory.createWindow("test-window")).rejects.toThrow(
+        "Failed to resolve ActionDispatcher: ActionDispatcher not found"
+      );
+    });
+
+    it("should throw error when RendererRegistry cannot be resolved", async () => {
+      vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
+
+      const resolveService = (token: symbol) => {
+        if (token === windowRegistryToken) return mockRegistry;
+        if (token === stateStoreToken)
+          return {
+            set: vi.fn().mockReturnValue(ok(undefined)),
+            get: vi.fn(),
+            getAll: vi.fn().mockReturnValue(ok({})),
+            clear: vi.fn(),
+          };
+        if (token === statePortFactoryToken)
+          return {
+            create: vi.fn().mockReturnValue({
+              get: vi.fn(),
+              patch: vi.fn().mockReturnValue(ok(undefined)),
+              subscribe: vi.fn(),
+            }),
+          };
+        if (token === actionDispatcherToken)
+          return {
+            dispatch: vi.fn().mockResolvedValue(ok(undefined)),
+          };
+        return undefined;
+      };
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        const service = resolveService(token);
+        if (service !== undefined) {
+          return ok(service);
+        }
+        if (token === rendererRegistryToken) {
+          return err({
+            code: "SERVICE_NOT_FOUND",
+            message: "RendererRegistry not found",
+            details: {},
+          });
+        }
+        return err({
+          code: "SERVICE_NOT_FOUND",
+          message: `Token not registered: ${String(token)}`,
+          details: {},
+        });
+      });
+
+      await expect(factory.createWindow("test-window")).rejects.toThrow(
+        "Failed to resolve RendererRegistry: RendererRegistry not found"
+      );
+    });
+
+    it("should throw error when BindingEngine cannot be resolved", async () => {
+      vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
+
+      const resolveService = (token: symbol) => {
+        if (token === windowRegistryToken) return mockRegistry;
+        if (token === stateStoreToken)
+          return {
+            set: vi.fn().mockReturnValue(ok(undefined)),
+            get: vi.fn(),
+            getAll: vi.fn().mockReturnValue(ok({})),
+            clear: vi.fn(),
+          };
+        if (token === statePortFactoryToken)
+          return {
+            create: vi.fn().mockReturnValue({
+              get: vi.fn(),
+              patch: vi.fn().mockReturnValue(ok(undefined)),
+              subscribe: vi.fn(),
+            }),
+          };
+        if (token === actionDispatcherToken)
+          return {
+            dispatch: vi.fn().mockResolvedValue(ok(undefined)),
+          };
+        if (token === rendererRegistryToken)
+          return {
+            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+          };
+        return undefined;
+      };
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        const service = resolveService(token);
+        if (service !== undefined) {
+          return ok(service);
+        }
+        if (token === bindingEngineToken) {
+          return err({
+            code: "SERVICE_NOT_FOUND",
+            message: "BindingEngine not found",
+            details: {},
+          });
+        }
+        return err({
+          code: "SERVICE_NOT_FOUND",
+          message: `Token not registered: ${String(token)}`,
+          details: {},
+        });
+      });
+
+      await expect(factory.createWindow("test-window")).rejects.toThrow(
+        "Failed to resolve BindingEngine: BindingEngine not found"
+      );
+    });
+
+    it("should throw error when ViewModelBuilder cannot be resolved", async () => {
+      vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
+
+      const resolveService = (token: symbol) => {
+        if (token === windowRegistryToken) return mockRegistry;
+        if (token === stateStoreToken)
+          return {
+            set: vi.fn().mockReturnValue(ok(undefined)),
+            get: vi.fn(),
+            getAll: vi.fn().mockReturnValue(ok({})),
+            clear: vi.fn(),
+          };
+        if (token === statePortFactoryToken)
+          return {
+            create: vi.fn().mockReturnValue({
+              get: vi.fn(),
+              patch: vi.fn().mockReturnValue(ok(undefined)),
+              subscribe: vi.fn(),
+            }),
+          };
+        if (token === actionDispatcherToken)
+          return {
+            dispatch: vi.fn().mockResolvedValue(ok(undefined)),
+          };
+        if (token === rendererRegistryToken)
+          return {
+            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+          };
+        if (token === bindingEngineToken)
+          return {
+            initialize: vi.fn().mockReturnValue(ok(undefined)),
+            sync: vi.fn().mockResolvedValue(ok(undefined)),
+            getNormalizedBindings: vi.fn().mockReturnValue([]),
+          };
+        return undefined;
+      };
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        const service = resolveService(token);
+        if (service !== undefined) {
+          return ok(service);
+        }
+        if (token === viewModelBuilderToken) {
+          return err({
+            code: "SERVICE_NOT_FOUND",
+            message: "ViewModelBuilder not found",
+            details: {},
+          });
+        }
+        return err({
+          code: "SERVICE_NOT_FOUND",
+          message: `Token not registered: ${String(token)}`,
+          details: {},
+        });
+      });
+
+      await expect(factory.createWindow("test-window")).rejects.toThrow(
+        "Failed to resolve ViewModelBuilder: ViewModelBuilder not found"
+      );
+    });
+
+    it("should throw error when EventBus cannot be resolved", async () => {
+      vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
+
+      const resolveService = (token: symbol) => {
+        if (token === windowRegistryToken) return mockRegistry;
+        if (token === stateStoreToken)
+          return {
+            set: vi.fn().mockReturnValue(ok(undefined)),
+            get: vi.fn(),
+            getAll: vi.fn().mockReturnValue(ok({})),
+            clear: vi.fn(),
+          };
+        if (token === statePortFactoryToken)
+          return {
+            create: vi.fn().mockReturnValue({
+              get: vi.fn(),
+              patch: vi.fn().mockReturnValue(ok(undefined)),
+              subscribe: vi.fn(),
+            }),
+          };
+        if (token === actionDispatcherToken)
+          return {
+            dispatch: vi.fn().mockResolvedValue(ok(undefined)),
+          };
+        if (token === rendererRegistryToken)
+          return {
+            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+          };
+        if (token === bindingEngineToken)
+          return {
+            initialize: vi.fn().mockReturnValue(ok(undefined)),
+            sync: vi.fn().mockResolvedValue(ok(undefined)),
+            getNormalizedBindings: vi.fn().mockReturnValue([]),
+          };
+        if (token === viewModelBuilderToken)
+          return {
+            build: vi.fn().mockReturnValue({
+              state: { get: vi.fn(), patch: vi.fn(), subscribe: vi.fn() },
+              computed: {},
+              actions: {},
+            }),
+          };
+        return undefined;
+      };
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        const service = resolveService(token);
+        if (service !== undefined) {
+          return ok(service);
+        }
+        if (token === eventBusToken) {
+          return err({
+            code: "SERVICE_NOT_FOUND",
+            message: "EventBus not found",
+            details: {},
+          });
+        }
+        return err({
+          code: "SERVICE_NOT_FOUND",
+          message: `Token not registered: ${String(token)}`,
+          details: {},
+        });
+      });
+
+      await expect(factory.createWindow("test-window")).rejects.toThrow(
+        "Failed to resolve EventBus: EventBus not found"
+      );
+    });
+
+    it("should throw error when RemoteSyncGate cannot be resolved", async () => {
+      vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
+
+      const resolveService = (token: symbol) => {
+        if (token === windowRegistryToken) return mockRegistry;
+        if (token === stateStoreToken)
+          return {
+            set: vi.fn().mockReturnValue(ok(undefined)),
+            get: vi.fn(),
+            getAll: vi.fn().mockReturnValue(ok({})),
+            clear: vi.fn(),
+          };
+        if (token === statePortFactoryToken)
+          return {
+            create: vi.fn().mockReturnValue({
+              get: vi.fn(),
+              patch: vi.fn().mockReturnValue(ok(undefined)),
+              subscribe: vi.fn(),
+            }),
+          };
+        if (token === actionDispatcherToken)
+          return {
+            dispatch: vi.fn().mockResolvedValue(ok(undefined)),
+          };
+        if (token === rendererRegistryToken)
+          return {
+            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+          };
+        if (token === bindingEngineToken)
+          return {
+            initialize: vi.fn().mockReturnValue(ok(undefined)),
+            sync: vi.fn().mockResolvedValue(ok(undefined)),
+            getNormalizedBindings: vi.fn().mockReturnValue([]),
+          };
+        if (token === viewModelBuilderToken)
+          return {
+            build: vi.fn().mockReturnValue({
+              state: { get: vi.fn(), patch: vi.fn(), subscribe: vi.fn() },
+              computed: {},
+              actions: {},
+            }),
+          };
+        if (token === eventBusToken)
+          return {
+            emit: vi.fn(),
+            on: vi.fn(() => () => {}),
+            off: vi.fn(),
+            once: vi.fn(),
+          };
+        return undefined;
+      };
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        const service = resolveService(token);
+        if (service !== undefined) {
+          return ok(service);
+        }
+        if (token === remoteSyncGateToken) {
+          return err({
+            code: "SERVICE_NOT_FOUND",
+            message: "RemoteSyncGate not found",
+            details: {},
+          });
+        }
+        return err({
+          code: "SERVICE_NOT_FOUND",
+          message: `Token not registered: ${String(token)}`,
+          details: {},
+        });
+      });
+
+      await expect(factory.createWindow("test-window")).rejects.toThrow(
+        "Failed to resolve RemoteSyncGate: RemoteSyncGate not found"
+      );
     });
   });
 });

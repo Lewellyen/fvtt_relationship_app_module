@@ -17,7 +17,8 @@
     "src/infrastructure/adapters/foundry/runtime-casts.ts",
     "src/application/services/RuntimeConfigService.ts",
     "src/application/utils/registry-casts.ts",
-    "src/infrastructure/observability/metrics-definition/metric-casts.ts"
+    "src/infrastructure/observability/metrics-definition/metric-casts.ts",
+    "src/application/windows/utils/service-casts.ts"
   ]
 }
 

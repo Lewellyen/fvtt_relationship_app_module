@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { RuneStateFactory } from "../rune-state-factory";
-import { RuneState } from "../rune-state";
+import { RuneState } from "../rune-state.svelte";
 
 describe("RuneStateFactory", () => {
   let factory: RuneStateFactory;

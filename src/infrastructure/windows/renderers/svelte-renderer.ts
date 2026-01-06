@@ -5,7 +5,7 @@ import type { ViewModel } from "@/domain/windows/types/view-model.interface";
 import type { RenderError } from "@/domain/windows/types/errors/render-error.interface";
 import { ok, err } from "@/domain/utils/result";
 import { mount, unmount } from "svelte";
-import type { Component } from "svelte";
+import { castSvelteComponent } from "@/application/windows/utils/window-state-casts";
 
 /**
  * SvelteRenderer - IRenderEnginePort<SvelteComponentInstance> Implementierung
@@ -25,8 +25,13 @@ export class SvelteRenderer implements IRenderEnginePort<SvelteComponentInstance
 
     try {
       // Component type from descriptor (should be a Svelte Component function)
-      // type-coverage:ignore-next-line
-      const component = descriptor.component as Component<Record<string, unknown>>;
+      const component = castSvelteComponent<Record<string, unknown>>(descriptor.component);
+      if (!component) {
+        return err({
+          code: "InvalidType",
+          message: "Component descriptor does not contain a valid Svelte component function",
+        });
+      }
 
       const mounted = mount(component, {
         target,

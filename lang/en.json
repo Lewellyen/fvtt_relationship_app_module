@@ -18,6 +18,10 @@
   "MODULE.SETTINGS.metricsPersistenceEnabled.name": "Persist Metrics",
   "MODULE.SETTINGS.metricsPersistenceEnabled.hint": "Keep observability metrics across restarts (uses LocalStorage).",
   "MODULE.SETTINGS.metricsPersistenceKey.name": "Metrics Storage Key",
-  "MODULE.SETTINGS.metricsPersistenceKey.hint": "LocalStorage key used when metrics persistence is enabled."
+  "MODULE.SETTINGS.metricsPersistenceKey.hint": "LocalStorage key used when metrics persistence is enabled.",
+  "journalOverview.title": "Journal Overview",
+  "journalOverview.buttonTooltip": "Show journal overview",
+  "journalOverview.status.visible": "Visible",
+  "journalOverview.status.hidden": "Hidden"
 }
 

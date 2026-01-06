@@ -358,6 +358,40 @@ describe("FoundryJournalUiEventAdapter", () => {
       expect(calledTimestamp).toBeLessThanOrEqual(Date.now());
     });
 
+    it("should skip invalid options items that don't pass validation (coverage for line 139 else branch)", () => {
+      const callback = vi.fn();
+      const result = adapter.registerListener("testEvent", callback);
+
+      expectResultOk(result);
+
+      const foundryCallback = mockFoundryHooksPort.getStoredCallback("testEvent");
+      expect(foundryCallback).toBeDefined();
+
+      // Pass event object with mixed valid and invalid options
+      // Invalid items should be skipped (else branch of validation if-statement)
+      const eventObject = {
+        journalId: "journal-123",
+        options: [
+          { name: "Valid", icon: "<i></i>", callback: vi.fn() }, // Valid
+          { name: "Invalid", icon: "<i></i>" }, // Missing callback
+          null, // null item
+          "not-an-object", // Not an object
+          { name: 123, icon: "<i></i>", callback: vi.fn() }, // Invalid name type
+          { name: "Invalid", icon: 456, callback: vi.fn() }, // Invalid icon type
+          { name: "Invalid", icon: "<i></i>", callback: "not-a-function" }, // Invalid callback type
+          { name: "Valid2", icon: "<i></i>", callback: vi.fn() }, // Valid
+        ],
+      };
+      foundryCallback!([eventObject]);
+
+      // Callback should be called, but only with valid options
+      expect(callback).toHaveBeenCalled();
+      const calledEvent = callback.mock.calls[0]![0] as { options: unknown[] };
+      expect(calledEvent.options).toHaveLength(2); // Only 2 valid options
+      expect((calledEvent.options[0] as { name: string }).name).toBe("Valid");
+      expect((calledEvent.options[1] as { name: string }).name).toBe("Valid2");
+    });
+
     it("should handle null/undefined event in registerFoundryHook (coverage for line 180 else path)", () => {
       const callback = vi.fn();
       const result = adapter.registerListener("testEvent", callback);

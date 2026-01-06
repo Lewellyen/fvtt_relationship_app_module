@@ -1,6 +1,7 @@
 import type { IStateStore } from "@/domain/windows/ports/state-store-port.interface";
 import type { WindowError } from "@/domain/windows/types/errors/window-error.interface";
 import { ok, err } from "@/domain/utils/result";
+import { getMapValueOrCreate } from "../utils/window-state-casts";
 
 /**
  * StateStore - Basis StateStore (in-memory)
@@ -15,12 +16,11 @@ export class StateStore implements IStateStore {
     key: string,
     value: unknown
   ): import("@/domain/types/result").Result<void, WindowError> {
-    if (!this.state.has(instanceId)) {
-      this.state.set(instanceId, new Map());
-    }
-
-    // type-coverage:ignore-next-line
-    const instanceState = this.state.get(instanceId)!;
+    const instanceState = getMapValueOrCreate(
+      this.state,
+      instanceId,
+      () => new Map<string, unknown>()
+    );
     instanceState.set(key, value);
 
     return ok(undefined);

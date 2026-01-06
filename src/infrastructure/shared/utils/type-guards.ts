@@ -53,6 +53,29 @@ export function hasProperty(obj: unknown, propertyName: string): boolean {
 }
 
 /**
+ * Checks if an object has a property as its own property (not inherited).
+ *
+ * @param obj - The object to check (unknown type)
+ * @param propertyName - The name of the property to check for
+ * @returns True if the object has the property as its own property, false otherwise
+ *
+ * @example
+ * ```typescript
+ * const obj = { name: "test" };
+ * if (hasOwnProperty(obj, "name")) {
+ *   console.log(obj.name); // Type-safe
+ * }
+ * ```
+ */
+export function hasOwnProperty(obj: unknown, propertyName: string): boolean {
+  if (obj === null || obj === undefined || typeof obj !== "object") {
+    return false;
+  }
+  /* type-coverage:ignore-next-line -- Object.prototype.hasOwnProperty is a standard JavaScript method with known signature */
+  return Object.prototype.hasOwnProperty.call(obj, propertyName);
+}
+
+/**
  * Checks if an object has all the required methods.
  *
  * @param obj - The object to check (unknown type)

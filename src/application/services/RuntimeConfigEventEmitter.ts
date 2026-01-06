@@ -69,13 +69,16 @@ export class RuntimeConfigEventEmitter implements IRuntimeConfigEventEmitter {
 
   /**
    * Type-safe helper to set listeners for a specific key.
-   * @ts-expect-error - Type coverage exclusion for generic Set cast
    */
   private setListenersForKey<K extends RuntimeConfigKey>(
     key: K,
     listeners: Set<RuntimeConfigListener<K>>
   ): void {
-    // type-coverage:ignore-next-line - Generic Set cast required for type-safe listener management
-    this.listeners.set(key, listeners as Set<RuntimeConfigListener<RuntimeConfigKey>>);
+    // Generic Set cast required for type-safe listener management with type variance
+    // TypeScript cannot prove that Set<RuntimeConfigListener<K>> is compatible with
+    // Set<RuntimeConfigListener<RuntimeConfigKey>>, even though it's safe at runtime
+    type ListenersType = Set<RuntimeConfigListener<RuntimeConfigKey>>;
+    /* type-coverage:ignore-next-line -- Type variance: Set<RuntimeConfigListener<K>> is compatible with Set<RuntimeConfigListener<RuntimeConfigKey>> at runtime */
+    this.listeners.set(key, listeners as ListenersType);
   }
 }

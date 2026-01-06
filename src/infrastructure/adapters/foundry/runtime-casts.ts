@@ -198,6 +198,19 @@ export function extractHtmlElement(html: unknown): HTMLElement | null {
 }
 
 /**
+ * Type guard for Record<string, unknown>.
+ *
+ * Checks if a value is a non-null object (not array) and can be safely cast to Record<string, unknown>.
+ * This is useful for validation schemas and runtime type checks.
+ *
+ * @param value - The value to check
+ * @returns true if value is a Record<string, unknown>, false otherwise
+ */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
  * Gets a factory from a Map or returns an error if not found.
  *
  * This is a defensive check: theoretically, if a version exists in the Map keys,
@@ -332,6 +345,31 @@ export function castCreatedJournalEntry<TDocument extends { id: string }>(
 }
 
 /**
+ * Creates CreateEntityData with an explicit id for upsert operations.
+ *
+ * This helper function safely adds an id to CreateEntityData, which normally
+ * omits id. This is necessary for upsert operations where we need to provide
+ * the id for the create operation.
+ *
+ * @template TEntity - The entity type
+ * @param data - The entity data without id
+ * @param id - The id to add
+ * @returns CreateEntityData with id added (as intersection type)
+ *
+ * @example
+ * ```typescript
+ * const createData = createEntityDataWithId(journalData, "journal-123");
+ * await repository.create(createData);
+ * ```
+ */
+export function createEntityDataWithId<TEntity extends { id: string }>(
+  data: Omit<TEntity, "id" | "createdAt" | "updatedAt">,
+  id: string
+): Omit<TEntity, "id" | "createdAt" | "updatedAt"> & { id: string } {
+  return { ...data, id };
+}
+
+/**
  * Type definition for Foundry Document Collections.
  * Collections are Maps that store Foundry documents by ID.
  */
@@ -403,46 +441,4 @@ export function castFoundryDocumentCollection<TDocument extends { id: string } =
   }
 
   return ok(collection as FoundryDocumentCollection<TDocument>);
-}
-
-/**
- * Type definition for Svelte 5 $state rune function.
- * $state is a compile-time rune that creates reactive state.
- */
-type SvelteStateRune = <T>(initial: T) => T;
-
-/**
- * Kapselt den notwendigen Cast für Svelte 5 `$state` Rune aus globalThis.
- * Svelte 5 Runes sind zur Compile-Zeit verfügbar, aber in Tests oder
- * Non-Svelte-Umgebungen müssen wir prüfen, ob $state verfügbar ist.
- *
- * Diese Funktion führt eine Runtime-Validierung durch, um sicherzustellen,
- * dass $state als Funktion verfügbar ist. Bei Fehlern wird ein FoundryError
- * zurückgegeben statt einen Error zu werfen, um konsistent mit dem
- * Result-Pattern zu bleiben.
- *
- * @returns Result mit $state als SvelteStateRune oder FoundryError
- *
- * @remarks
- * Die Validierung prüft zur Laufzeit, ob $state im globalThis verfügbar ist
- * und eine Funktion ist. Dies stellt sicher, dass Svelte 5 korrekt geladen ist.
- */
-export function castSvelteStateRune(): Result<SvelteStateRune, FoundryError> {
-  if (typeof globalThis === "undefined" || globalThis === null) {
-    return err(createFoundryError("API_NOT_AVAILABLE", "globalThis is not available", {}));
-  }
-
-  const $state = (globalThis as Record<string, unknown>).$state;
-
-  if (typeof $state !== "function") {
-    return err(
-      createFoundryError(
-        "API_NOT_AVAILABLE",
-        "Svelte 5 $state rune is not available in globalThis",
-        {}
-      )
-    );
-  }
-
-  return ok($state as SvelteStateRune);
 }

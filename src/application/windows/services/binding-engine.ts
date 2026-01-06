@@ -9,6 +9,12 @@ import type { IPersistAdapter } from "@/domain/windows/ports/persist-adapter-por
 import type { IRemoteSyncGate } from "@/domain/windows/ports/remote-sync-gate-port.interface";
 import { ok, err } from "@/domain/utils/result";
 import { stateStoreToken, persistAdapterToken, remoteSyncGateToken } from "../tokens/window.tokens";
+import {
+  getMapValueOrCreate,
+  getNestedValue,
+  createNestedObject,
+} from "../utils/window-state-casts";
+import { isRecord } from "@/domain/utils/type-guards";
 
 /**
  * BindingEngine - Normalisiert Bindings (Control-local → global), verwaltet Bindings
@@ -33,12 +39,11 @@ export class BindingEngine implements IBindingEngine {
   ): import("@/domain/types/result").Result<void, WindowError> {
     const normalized = this.getNormalizedBindings(definition);
 
-    if (!this.bindings.has(instanceId)) {
-      this.bindings.set(instanceId, new Map());
-    }
-
-    // type-coverage:ignore-next-line
-    const instanceBindings = this.bindings.get(instanceId)!;
+    const instanceBindings = getMapValueOrCreate(
+      this.bindings,
+      instanceId,
+      () => new Map<string, NormalizedBinding>()
+    );
 
     for (const binding of normalized) {
       instanceBindings.set(binding.id || `${binding.source.key}-binding`, binding);
@@ -194,20 +199,14 @@ export class BindingEngine implements IBindingEngine {
         // Extract nested value if key is a path (e.g., "some.nested.key")
         const data = loadResult.value;
         if (source.key.includes(".")) {
-          const keys = source.key.split(".");
-          let current: unknown = data;
-          for (const key of keys) {
-            if (current && typeof current === "object" && key in current) {
-              // type-coverage:ignore-next-line
-              current = (current as Record<string, unknown>)[key];
-            } else {
-              return ok(undefined);
-            }
-          }
-          return ok(current);
+          const nestedValue = getNestedValue(data, source.key);
+          return ok(nestedValue);
         }
 
-        return ok(data[source.key] ?? data);
+        if (isRecord(data)) {
+          return ok(data[source.key] ?? data);
+        }
+        return ok(data);
 
       case "journal":
         // Phase 2: Journal not yet implemented
@@ -245,28 +244,7 @@ export class BindingEngine implements IBindingEngine {
         }
 
         // Prepare data: if key is nested, create nested structure
-        let data: Record<string, unknown>;
-        if (source.key.includes(".")) {
-          const keys = source.key.split(".");
-          const nested: Record<string, unknown> = {};
-          let current: Record<string, unknown> = nested;
-          for (let i = 0; i < keys.length - 1; i++) {
-            const key = keys[i];
-            if (key) {
-              current[key] = {};
-              // next is always an object since we just set it
-              // type-coverage:ignore-next-line
-              current = current[key] as Record<string, unknown>;
-            }
-          }
-          const lastKey = keys[keys.length - 1];
-          if (lastKey) {
-            current[lastKey] = value;
-          }
-          data = nested;
-        } else {
-          data = { [source.key]: value };
-        }
+        const data = createNestedObject(source.key, value);
 
         // Create PersistMeta for origin tracking
         const meta = this.remoteSyncGate?.makePersistMeta(instanceId);

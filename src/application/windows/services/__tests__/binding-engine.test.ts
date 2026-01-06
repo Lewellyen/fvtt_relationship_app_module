@@ -728,6 +728,53 @@ describe("BindingEngine", () => {
       expect(mockPersistAdapter.load).toHaveBeenCalled();
     });
 
+    it("should handle flag source with non-record data (primitive value)", async () => {
+      // Test the fallback case when data is not a Record (line 209)
+      // Since load() returns Result<Record<string, unknown>, PersistError>,
+      // we simulate runtime behavior where data might not pass isRecord() check
+      // (e.g., if it's an array or null, which shouldn't happen but we test defensively)
+      // This tests the else branch at line 209: return ok(data)
+      // We use a type cast to simulate this edge case while satisfying TypeScript
+      vi.mocked(mockPersistAdapter.load).mockResolvedValue(
+        // Cast to satisfy TypeScript, but at runtime this could be an array which isRecord() would reject
+        ok([] as unknown as Record<string, unknown>)
+      );
+
+      const definition: WindowDefinition = {
+        definitionId: "test-window",
+        title: "Test Window",
+        component: {
+          type: "svelte",
+          component: vi.fn(),
+          props: {},
+        },
+        controls: [
+          {
+            id: "control-1",
+            type: "text",
+            binding: {
+              id: "binding-1",
+              source: {
+                type: "flag",
+                key: "flagValue",
+                namespace: "test",
+                documentId: "Actor.123",
+              },
+              target: { stateKey: "count" },
+            },
+          },
+        ],
+      };
+
+      engine.initialize(definition, "instance-1");
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(mockPersistAdapter.load).toHaveBeenCalled();
+      // When data is an array (not a Record), isRecord() returns false,
+      // so line 209 executes: return ok(data)
+      expect(mockStateStore.set).toHaveBeenCalledWith("instance-1", "count", []);
+    });
+
     it("should return undefined if persistAdapter is not available", async () => {
       const engineWithoutAdapter = new BindingEngine(mockStateStore, undefined, mockRemoteSyncGate);
 

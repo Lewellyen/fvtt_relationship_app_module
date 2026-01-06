@@ -64,11 +64,6 @@ const ALLOWED_WITH_MARKERS = [
   },
   // DI-Infrastruktur: Coverage-Tool-Limitationen
   {
-    file: 'src/infrastructure/di/validation/ContainerValidator.ts',
-    allowed: ['v8 ignore'],
-    reason: 'Coverage-Tool-Limitation: Early-Return-Pfad wird nicht korrekt gezählt (Coverage-Tool-Limitation)',
-  },
-  {
     file: 'src/infrastructure/di/container.ts',
     allowed: ['eslint-disable-next-line'],
     reason: 'Circular Dependency Avoidance: Dynamic require() mit relativem Pfad notwendig, um zirkuläre Dependencies zur Modul-Ladezeit zu vermeiden. CommonJS require() unterstützt keine TypeScript path mappings (@/), daher relativer Pfad erforderlich.',
@@ -113,6 +108,11 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Metrics-Casts: Zentralisierte Metrics-Type-Cast-Helpers für Type-Varianz (bereits global in type-coverage.json ausgenommen)',
   },
   {
+    file: 'src/application/windows/utils/service-casts.ts',
+    allowed: ['type-coverage:ignore'],
+    reason: 'Service-Casts: Zentralisierte Service-Type-Cast-Helpers für DI-Container-Resolution (bereits global in type-coverage.json ausgenommen)',
+  },
+  {
     file: 'src/infrastructure/shared/utils/type-guards.ts',
     allowed: ['type-coverage:ignore-next-line'],
     reason: 'Runtime Type Guards: Type-Cast für Runtime-Validierung von Methoden-Existenz (notwendig für type-safe Runtime-Checks)',
@@ -126,11 +126,6 @@ const ALLOWED_WITH_MARKERS = [
     file: 'src/infrastructure/adapters/foundry/versioning/portselector.ts',
     allowed: ['type-coverage:ignore-next-line'],
     reason: 'Generic Type Narrowing: selectedToken kommt aus tokens Map<number, InjectionToken<T>>, aber Strategy ist als PortMatchStrategy<unknown> typisiert für Flexibilität. TypeScript kann den generischen Typ nicht ableiten, obwohl der Token zur Laufzeit vom Typ InjectionToken<T> ist.',
-  },
-  {
-    file: 'src/infrastructure/adapters/foundry/ports/v13/FoundryV13UIPort.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Foundry API Type Casts: Foundry\'s ui.sidebar types are incomplete, need type assertion for proper type safety (Foundry-spezifische Runtime-Type-Assertions)',
   },
   {
     file: 'src/infrastructure/adapters/foundry/ports/v13/FoundryV13GamePort.ts',
@@ -155,16 +150,15 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Type-Placeholder: Leere Interface-Erweiterung für zukünftige journal-spezifische Methoden (no-empty-object-type ist hier beabsichtigt für Extension-Point)',
   },
 
-  // Foundry Adapters: Type-Coverage für Array-Zugriffe
-  {
-    file: 'src/infrastructure/adapters/foundry/collection-adapters/foundry-journal-collection-adapter.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Array-Zugriffe: TypeScript kann nicht statisch beweisen, dass Array mit length > 0 ein Element bei Index 0 hat (obwohl zur Laufzeit garantiert). Non-Null-Assertion ist hier sicher.',
-  },
   {
     file: 'src/infrastructure/adapters/foundry/repository-adapters/foundry-journal-repository-adapter.ts',
-    allowed: ['type-coverage:ignore-next-line', 'eslint-disable-next-line'],
-    reason: 'Array-Zugriffe: TypeScript kann nicht statisch beweisen, dass Array mit length > 0 ein Element bei Index 0 hat. Naming-Convention: Foundry verwendet PascalCase für Klassen-Namen (JournalEntry).',
+    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line', 'v8 ignore'],
+    reason: 'Naming-Convention: Foundry verwendet PascalCase für Klassen-Namen (JournalEntry). Type narrowing: createEntityDataWithId guarantees CreateEntityData<JournalEntry> & { id: string }. Defensive checks: Sparse array handling für errors.find() - sollte nie auftreten, aber TypeScript kann es nicht beweisen.',
+  },
+  {
+    file: 'src/infrastructure/adapters/foundry/collection-adapters/foundry-journal-collection-adapter.ts',
+    allowed: ['type-coverage:ignore-next-line', 'v8 ignore'],
+    reason: 'Type narrowing: pop() is guaranteed to return a value because length > 0 was checked above. Defensive checks: Sparse array handling für errors.find() - sollte nie auftreten, aber TypeScript kann es nicht beweisen.',
   },
 
   // Domain Types: Naming Conventions & Proxy Pattern Type Casts
@@ -182,11 +176,6 @@ const ALLOWED_WITH_MARKERS = [
     file: 'src/application/di/container-types.ts',
     allowed: ['eslint-disable-next-line'],
     reason: 'Type-Parameter: T wird als Type-Parameter für generische Type-Constraints verwendet (DomainInjectionToken<T>), auch wenn er im Type-Body nicht direkt referenziert wird. Diese Datei wurde von src/domain/types/container-types.ts verschoben (DIP-001 Refactoring).',
-  },
-  {
-    file: 'src/framework/core/api/module-api-initializer.ts',
-    allowed: ['eslint-disable-next-line'],
-    reason: 'Type-Imports: MetricsCollector und ModuleHealthService werden für explizite Type-Annotations verwendet (const metricsCollector: MetricsCollector), auch wenn sie nicht direkt im Code referenziert werden.',
   },
 
   // DI Token Files: eslint-disable für @typescript-eslint/no-explicit-any
@@ -245,36 +234,51 @@ const ALLOWED_WITH_MARKERS = [
   {
     file: 'src/application/services/RuntimeConfigEventEmitter.ts',
     allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Generic Set Cast: Type-Cast für type-safe Listener-Management mit generischen RuntimeConfigKey-Typen. TypeScript kann den generischen Typ nicht aus der Map-Struktur ableiten, obwohl zur Laufzeit type-safe.',
+    reason: 'Type variance: Set<RuntimeConfigListener<K>> is compatible with Set<RuntimeConfigListener<RuntimeConfigKey>> at runtime',
   },
 
   // Foundry Event Adapters: Generic Event Type Guards
   {
     file: 'src/infrastructure/adapters/foundry/event-adapters/foundry-journal-ui-event-adapter.ts',
     allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Fallback Path for Generic registerListener: Type-Cast für Fallback-Pfad von registerListener, der in der Praxis nicht verwendet wird. Vollständige Validierung von ContextMenuOption[] wäre zu komplex.',
+    reason: 'Runtime type checks: record.options validated as array, item.callback validated as function above',
   },
 
   // Window Framework: Foundry API Integration
   {
-    file: 'src/infrastructure/windows/state/global-document-cache.ts',
+    file: 'src/application/windows/utils/window-state-casts.ts',
+    allowed: ['type-coverage:ignore-next-line', 'v8 ignore'],
+    reason: 'Type variance and runtime type checks: handler and component validated above. Type narrowing: current[key] is guaranteed to be Record<string, unknown> because we just assigned {} to it. Defensive check: else branch fallback in createNestedObject - should not happen, but TypeScript needs this.',
+  },
+  {
+    file: 'src/application/windows/utils/window-casts.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Type narrowing: WindowController contract guarantees controller and container in metadata',
+  },
+  {
+    file: 'src/application/windows/utils/patch-utils.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Type narrowing: key validated as keyof T above, updates[typedKey] is T[keyof T]',
+  },
+  {
+    file: 'src/infrastructure/windows/adapters/persist/flags-persist-adapter.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Runtime type check: doc validated as Foundry document with flags property',
+  },
+  {
+    file: 'src/domain/utils/type-guards.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Runtime Type Guards: Object.prototype.hasOwnProperty is a standard JavaScript method with known signature',
+  },
+  {
+    file: 'src/infrastructure/windows/state/global-document-cache.svelte.ts',
     allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
     reason: 'Svelte 5 Runes: $state ist eine Svelte 5 Rune, die zur Compile-Zeit verfügbar ist. In Tests nicht verfügbar, daher Fallback auf normale Map. eslint-disable und type-coverage:ignore für Type-Casts notwendig.',
   },
   {
-    file: 'src/infrastructure/windows/state/rune-state.ts',
+    file: 'src/infrastructure/windows/state/rune-state.svelte.ts',
     allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
     reason: 'Svelte 5 Runes: $state ist eine Svelte 5 Rune, die zur Compile-Zeit verfügbar ist. eslint-disable und type-coverage:ignore für Type-Casts notwendig.',
-  },
-  {
-    file: 'src/infrastructure/windows/adapters/persist/settings-persist-adapter.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Foundry API: Verwendet PlatformSettingsPort (DI), type-coverage:ignore für Type-Casts notwendig.',
-  },
-  {
-    file: 'src/infrastructure/windows/adapters/persist/flags-persist-adapter.ts',
-    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
-    reason: 'Foundry API: Direkte Verwendung von game (fvtt-types). eslint-disable und type-coverage:ignore für collections.get() und flags Type-Casts notwendig, da Foundry-Typen nicht vollständig verfügbar sind.',
   },
   {
     file: 'src/infrastructure/windows/adapters/foundry/window/foundry-application-wrapper.ts',
@@ -282,44 +286,9 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Foundry API: ApplicationV2 Constructor und super.render() benötigen Type-Casts, da Foundry-Typen komplexe Overloads haben. eslint-disable und type-coverage:ignore für any-Type-Casts notwendig.',
   },
   {
-    file: 'src/application/windows/services/remote-sync-gate.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Foundry API: Direkte Verwendung von game (fvtt-types), type-coverage:ignore für Type-Casts notwendig.',
-  },
-  {
-    file: 'src/application/windows/services/action-dispatcher.ts',
-    allowed: [],
-    reason: 'Window Framework: Direkte Verwendung von foundry.appv1.api.Dialog, keine ignore-Direktiven mehr notwendig.',
-  },
-  {
-    file: 'src/application/windows/utils/patch-utils.ts',
-    allowed: ['type-coverage:ignore-next-line', 'eslint-disable-next-line'],
-    reason: 'Partial<T> Type Narrowing: TypeScript kann den Typ nicht aus Partial<T> ableiten, obwohl der Zugriff type-safe ist. Type-Cast ist notwendig für type-coverage. eslint-disable für any-Type-Cast notwendig.',
-  },
-  {
     file: 'src/infrastructure/windows/adapters/foundry/hooks/window-hooks.ts',
     allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
     reason: 'Foundry API: Hooks.on() für "updateDocument" und "settingChange" benötigt Type-Casts, da diese Hooks nicht in fvtt-types definiert sind. eslint-disable und type-coverage:ignore für Type-Casts notwendig.',
-  },
-  {
-    file: 'src/infrastructure/windows/renderers/svelte-renderer.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Svelte 5 Runes: $state und Svelte-Komponenten benötigen Type-Casts, da Svelte-Typen zur Compile-Zeit verfügbar sind.',
-  },
-  {
-    file: 'src/application/windows/services/binding-engine.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Window Framework: Non-Null-Assertions und Type-Casts für Binding-Engine notwendig, da TypeScript den Typ nicht aus Map-Strukturen ableiten kann.',
-  },
-  {
-    file: 'src/application/windows/services/event-bus.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Window Framework: Type-Casts für Event-Bus notwendig, da TypeScript den Typ nicht aus Map-Strukturen ableiten kann.',
-  },
-  {
-    file: 'src/application/windows/services/state-store.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Window Framework: Type-Casts für State-Store notwendig, da TypeScript den Typ nicht aus Map-Strukturen ableiten kann.',
   },
 
 ];

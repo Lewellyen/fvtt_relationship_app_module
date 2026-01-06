@@ -33,7 +33,7 @@ import { RemoteSyncGate } from "@/application/windows/services/remote-sync-gate"
 import { ViewModelBuilder as ViewModelBuilderImpl } from "@/application/windows/services/view-model-builder";
 import { FoundryWindowAdapter } from "@/infrastructure/windows/adapters/foundry/window/foundry-window-adapter";
 import { RuneStateFactory } from "@/infrastructure/windows/state/rune-state-factory";
-import { GlobalDocumentCache } from "@/infrastructure/windows/state/global-document-cache";
+import { GlobalDocumentCache } from "@/infrastructure/windows/state/global-document-cache.svelte";
 import { SvelteRenderer } from "@/infrastructure/windows/renderers/svelte-renderer";
 import { CompositePersistAdapter } from "@/infrastructure/windows/adapters/persist/composite-persist-adapter";
 import { WindowFactory } from "@/application/windows/services/window-factory";
@@ -103,14 +103,16 @@ export function registerWindowServices(container: ServiceContainer): Result<void
     return err(`Failed to register RemoteSyncGate: ${remoteSyncGateResult.error.message}`);
   }
 
-  const rendererRegistryResult = container.registerClass(
-    rendererRegistryToken,
-    RendererRegistry,
-    ServiceLifecycle.SINGLETON
-  );
+  // Create RendererRegistry instance directly so we can register SvelteRenderer immediately
+  const rendererRegistry = new RendererRegistry();
+  const rendererRegistryResult = container.registerValue(rendererRegistryToken, rendererRegistry);
   if (isErr(rendererRegistryResult)) {
     return err(`Failed to register RendererRegistry: ${rendererRegistryResult.error.message}`);
   }
+
+  // Register SvelteRenderer immediately (we have the instance, no need to resolve)
+  const svelteRenderer = new SvelteRenderer();
+  rendererRegistry.register("svelte", svelteRenderer);
 
   // 2. Register StatePortFactory and SharedDocumentCache
   const statePortFactoryResult = container.registerClass(
@@ -181,16 +183,36 @@ export function registerWindowServices(container: ServiceContainer): Result<void
   const windowFactoryFactoryResult = container.registerFactory(
     windowFactoryToken,
     () => {
-      const registry = container.resolve(
-        windowRegistryToken
-      ) as import("@/domain/windows/ports/window-registry-port.interface").IWindowRegistry;
-      const foundryAdapter = container.resolve(
-        foundryWindowAdapterToken
-      ) as import("@/domain/windows/ports/foundry-window-adapter.interface").IFoundryWindowAdapter;
+      // Use resolveWithError() instead of resolve() to avoid API boundary violations
+      const registryResult = container.resolveWithError(windowRegistryToken);
+      if (!registryResult.ok) {
+        throw new Error(`Failed to resolve WindowRegistry: ${registryResult.error.message}`);
+      }
+      const registry = castResolvedService<
+        import("@/domain/windows/ports/window-registry-port.interface").IWindowRegistry
+      >(registryResult.value);
+
+      const foundryAdapterResult = container.resolveWithError(foundryWindowAdapterToken);
+      if (!foundryAdapterResult.ok) {
+        throw new Error(
+          `Failed to resolve FoundryWindowAdapter: ${foundryAdapterResult.error.message}`
+        );
+      }
+      const foundryAdapter = castResolvedService<
+        import("@/domain/windows/ports/foundry-window-adapter.interface").IFoundryWindowAdapter
+      >(foundryAdapterResult.value);
+
       // Pass container as PlatformContainerPort for resolving WindowController dependencies
-      const containerPort = container.resolve(
-        platformContainerPortToken
-      ) as import("@/domain/ports/platform-container-port.interface").PlatformContainerPort;
+      const containerPortResult = container.resolveWithError(platformContainerPortToken);
+      if (!containerPortResult.ok) {
+        throw new Error(
+          `Failed to resolve PlatformContainerPort: ${containerPortResult.error.message}`
+        );
+      }
+      const containerPort = castResolvedService<
+        import("@/domain/ports/platform-container-port.interface").PlatformContainerPort
+      >(containerPortResult.value);
+
       return new WindowFactory(registry, foundryAdapter, containerPort);
     },
     ServiceLifecycle.SINGLETON,
@@ -222,16 +244,7 @@ export function registerWindowServices(container: ServiceContainer): Result<void
     return err(`Failed to register WindowHooksService: ${windowHooksServiceResult.error.message}`);
   }
 
-  // 9. Register SvelteRenderer in RendererRegistry (after RendererRegistry is registered)
-  // This needs to happen after the registry is created, so we do it in an init phase
-  const rendererRegistryResolvedResult = container.resolveWithError(rendererRegistryToken);
-  if (rendererRegistryResolvedResult.ok) {
-    const rendererRegistryResolved = castResolvedService<
-      import("@/domain/windows/ports/renderer-registry-port.interface").IRendererRegistry
-    >(rendererRegistryResolvedResult.value);
-    const svelteRenderer = new SvelteRenderer();
-    rendererRegistryResolved.register("svelte", svelteRenderer);
-  }
+  // Note: SvelteRenderer is already registered above (step 1) when we created the RendererRegistry instance
 
   return ok(undefined);
 }

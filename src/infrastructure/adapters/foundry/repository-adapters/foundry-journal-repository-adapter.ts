@@ -15,11 +15,13 @@ import { FoundryJournalCollectionAdapter } from "../collection-adapters/foundry-
 import { JournalMapperRegistry } from "../mappers/journal-mapper-registry";
 import { DefaultJournalMapper } from "../mappers/default-journal-mapper";
 import { ok, err } from "@/domain/utils/result";
+import { getFirstArrayElement } from "@/application/utils/array-utils";
 import {
   castFoundryDocumentForFlag,
   castFoundryDocumentWithUpdate,
   castFoundryJournalEntryClass,
   castCreatedJournalEntry,
+  createEntityDataWithId,
 } from "@/infrastructure/adapters/foundry/runtime-casts";
 import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
 import { foundryDocumentToken } from "@/infrastructure/shared/tokens/foundry/foundry-document.token";
@@ -66,7 +68,7 @@ export class FoundryJournalRepositoryAdapter implements PlatformJournalRepositor
   // ===== CREATE Operations =====
 
   async create(
-    data: CreateEntityData<JournalEntry>
+    data: CreateEntityData<JournalEntry> | (CreateEntityData<JournalEntry> & { id: string })
   ): Promise<Result<JournalEntry, EntityRepositoryError>> {
     // Foundry: JournalEntry.create() - statische Methode
     // Nutzt FoundryDocumentPort für create()
@@ -130,9 +132,8 @@ export class FoundryJournalRepositoryAdapter implements PlatformJournalRepositor
     }
 
     if (errors.length > 0) {
-      // Guaranteed to exist due to length > 0 check
-      // type-coverage:ignore-next-line - Array with length > 0 guarantees element at index 0
-      const firstError = errors[0]!;
+      // errors array is guaranteed to be non-empty here, so getFirstArrayElement is safe
+      const firstError = getFirstArrayElement(errors);
       return err(firstError);
     }
 
@@ -251,9 +252,8 @@ export class FoundryJournalRepositoryAdapter implements PlatformJournalRepositor
     }
 
     if (errors.length > 0) {
-      // Guaranteed to exist due to length > 0 check
-      // type-coverage:ignore-next-line - Array with length > 0 guarantees element at index 0
-      const firstError = errors[0]!;
+      // errors array is guaranteed to be non-empty here, so getFirstArrayElement is safe
+      const firstError = getFirstArrayElement(errors);
       return err(firstError);
     }
 
@@ -285,9 +285,12 @@ export class FoundryJournalRepositoryAdapter implements PlatformJournalRepositor
       return this.update(id, data);
     } else {
       // Create new - id needs to be added since CreateEntityData omits id
-      // For upsert, we need to provide id, so we cast to include it
-      // type-coverage:ignore-next-line - id is intentionally added for upsert operation
-      return this.create({ ...data, id } as CreateEntityData<JournalEntry>);
+      // For upsert, we need to provide id, so we use helper function to add it type-safely
+      const createData = createEntityDataWithId(data, id);
+      // Type assertion: createData is CreateEntityData<JournalEntry> & { id: string }
+      type CreateDataWithId = CreateEntityData<JournalEntry> & { id: string };
+      /* type-coverage:ignore-next-line -- Type narrowing: createEntityDataWithId guarantees CreateEntityData<JournalEntry> & { id: string } */
+      return this.create(createData as CreateDataWithId);
     }
   }
 
@@ -326,9 +329,8 @@ export class FoundryJournalRepositoryAdapter implements PlatformJournalRepositor
     }
 
     if (errors.length > 0) {
-      // Guaranteed to exist due to length > 0 check
-      // type-coverage:ignore-next-line - Array with length > 0 guarantees element at index 0
-      const firstError = errors[0]!;
+      // errors array is guaranteed to be non-empty here, so getFirstArrayElement is safe
+      const firstError = getFirstArrayElement(errors);
       return err(firstError);
     }
 

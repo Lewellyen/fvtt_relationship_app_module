@@ -1,9 +1,32 @@
-import type { WindowDefinition } from "@/domain/windows/types/window-definition.interface";
+import type {
+  WindowDefinition,
+  WindowPosition,
+} from "@/domain/windows/types/window-definition.interface";
 import type { IWindowController } from "@/domain/windows/ports/window-controller-port.interface";
 import type {
   ApplicationClass,
   ApplicationV2,
 } from "@/domain/windows/types/application-v2.interface";
+
+/**
+ * Helper function to build position object with only defined properties.
+ * Reduces branches in DEFAULT_OPTIONS construction for better testability.
+ *
+ * @internal Exported for testing purposes only
+ */
+export function buildPositionObject(
+  position: WindowPosition | undefined
+): Record<string, number> | undefined {
+  if (!position) return undefined;
+
+  const result: Record<string, number> = {};
+  if (position.top !== undefined) result.top = position.top;
+  if (position.left !== undefined) result.left = position.left;
+  if (position.width !== undefined) result.width = position.width;
+  if (position.height !== undefined) result.height = position.height;
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
 
 /**
  * FoundryApplicationWrapper - Dünne ApplicationV2-Wrapper-Klasse
@@ -38,6 +61,9 @@ export class FoundryApplicationWrapper {
     const handlebarsMixin =
       foundryApi.applications.api.HandlebarsApplicationMixin ?? ((cls: unknown) => cls);
 
+    // Build position object once to avoid duplicate calls and reduce branches
+    const positionObj = buildPositionObject(definition.position);
+
     const appClass = class extends handlebarsMixin(applicationBase) {
       static override DEFAULT_OPTIONS = {
         id: instanceId, // WICHTIG: instanceId, nicht definitionId!
@@ -48,46 +74,18 @@ export class FoundryApplicationWrapper {
           minimizable: definition.features?.minimizable ?? true,
           draggable: definition.features?.draggable ?? true,
         },
-        ...(definition.position && {
-          position: {
-            ...(definition.position.top !== undefined && { top: definition.position.top }),
-            ...(definition.position.left !== undefined && { left: definition.position.left }),
-            ...(definition.position.width !== undefined && { width: definition.position.width }),
-            ...(definition.position.height !== undefined && { height: definition.position.height }),
-          },
-        }),
+        ...(positionObj && { position: positionObj }),
       };
 
-      static template = '<div id="svelte-mount-point"></div>';
+      // Kein static template - wir rendern direkt in _renderFrame
+      // static template wird nicht verwendet, da _renderHTML "" zurückgibt
 
-      constructor(options?: {
-        id?: string;
-        uniqueId?: string;
-        classes?: string[];
-        tag?: string;
-        window?: {
-          frame?: boolean;
-          positioned?: boolean;
-          title?: string;
-          icon?: string | false;
-          controls?: unknown[] | boolean;
-          minimizable?: boolean;
-          resizable?: boolean;
-          contentTag?: string;
-          contentClasses?: string[];
-        };
-        actions?: unknown;
-        form?: unknown;
-        tabs?: unknown;
-        scrollY?: unknown[];
-        filters?: unknown;
-        dragDrop?: unknown[];
-        popOut?: boolean;
-        editable?: boolean;
-        closeOnSubmit?: boolean;
-        submitOnChange?: boolean;
-        submitOnClose?: boolean;
-      }) {
+      // Override title getter (wie in Referenz-Implementierung)
+      override get title(): string {
+        return definition.title ?? "";
+      }
+
+      constructor(...args: unknown[]) {
         // Type-safe cast: Foundry ApplicationV2 constructor accepts these options
         // The options type matches Foundry's ApplicationV2Options structure
         // We use a type assertion here because Foundry's ApplicationV2 constructor accepts
@@ -95,7 +93,7 @@ export class FoundryApplicationWrapper {
         // structure is compatible with the expected type
         // Using Record<string, unknown> instead of any for better type safety
         // type-coverage:ignore-next-line
-        super(options as Record<string, unknown>);
+        super(...(args as [Record<string, unknown>]));
         // Controller-Reference speichern
         const appInstance = this as ApplicationV2;
         controllerMap.set(appInstance, controller);
@@ -109,38 +107,71 @@ export class FoundryApplicationWrapper {
         }
       }
 
-      // Verwendet _onRender lifecycle method (Best Practice für ApplicationV2)
-      // Wird nach dem Rendering aufgerufen, wenn das HTML bereits im DOM ist
-      protected override async _onRender(
-        context: Record<string, unknown>,
-        options: Record<string, unknown>
-      ): Promise<void> {
-        // Type-safe cast: Foundry ApplicationV2._onRender accepts these parameters
-        // The context and options are runtime objects from Foundry's render system
-        // We use a type assertion here because Foundry's _onRender method accepts flexible
+      // Überschreibt _renderHTML um kein Handlebars-Template zu rendern
+      // (wie in SvelteApplicationMixin - gibt leeren String zurück)
+      protected override async _renderHTML(
+        _context: Record<string, unknown>,
+        _options: Record<string, unknown>
+      ): Promise<Record<string, HTMLElement>> {
+        // Type-safe cast: Foundry ApplicationV2._renderHTML accepts these parameters
+        // We use a type assertion here because Foundry's _renderHTML method accepts flexible
         // context and options objects that vary by application type, and our Record types
         // are compatible with the expected structure
         // Using Record<string, unknown> instead of any for better type safety
-        await super._onRender(
-          context as Record<string, unknown>,
-          options as Record<string, unknown>
-        );
+        // Leeres Objekt zurückgeben - kein Handlebars-Template wird gerendert
+        // Die Svelte-Komponente wird direkt in _renderFrame gemountet
+        return {};
+      }
 
+      // Verwendet _renderFrame lifecycle method (wie SvelteApplicationMixin)
+      // Wird während des Rendering-Prozesses aufgerufen und gibt den Frame zurück
+      // Dies ermöglicht es, die Svelte-Komponente in .window-content zu mounten
+      protected override async _renderFrame(
+        options: Record<string, unknown>
+      ): Promise<HTMLElement> {
+        // Type-safe cast: Foundry ApplicationV2._renderFrame accepts these parameters
+        // The options are runtime objects from Foundry's render system
+        // We use a type assertion here because Foundry's _renderFrame method accepts flexible
+        // options objects that vary by application type, and our Record type
+        // is compatible with the expected structure
+        // Using Record<string, unknown> instead of any for better type safety
+
+        // 1. Foundry's Standard-Rendering durchführen (erstellt Frame mit .window-content)
+        const frame = await super._renderFrame(options as Record<string, unknown>);
+
+        // 2. Target-Element finden (.window-content innerhalb des Frames)
+        // type-coverage:ignore-next-line
+        const hasFrame = (this as unknown as { hasFrame?: boolean }).hasFrame ?? true;
+        const target = hasFrame
+          ? (frame.querySelector(".window-content") as HTMLElement | null)
+          : (frame as HTMLElement);
+
+        if (!target) {
+          // Fallback: Wenn kein .window-content gefunden, Frame zurückgeben
+          return frame;
+        }
+
+        // 3. Target leeren und Mount-Point erstellen (wie in SvelteApplicationMixin)
+        target.innerHTML = '<div id="svelte-mount-point"></div>';
+
+        // 4. Controller holen
         const ctrl = controllerMap.get(this as ApplicationV2);
         const isMounted = mountedMap.get(this as ApplicationV2) ?? false;
-        // type-coverage:ignore-next-line
-        const element = (this as unknown as { element?: HTMLElement }).element;
 
-        if (ctrl && element) {
+        // 5. WindowController aufrufen für Mounting/Update
+        if (ctrl) {
           if (!isMounted) {
             // Erstes Render: Mount
-            await ctrl.onFoundryRender(element);
+            await ctrl.onFoundryRender(target);
             mountedMap.set(this as ApplicationV2, true);
           } else {
             // Weitere Renders: Update (kein Re-Mount)
-            await ctrl.onFoundryUpdate(element);
+            await ctrl.onFoundryUpdate(target);
           }
         }
+
+        // 6. Frame zurückgeben (wichtig für Foundry's Rendering-Pipeline)
+        return frame;
       }
 
       override async close(options?: {
@@ -159,7 +190,6 @@ export class FoundryApplicationWrapper {
       }
     };
 
-    // type-coverage:ignore-next-line
     return appClass as ApplicationClass;
   }
 }

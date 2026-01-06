@@ -20,6 +20,7 @@ import {
   remoteSyncGateToken,
   persistAdapterToken,
 } from "../tokens/window.tokens";
+import { castResolvedService } from "@/application/windows/utils/service-casts";
 
 /**
  * WindowFactory - Erstellt WindowController + Foundry-App aus WindowDefinition
@@ -38,7 +39,9 @@ export class WindowFactory implements IWindowFactory {
   ): Promise<import("@/domain/types/result").Result<WindowHandle, WindowError>> {
     // 1. Definition holen
     const definitionResult = this.registry.getDefinition(definitionId);
-    if (!definitionResult.ok) return err(definitionResult.error);
+    if (!definitionResult.ok) {
+      return err(definitionResult.error);
+    }
 
     let definition = definitionResult.value;
 
@@ -61,7 +64,9 @@ export class WindowFactory implements IWindowFactory {
       controller,
       instanceId
     );
-    if (!appClassResult.ok) return err(appClassResult.error);
+    if (!appClassResult.ok) {
+      return err(appClassResult.error);
+    }
 
     const appClass = appClassResult.value;
     const app = new appClass();
@@ -86,7 +91,7 @@ export class WindowFactory implements IWindowFactory {
       controller,
       definition: definition as Readonly<WindowDefinition>,
       async show() {
-        await app.render();
+        await app.render({ force: true });
         return ok(undefined);
       },
       async hide() {
@@ -118,34 +123,93 @@ export class WindowFactory implements IWindowFactory {
     definitionId: string,
     definition: WindowDefinition
   ): WindowController {
-    const registry = this.container.resolve(windowRegistryToken) as IWindowRegistry;
-    const stateStore = this.container.resolve(
-      stateStoreToken
-    ) as import("@/domain/windows/ports/state-store-port.interface").IStateStore;
-    const statePortFactory = this.container.resolve(
-      statePortFactoryToken
-    ) as import("@/application/windows/ports/state-port-factory-port.interface").IStatePortFactory;
-    const actionDispatcher = this.container.resolve(
-      actionDispatcherToken
-    ) as import("@/domain/windows/ports/action-dispatcher-port.interface").IActionDispatcher;
-    const rendererRegistry = this.container.resolve(
-      rendererRegistryToken
-    ) as import("@/domain/windows/ports/renderer-registry-port.interface").IRendererRegistry;
-    const bindingEngine = this.container.resolve(
-      bindingEngineToken
-    ) as import("@/domain/windows/ports/binding-engine-port.interface").IBindingEngine;
-    const viewModelBuilder = this.container.resolve(
-      viewModelBuilderToken
-    ) as import("@/domain/windows/ports/view-model-builder-port.interface").IViewModelBuilder;
-    const eventBus = this.container.resolve(
-      eventBusToken
-    ) as import("@/domain/windows/ports/event-bus-port.interface").IEventBus;
-    const remoteSyncGate = this.container.resolve(
-      remoteSyncGateToken
-    ) as import("@/domain/windows/ports/remote-sync-gate-port.interface").IRemoteSyncGate;
-    const persistAdapter = this.container.resolve(persistAdapterToken) as
-      | import("@/domain/windows/ports/persist-adapter-port.interface").IPersistAdapter
-      | undefined;
+    // Use resolveWithError() instead of resolve() to avoid API boundary violations
+    const registryResult = this.container.resolveWithError(windowRegistryToken);
+    if (!registryResult.ok) {
+      throw new Error(`Failed to resolve WindowRegistry: ${registryResult.error.message}`);
+    }
+    const registry = castResolvedService<IWindowRegistry>(registryResult.value);
+
+    const stateStoreResult = this.container.resolveWithError(stateStoreToken);
+    if (!stateStoreResult.ok) {
+      throw new Error(`Failed to resolve StateStore: ${stateStoreResult.error.message}`);
+    }
+    const stateStore = castResolvedService<
+      import("@/domain/windows/ports/state-store-port.interface").IStateStore
+    >(stateStoreResult.value);
+
+    const statePortFactoryResult = this.container.resolveWithError(statePortFactoryToken);
+    if (!statePortFactoryResult.ok) {
+      throw new Error(
+        `Failed to resolve StatePortFactory: ${statePortFactoryResult.error.message}`
+      );
+    }
+    const statePortFactory = castResolvedService<
+      import("@/application/windows/ports/state-port-factory-port.interface").IStatePortFactory
+    >(statePortFactoryResult.value);
+
+    const actionDispatcherResult = this.container.resolveWithError(actionDispatcherToken);
+    if (!actionDispatcherResult.ok) {
+      throw new Error(
+        `Failed to resolve ActionDispatcher: ${actionDispatcherResult.error.message}`
+      );
+    }
+    const actionDispatcher = castResolvedService<
+      import("@/domain/windows/ports/action-dispatcher-port.interface").IActionDispatcher
+    >(actionDispatcherResult.value);
+
+    const rendererRegistryResult = this.container.resolveWithError(rendererRegistryToken);
+    if (!rendererRegistryResult.ok) {
+      throw new Error(
+        `Failed to resolve RendererRegistry: ${rendererRegistryResult.error.message}`
+      );
+    }
+    const rendererRegistry = castResolvedService<
+      import("@/domain/windows/ports/renderer-registry-port.interface").IRendererRegistry
+    >(rendererRegistryResult.value);
+
+    const bindingEngineResult = this.container.resolveWithError(bindingEngineToken);
+    if (!bindingEngineResult.ok) {
+      throw new Error(`Failed to resolve BindingEngine: ${bindingEngineResult.error.message}`);
+    }
+    const bindingEngine = castResolvedService<
+      import("@/domain/windows/ports/binding-engine-port.interface").IBindingEngine
+    >(bindingEngineResult.value);
+
+    const viewModelBuilderResult = this.container.resolveWithError(viewModelBuilderToken);
+    if (!viewModelBuilderResult.ok) {
+      throw new Error(
+        `Failed to resolve ViewModelBuilder: ${viewModelBuilderResult.error.message}`
+      );
+    }
+    const viewModelBuilder = castResolvedService<
+      import("@/domain/windows/ports/view-model-builder-port.interface").IViewModelBuilder
+    >(viewModelBuilderResult.value);
+
+    const eventBusResult = this.container.resolveWithError(eventBusToken);
+    if (!eventBusResult.ok) {
+      throw new Error(`Failed to resolve EventBus: ${eventBusResult.error.message}`);
+    }
+    const eventBus = castResolvedService<
+      import("@/domain/windows/ports/event-bus-port.interface").IEventBus
+    >(eventBusResult.value);
+
+    const remoteSyncGateResult = this.container.resolveWithError(remoteSyncGateToken);
+    if (!remoteSyncGateResult.ok) {
+      throw new Error(`Failed to resolve RemoteSyncGate: ${remoteSyncGateResult.error.message}`);
+    }
+    const remoteSyncGate = castResolvedService<
+      import("@/domain/windows/ports/remote-sync-gate-port.interface").IRemoteSyncGate
+    >(remoteSyncGateResult.value);
+
+    const persistAdapterResult = this.container.resolveWithError(persistAdapterToken);
+    const persistAdapter = persistAdapterResult.ok
+      ? (castResolvedService<
+          import("@/domain/windows/ports/persist-adapter-port.interface").IPersistAdapter
+        >(persistAdapterResult.value) as
+          | import("@/domain/windows/ports/persist-adapter-port.interface").IPersistAdapter
+          | undefined)
+      : undefined;
 
     return new WindowController(
       instanceId,
@@ -160,7 +224,8 @@ export class WindowFactory implements IWindowFactory {
       viewModelBuilder,
       eventBus,
       remoteSyncGate,
-      persistAdapter
+      persistAdapter,
+      this.container // Pass container for action handlers
     );
   }
 }

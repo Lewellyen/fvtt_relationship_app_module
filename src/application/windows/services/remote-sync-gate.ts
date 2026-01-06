@@ -1,5 +1,6 @@
 import type { IRemoteSyncGate } from "@/domain/windows/ports/remote-sync-gate-port.interface";
 import type { PersistMeta } from "@/domain/windows/types/persist-config.interface";
+import { extractPersistMeta } from "../utils/window-state-casts";
 
 /**
  * RemoteSyncGate - Origin-Tracking für Persist (window-scoped, verhindert Ping-Pong)
@@ -23,9 +24,7 @@ export class RemoteSyncGate implements IRemoteSyncGate {
   }
 
   isFromWindow(options: Record<string, unknown> | undefined, instanceId: string): boolean {
-    if (!options) return false;
-    // type-coverage:ignore-next-line
-    const meta = options[this.OPT_KEY] as PersistMeta | undefined;
+    const meta = extractPersistMeta(options, this.OPT_KEY);
     // WICHTIG: Window-scoped, nicht Client-scoped!
     // Nur Updates vom gleichen Window werden ignoriert
     return meta?.originWindowInstanceId === instanceId;

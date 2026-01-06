@@ -2,7 +2,12 @@ import type { IPersistAdapter } from "@/domain/windows/ports/persist-adapter-por
 import type { PersistConfig, PersistMeta } from "@/domain/windows/types/persist-config.interface";
 import type { PersistError } from "@/domain/windows/types/errors/persist-error.interface";
 import { ok, err } from "@/domain/utils/result";
-import { castFoundryDocumentCollection } from "@/infrastructure/adapters/foundry/runtime-casts";
+import {
+  castFoundryDocumentCollection,
+  castFoundryDocumentWithUpdate,
+  castFoundryDocumentForFlag,
+  isRecord,
+} from "@/infrastructure/adapters/foundry/runtime-casts";
 
 /**
  * FlagsPersistAdapter - IPersistAdapter für Flags
@@ -51,13 +56,16 @@ export class FlagsPersistAdapter implements IPersistAdapter {
         });
       }
 
-      // Type-safe cast: Foundry documents have update method
-      // The collection returns documents with update/getFlag methods
-      // type-coverage:ignore-next-line
-      const documentWithUpdate = doc as {
-        id: string;
-        update: (changes: unknown, options?: unknown) => Promise<unknown>;
-      };
+      // Type-safe cast: Use runtime cast helper for Foundry documents with update method
+      const documentWithUpdateResult = castFoundryDocumentWithUpdate(doc);
+      if (!documentWithUpdateResult.ok) {
+        return err({
+          code: "OPERATION_FAILED",
+          message: `Document does not support update: ${documentWithUpdateResult.error.message}`,
+          cause: documentWithUpdateResult.error,
+        });
+      }
+      const documentWithUpdate = documentWithUpdateResult.value;
 
       // Foundry update: changes als erstes Argument, options als zweites
       const changes: Record<string, unknown> = {
@@ -69,7 +77,11 @@ export class FlagsPersistAdapter implements IPersistAdapter {
         windowFrameworkOrigin: meta, // Origin-Meta für Hook-Bridge
       };
 
-      await documentWithUpdate.update(changes, options);
+      // Foundry's update method accepts optional second parameter, but our type definition doesn't include it
+      // Cast to the actual Foundry signature
+      await (
+        documentWithUpdate.update as (changes: unknown, options?: unknown) => Promise<unknown>
+      )(changes, options);
 
       return ok(undefined);
     } catch (error) {
@@ -122,34 +134,35 @@ export class FlagsPersistAdapter implements IPersistAdapter {
         });
       }
 
-      // Type-safe cast: Foundry documents have getFlag method and flags property
-      // The collection returns documents with getFlag/flags methods
-      const documentWithFlags = doc as {
-        id: string;
-        getFlag?: (scope: string, key: string) => unknown;
-        flags?: Record<string, Record<string, unknown>>;
-      };
-
-      // Use getFlag method if available, otherwise access flags directly
+      // Type-safe cast: Use runtime cast helper for Foundry documents with flag methods
+      const documentResult = castFoundryDocumentForFlag(doc);
       let flags: Record<string, unknown> | undefined;
-      if (typeof documentWithFlags.getFlag === "function") {
+
+      if (documentResult.ok) {
+        // Use getFlag method if available
         try {
-          // type-coverage:ignore-next-line
-          flags = documentWithFlags.getFlag(config.namespace, config.key) as
-            | Record<string, unknown>
-            | undefined;
+          const flagValue = documentResult.value.getFlag(config.namespace, config.key);
+          if (isRecord(flagValue)) {
+            flags = flagValue;
+          }
         } catch {
           // Fallback if getFlag fails
           flags = undefined;
         }
       }
 
-      // Fallback: access flags directly
+      // Fallback: access flags directly from document
       if (!flags) {
-        const docFlags = documentWithFlags.flags?.[config.namespace];
-        // Foundry flags Type-Cast ist notwendig, da Foundry-Typen nicht vollständig verfügbar sind
-        // type-coverage:ignore-next-line
-        flags = docFlags?.[config.key] as Record<string, unknown> | undefined;
+        type DocumentWithFlags = { flags?: Record<string, Record<string, unknown>> };
+        /* type-coverage:ignore-next-line -- Runtime type check: doc validated as Foundry document with flags property */
+        const typedDoc = doc as DocumentWithFlags;
+        const docFlags = typedDoc.flags?.[config.namespace];
+        if (docFlags && config.key in docFlags) {
+          const flagValue = docFlags[config.key];
+          if (isRecord(flagValue)) {
+            flags = flagValue;
+          }
+        }
       }
 
       return ok(flags || {});
