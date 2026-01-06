@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.53.1] - 2026-01-06
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.53.0] - 2026-01-06
 ### Hinzugefügt
 - **Journal Overview Service und Window**: Neue Funktionalität zur Anzeige von Journal-Einträgen ([Details](src/application/services/JournalOverviewService.ts))

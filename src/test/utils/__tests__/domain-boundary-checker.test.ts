@@ -204,11 +204,37 @@ describe("Domain Boundary Checker", () => {
       const { violations } = await validateAllDomainBoundaries();
 
       if (violations.length > 0) {
+        // Verwende console.log statt console.error, damit es in CI-Logs besser sichtbar ist
+        console.log("\n❌ Domain boundary violations found:");
+        console.log(`Total violations: ${violations.length}\n`);
+
+        violations.forEach((v, index) => {
+          console.log(`[${index + 1}/${violations.length}] Violation:`);
+          console.log(`  File: ${v.file}`);
+          console.log(`  Import: ${v.import}`);
+          console.log(`  Message: ${v.message}`);
+          console.log("");
+        });
+
+        // Zusätzlich als Error ausgeben für bessere Sichtbarkeit in CI
         console.error("\n❌ Domain boundary violations found:");
         violations.forEach((v) => {
           console.error(`  ${v.file}: ${v.message}`);
           console.error(`    Import: ${v.import}`);
         });
+      }
+
+      // Erstelle detaillierte Fehlermeldung für bessere CI-Sichtbarkeit
+      if (violations.length > 0) {
+        const violationDetails = violations
+          .map((v, index) => {
+            return `[${index + 1}] ${v.file}\n   Import: ${v.import}\n   Error: ${v.message}`;
+          })
+          .join("\n\n");
+
+        throw new Error(
+          `Found ${violations.length} domain boundary violation(s):\n\n${violationDetails}`
+        );
       }
 
       expect(violations).toHaveLength(0);
