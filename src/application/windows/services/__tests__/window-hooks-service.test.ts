@@ -1,97 +1,48 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { WindowHooksService } from "../window-hooks-service";
-import type { IWindowRegistry } from "@/domain/windows/ports/window-registry-port.interface";
-import type { IRemoteSyncGate } from "@/domain/windows/ports/remote-sync-gate-port.interface";
-import type { ISharedDocumentCache } from "@/application/windows/ports/shared-document-cache-port.interface";
-import { WindowHooksBridge } from "@/infrastructure/windows/adapters/foundry/hooks/window-hooks";
+import type { IWindowHooksBridge } from "@/application/windows/ports/window-hooks-bridge-port.interface";
 
 describe("WindowHooksService", () => {
   let service: WindowHooksService;
-  let mockRegistry: IWindowRegistry;
-  let mockRemoteSyncGate: IRemoteSyncGate;
-  let mockSharedDocumentCache: ISharedDocumentCache;
+  let mockBridge: IWindowHooksBridge;
 
   beforeEach(() => {
-    mockRegistry = {
-      getDefinition: vi.fn(),
-      registerInstance: vi.fn(),
-      registerDefinition: vi.fn(),
-      getInstance: vi.fn(),
-      unregisterInstance: vi.fn(),
-      listInstances: vi.fn(),
-      listInstancesByDefinition: vi.fn(),
-    } as unknown as IWindowRegistry;
-
-    mockRemoteSyncGate = {
-      makePersistMeta: vi.fn(),
-      isFromWindow: vi.fn(),
-      getClientId: vi.fn(),
-    } as unknown as IRemoteSyncGate;
-
-    mockSharedDocumentCache = {
-      patchActor: vi.fn(),
-      patchItem: vi.fn(),
-      getActor: vi.fn(),
-      getItem: vi.fn(),
-      getItemsByActorId: vi.fn(),
-    } as unknown as ISharedDocumentCache;
-
-    service = new WindowHooksService(mockRegistry, mockRemoteSyncGate, mockSharedDocumentCache);
-
-    // Mock Hooks global
-    (globalThis as { Hooks?: { on: (name: string, callback: unknown) => number } }).Hooks = {
-      on: vi.fn().mockReturnValue(1),
+    mockBridge = {
+      register: vi.fn(),
+      unregister: vi.fn(),
     };
+
+    service = new WindowHooksService(mockBridge);
   });
 
   describe("register", () => {
-    it("should register WindowHooksBridge on first call", () => {
+    it("should delegate to bridge.register()", () => {
       service.register();
 
-      // Bridge should be created
-      // @ts-expect-error - accessing private member for test
-      expect(service.bridge).toBeInstanceOf(WindowHooksBridge);
+      expect(mockBridge.register).toHaveBeenCalledOnce();
     });
 
-    it("should not register again if already registered", () => {
-      // First registration
+    it("should call bridge.register() multiple times if called multiple times", () => {
       service.register();
-      // @ts-expect-error - accessing private member for test
-      const firstBridge = service.bridge;
-
-      // Second registration - should return early (line 43)
+      service.register();
       service.register();
 
-      // Bridge should be the same instance (not recreated)
-      // @ts-expect-error - accessing private member for test
-      expect(service.bridge).toBe(firstBridge);
+      expect(mockBridge.register).toHaveBeenCalledTimes(3);
     });
   });
 
   describe("unregister", () => {
-    it("should set bridge to null", () => {
-      // First register
-      service.register();
-      // @ts-expect-error - accessing private member for test
-      expect(service.bridge).not.toBeNull();
-
-      // Unregister
+    it("should delegate to bridge.unregister()", () => {
       service.unregister();
 
-      // Bridge should be null (line 60)
-      // @ts-expect-error - accessing private member for test
-      expect(service.bridge).toBeNull();
+      expect(mockBridge.unregister).toHaveBeenCalledOnce();
     });
 
-    it("should handle unregister when bridge is already null", () => {
-      // Unregister without registering first
-      expect(() => {
-        service.unregister();
-      }).not.toThrow();
+    it("should handle multiple unregister calls", () => {
+      service.unregister();
+      service.unregister();
 
-      // Bridge should be null
-      // @ts-expect-error - accessing private member for test
-      expect(service.bridge).toBeNull();
+      expect(mockBridge.unregister).toHaveBeenCalledTimes(2);
     });
   });
 });

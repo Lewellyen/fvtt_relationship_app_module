@@ -1,6 +1,7 @@
 import type { IWindowRegistry } from "@/domain/windows/ports/window-registry-port.interface";
 import type { IRemoteSyncGate } from "@/domain/windows/ports/remote-sync-gate-port.interface";
 import type { ISharedDocumentCache } from "@/application/windows/ports/shared-document-cache-port.interface";
+import type { IWindowHooksBridge } from "@/application/windows/ports/window-hooks-bridge-port.interface";
 import type { WindowDefinition } from "@/domain/windows/types/window-definition.interface";
 import type { FoundryHookCallback } from "@/infrastructure/adapters/foundry/types";
 
@@ -9,7 +10,7 @@ import type { FoundryHookCallback } from "@/infrastructure/adapters/foundry/type
  *
  * Registriert Foundry Hooks und delegiert an WindowController für Remote-Sync.
  */
-export class WindowHooksBridge {
+export class WindowHooksBridge implements IWindowHooksBridge {
   constructor(
     private readonly registry: IWindowRegistry,
     private readonly remoteSyncGate: IRemoteSyncGate,
@@ -248,6 +249,16 @@ export class WindowHooksBridge {
       };
       this.sharedDocumentCache.patchItem(document.id, itemSnapshot);
     }
+  }
+
+  /**
+   * Entfernt die Hook-Registrierungen.
+   * Sollte bei Shutdown aufgerufen werden.
+   */
+  unregister(): void {
+    // TODO: Implement unregistration if needed
+    // Currently, Foundry hooks are registered permanently.
+    // If unregistration is needed, we would need to store hook IDs and call Hooks.off()
   }
 }
 

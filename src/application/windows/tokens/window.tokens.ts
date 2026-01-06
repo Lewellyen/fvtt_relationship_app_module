@@ -13,6 +13,7 @@ import type { IPersistAdapter } from "@/domain/windows/ports/persist-adapter-por
 import type { IFoundryWindowAdapter } from "@/domain/windows/ports/foundry-window-adapter.interface";
 import type { IStatePortFactory } from "../ports/state-port-factory-port.interface";
 import type { ISharedDocumentCache } from "../ports/shared-document-cache-port.interface";
+import type { IWindowHooksBridge } from "../ports/window-hooks-bridge-port.interface";
 
 /**
  * Window Framework DI Tokens
@@ -38,6 +39,8 @@ export const windowPositionManagerToken =
   createInjectionToken<
     import("@/domain/windows/ports/window-position-manager-port.interface").IWindowPositionManager
   >("WindowPositionManager");
+
+export const windowHooksBridgeToken = createInjectionToken<IWindowHooksBridge>("WindowHooksBridge");
 
 // WindowHooksService Token
 // Type import vermeidet zirkuläre Abhängigkeit (window-hooks-service.ts importiert diese Tokens)

@@ -1310,4 +1310,21 @@ describe("WindowHooksBridge", () => {
       expect(mockSharedDocumentCache.patchItem).not.toHaveBeenCalled();
     });
   });
+
+  describe("unregister", () => {
+    it("should not throw when unregister is called", () => {
+      bridge.register();
+      expect(() => {
+        bridge.unregister();
+      }).not.toThrow();
+    });
+
+    it("should allow multiple unregister calls", () => {
+      bridge.register();
+      bridge.unregister();
+      expect(() => {
+        bridge.unregister();
+      }).not.toThrow();
+    });
+  });
 });

@@ -188,7 +188,7 @@ describe("ApiSafeToken", () => {
 
       const mockApi = {
         tokens: { notificationCenterToken: apiToken },
-        resolve: container.resolve.bind(container) as <T>(token: symbol) => T, // eslint-disable-line @typescript-eslint/no-deprecated
+        resolve: container.resolve.bind(container) as <T>(token: symbol) => T,
       };
 
       const resolvedNotifications = mockApi.resolve<typeof notifications>(

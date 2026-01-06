@@ -97,8 +97,11 @@ export function checkDomainBoundary(
     return { valid: true };
   }
 
+  // Normalisiere filePath für Windows/Linux Kompatibilität
+  const normalizedFilePath = filePath.replace(/\\/g, "/");
+
   // Domain Layer Regeln
-  if (filePath.includes("/domain/")) {
+  if (normalizedFilePath.includes("/domain/")) {
     if (
       normalizedImportPath.includes("/application/") ||
       normalizedImportPath.includes("/infrastructure/") ||
@@ -106,17 +109,17 @@ export function checkDomainBoundary(
     ) {
       return {
         valid: false,
-        violation: `Domain Layer (${filePath}) darf nicht von ${importPath} (→ ${normalizedImportPath}) importieren (Clean Architecture Verletzung)`,
+        violation: `Domain Layer (${normalizedFilePath}) darf nicht von ${importPath} (→ ${normalizedImportPath}) importieren (Clean Architecture Verletzung)`,
       };
     }
   }
 
   // Application Layer Regeln
-  if (filePath.includes("/application/")) {
+  if (normalizedFilePath.includes("/application/")) {
     if (normalizedImportPath.includes("/framework/")) {
       return {
         valid: false,
-        violation: `Application Layer (${filePath}) darf nicht von Framework Layer (${importPath} → ${normalizedImportPath}) importieren (Clean Architecture Verletzung)`,
+        violation: `Application Layer (${normalizedFilePath}) darf nicht von Framework Layer (${importPath} → ${normalizedImportPath}) importieren (Clean Architecture Verletzung)`,
       };
     }
     // Infrastructure nur über Port-Interfaces und Tokens erlauben
@@ -129,18 +132,18 @@ export function checkDomainBoundary(
       if (!isPortInterface) {
         return {
           valid: false,
-          violation: `Application Layer (${filePath}) darf nur Port-Interfaces und Tokens von Infrastructure importieren, nicht: ${importPath} (→ ${normalizedImportPath})`,
+          violation: `Application Layer (${normalizedFilePath}) darf nur Port-Interfaces und Tokens von Infrastructure importieren, nicht: ${importPath} (→ ${normalizedImportPath})`,
         };
       }
     }
   }
 
   // Infrastructure Layer Regeln
-  if (filePath.includes("/infrastructure/")) {
+  if (normalizedFilePath.includes("/infrastructure/")) {
     if (normalizedImportPath.includes("/framework/")) {
       return {
         valid: false,
-        violation: `Infrastructure Layer (${filePath}) darf nicht von Framework Layer (${importPath} → ${normalizedImportPath}) importieren (Clean Architecture Verletzung)`,
+        violation: `Infrastructure Layer (${normalizedFilePath}) darf nicht von Framework Layer (${importPath} → ${normalizedImportPath}) importieren (Clean Architecture Verletzung)`,
       };
     }
   }

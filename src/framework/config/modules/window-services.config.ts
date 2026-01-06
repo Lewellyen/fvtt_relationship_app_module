@@ -39,8 +39,10 @@ import { CompositePersistAdapter } from "@/infrastructure/windows/adapters/persi
 import { WindowFactory } from "@/application/windows/services/window-factory";
 import { WindowHooksService } from "@/application/windows/services/window-hooks-service";
 import { WindowPositionManager } from "@/application/windows/services/window-position-manager";
+import { WindowHooksBridge } from "@/infrastructure/windows/adapters/foundry/hooks/window-hooks";
 import {
   windowHooksServiceToken,
+  windowHooksBridgeToken,
   windowPositionManagerToken,
 } from "@/application/windows/tokens/window.tokens";
 import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
@@ -234,7 +236,17 @@ export function registerWindowServices(container: ServiceContainer): Result<void
     );
   }
 
-  // 8. Register WindowHooksService
+  // 8. Register WindowHooksBridge (must be registered before WindowHooksService)
+  const windowHooksBridgeResult = container.registerClass(
+    windowHooksBridgeToken,
+    WindowHooksBridge,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(windowHooksBridgeResult)) {
+    return err(`Failed to register WindowHooksBridge: ${windowHooksBridgeResult.error.message}`);
+  }
+
+  // 9. Register WindowHooksService (depends on WindowHooksBridge)
   const windowHooksServiceResult = container.registerClass(
     windowHooksServiceToken,
     WindowHooksService,

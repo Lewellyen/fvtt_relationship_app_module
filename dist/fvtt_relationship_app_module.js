@@ -13894,6 +13894,7 @@ const foundryWindowAdapterToken = createInjectionToken("FoundryWindowAdapter");
 const statePortFactoryToken = createInjectionToken("StatePortFactory");
 const sharedDocumentCacheToken = createInjectionToken("SharedDocumentCache");
 const windowPositionManagerToken = createInjectionToken("WindowPositionManager");
+const windowHooksBridgeToken = createInjectionToken("WindowHooksBridge");
 const windowHooksServiceToken = createInjectionToken("WindowHooksService");
 const _EventsBootstrapper = class _EventsBootstrapper {
   /**
@@ -28023,14 +28024,17 @@ function assign_locations(node, filename, locations) {
   }
 }
 __name(assign_locations, "assign_locations");
-function hmr(original, get_source) {
+function hmr(fn) {
+  const current = source(fn);
   function wrapper(anchor, props) {
+    let component2 = {};
     let instance2 = {};
     let effect2;
     let ran = false;
     block(() => {
-      const source2 = get_source();
-      const component2 = get$1(source2);
+      if (component2 === (component2 = get$1(current))) {
+        return;
+      }
       if (effect2) {
         for (var k in instance2) delete instance2[k];
         destroy_effect(effect2);
@@ -28054,14 +28058,14 @@ function hmr(original, get_source) {
     return instance2;
   }
   __name(wrapper, "wrapper");
-  wrapper[FILENAME] = original[FILENAME];
+  wrapper[FILENAME] = fn[FILENAME];
   wrapper[HMR] = {
-    // When we accept an update, we set the original source to the new component
-    original,
-    // The `get_source` parameter reads `wrapper[HMR].source`, but in the `accept`
-    // function we always replace it with `previous[HMR].source`, which in practice
-    // means we only ever update the original
-    source: source(original)
+    fn,
+    current,
+    update: /* @__PURE__ */ __name((incoming) => {
+      set(wrapper[HMR].current, incoming[HMR].fn);
+      incoming[HMR].current = wrapper[HMR].current;
+    }, "update")
   };
   return wrapper;
 }
@@ -31902,7 +31906,7 @@ function get_custom_elements_slots(element2) {
   return result;
 }
 __name(get_custom_elements_slots, "get_custom_elements_slots");
-function create_custom_element(Component, props_definition, slots, exports, use_shadow_dom, extend) {
+function create_custom_element(Component, props_definition, slots, exports$1, use_shadow_dom, extend) {
   var _a2;
   let Class = (_a2 = class extends SvelteElement {
     constructor() {
@@ -31935,7 +31939,7 @@ function create_custom_element(Component, props_definition, slots, exports, use_
       }
     });
   });
-  exports.forEach((property) => {
+  exports$1.forEach((property) => {
     define_property(Class.prototype, property, {
       get() {
         return this.$$c?.[property];
@@ -32788,6 +32792,86 @@ const _WindowFactory = class _WindowFactory {
 };
 __name(_WindowFactory, "WindowFactory");
 let WindowFactory = _WindowFactory;
+const _WindowHooksService = class _WindowHooksService {
+  constructor(bridge) {
+    this.bridge = bridge;
+  }
+  /**
+   * Registriert die WindowHooksBridge.
+   * Muss nach erfolgreichem Bootstrap aufgerufen werden.
+   */
+  register() {
+    this.bridge.register();
+  }
+  /**
+   * Entfernt die Hook-Registrierungen.
+   * Sollte bei Shutdown aufgerufen werden.
+   */
+  unregister() {
+    this.bridge.unregister();
+  }
+};
+__name(_WindowHooksService, "WindowHooksService");
+_WindowHooksService.dependencies = [windowHooksBridgeToken];
+let WindowHooksService = _WindowHooksService;
+const _WindowPositionManager = class _WindowPositionManager {
+  constructor() {
+    this.STORAGE_KEY_PREFIX = "windowPosition:";
+  }
+  loadPosition(instanceId) {
+    try {
+      const key2 = this.getStorageKey(instanceId);
+      const stored = localStorage.getItem(key2);
+      if (!stored) {
+        return ok(void 0);
+      }
+      const position = JSON.parse(stored);
+      return ok(position);
+    } catch (error) {
+      return err({
+        code: "PositionLoadFailed",
+        message: `Failed to load position for ${instanceId}: ${String(error)}`
+      });
+    }
+  }
+  savePosition(instanceId, position) {
+    try {
+      const key2 = this.getStorageKey(instanceId);
+      localStorage.setItem(key2, JSON.stringify(position));
+      return ok(void 0);
+    } catch (error) {
+      return err({
+        code: "PositionSaveFailed",
+        message: `Failed to save position for ${instanceId}: ${String(error)}`
+      });
+    }
+  }
+  getEffectivePosition(instanceId, initialPosition) {
+    const savedResult = this.loadPosition(instanceId);
+    if (!savedResult.ok) {
+      return err(savedResult.error);
+    }
+    const saved = savedResult.value;
+    if (!saved && !initialPosition) {
+      return ok(void 0);
+    }
+    if (!saved) {
+      return ok(initialPosition);
+    }
+    if (!initialPosition) {
+      return ok(saved);
+    }
+    return ok({
+      ...initialPosition,
+      ...saved
+    });
+  }
+  getStorageKey(instanceId) {
+    return `${this.STORAGE_KEY_PREFIX}${instanceId}`;
+  }
+};
+__name(_WindowPositionManager, "WindowPositionManager");
+let WindowPositionManager = _WindowPositionManager;
 const _WindowHooksBridge = class _WindowHooksBridge {
   constructor(registry, remoteSyncGate, sharedDocumentCache) {
     this.registry = registry;
@@ -32933,104 +33017,15 @@ const _WindowHooksBridge = class _WindowHooksBridge {
       this.sharedDocumentCache.patchItem(document2.id, itemSnapshot);
     }
   }
-};
-__name(_WindowHooksBridge, "WindowHooksBridge");
-let WindowHooksBridge = _WindowHooksBridge;
-const _WindowHooksService = class _WindowHooksService {
-  constructor(registry, remoteSyncGate, sharedDocumentCache) {
-    this.registry = registry;
-    this.remoteSyncGate = remoteSyncGate;
-    this.sharedDocumentCache = sharedDocumentCache;
-    this.bridge = null;
-  }
-  /**
-   * Registriert die WindowHooksBridge.
-   * Muss nach erfolgreichem Bootstrap aufgerufen werden.
-   */
-  register() {
-    if (this.bridge) {
-      return;
-    }
-    this.bridge = new WindowHooksBridge(
-      this.registry,
-      this.remoteSyncGate,
-      this.sharedDocumentCache
-    );
-    this.bridge.register();
-  }
   /**
    * Entfernt die Hook-Registrierungen.
    * Sollte bei Shutdown aufgerufen werden.
    */
   unregister() {
-    this.bridge = null;
   }
 };
-__name(_WindowHooksService, "WindowHooksService");
-_WindowHooksService.dependencies = [
-  windowRegistryToken,
-  remoteSyncGateToken,
-  sharedDocumentCacheToken
-];
-let WindowHooksService = _WindowHooksService;
-const _WindowPositionManager = class _WindowPositionManager {
-  constructor() {
-    this.STORAGE_KEY_PREFIX = "windowPosition:";
-  }
-  loadPosition(instanceId) {
-    try {
-      const key2 = this.getStorageKey(instanceId);
-      const stored = localStorage.getItem(key2);
-      if (!stored) {
-        return ok(void 0);
-      }
-      const position = JSON.parse(stored);
-      return ok(position);
-    } catch (error) {
-      return err({
-        code: "PositionLoadFailed",
-        message: `Failed to load position for ${instanceId}: ${String(error)}`
-      });
-    }
-  }
-  savePosition(instanceId, position) {
-    try {
-      const key2 = this.getStorageKey(instanceId);
-      localStorage.setItem(key2, JSON.stringify(position));
-      return ok(void 0);
-    } catch (error) {
-      return err({
-        code: "PositionSaveFailed",
-        message: `Failed to save position for ${instanceId}: ${String(error)}`
-      });
-    }
-  }
-  getEffectivePosition(instanceId, initialPosition) {
-    const savedResult = this.loadPosition(instanceId);
-    if (!savedResult.ok) {
-      return err(savedResult.error);
-    }
-    const saved = savedResult.value;
-    if (!saved && !initialPosition) {
-      return ok(void 0);
-    }
-    if (!saved) {
-      return ok(initialPosition);
-    }
-    if (!initialPosition) {
-      return ok(saved);
-    }
-    return ok({
-      ...initialPosition,
-      ...saved
-    });
-  }
-  getStorageKey(instanceId) {
-    return `${this.STORAGE_KEY_PREFIX}${instanceId}`;
-  }
-};
-__name(_WindowPositionManager, "WindowPositionManager");
-let WindowPositionManager = _WindowPositionManager;
+__name(_WindowHooksBridge, "WindowHooksBridge");
+let WindowHooksBridge = _WindowHooksBridge;
 function registerWindowServices(container) {
   const eventBusResult = container.registerClass(
     eventBusToken,
@@ -33164,6 +33159,14 @@ function registerWindowServices(container) {
       `Failed to register WindowPositionManager: ${windowPositionManagerResult.error.message}`
     );
   }
+  const windowHooksBridgeResult = container.registerClass(
+    windowHooksBridgeToken,
+    WindowHooksBridge,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(windowHooksBridgeResult)) {
+    return err(`Failed to register WindowHooksBridge: ${windowHooksBridgeResult.error.message}`);
+  }
   const windowHooksServiceResult = container.registerClass(
     windowHooksServiceToken,
     WindowHooksService,
@@ -33275,7 +33278,7 @@ function createJournalOverviewWindowDefinition(component2) {
   };
 }
 __name(createJournalOverviewWindowDefinition, "createJournalOverviewWindowDefinition");
-const VERSION = "5.46.0";
+const VERSION = "5.46.1";
 const PUBLIC_VERSION = "5";
 if (typeof window !== "undefined") {
   ((_d = window.__svelte ?? (window.__svelte = {})).v ?? (_d.v = /* @__PURE__ */ new Set())).add(PUBLIC_VERSION);
