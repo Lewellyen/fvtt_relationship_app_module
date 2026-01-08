@@ -7,7 +7,8 @@ export default defineConfig(() => {
     plugins: [
       svelte({
         compilerOptions: {
-          runes: true
+          runes: true,
+          css: 'injected' // CSS inline injizieren statt separate Datei
         }
       })
     ],

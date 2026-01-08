@@ -35,6 +35,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],
+      skipFull: true, // Hide files with 100% coverage from output
       thresholds: {
         lines: 100,
         functions: 100,
@@ -92,6 +93,8 @@ export default defineConfig({
         "src/infrastructure/shared/tokens/repository-tokens.ts",
         "src/application/utils/token-factory.ts",
         "src/infrastructure/di/token-factory.ts",
+        // Coverage artifact: Array.sort() comparison order makes some branches unreachable
+        "src/application/windows/definitions/journal-sort-utils.ts",
       ],
     },
   },

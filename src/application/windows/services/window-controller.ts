@@ -68,8 +68,9 @@ export class WindowController implements IWindowController {
   }
 
   get state(): Readonly<Record<string, unknown>> {
-    const result = this.stateStore.getAll(this.instanceId);
-    return result.ok ? result.value : {};
+    // Use statePort.get() to get the current state instead of stateStore
+    // statePort is the source of truth and is always up-to-date
+    return this.statePort.get();
   }
 
   async onFoundryRender(
@@ -86,11 +87,22 @@ export class WindowController implements IWindowController {
     const currentState = this.stateStore.getAll(this.instanceId);
     if (currentState.ok && Object.keys(currentState.value).length === 0) {
       // Initialize with default state if empty
-      this.statePort.patch({
+      const defaultState: Record<string, unknown> = {
         journals: [],
         isLoading: false,
         error: null,
-      });
+      };
+
+      // For journal-overview window, add filter/sort state
+      if (this.definitionId === "journal-overview") {
+        defaultState.sortColumn = null;
+        defaultState.sortDirection = "asc";
+        defaultState.columnFilters = {};
+        defaultState.globalSearch = "";
+        defaultState.filteredJournals = [];
+      }
+
+      this.statePort.patch(defaultState);
     }
 
     // 1. Bindings initialisieren
@@ -246,7 +258,8 @@ export class WindowController implements IWindowController {
   async dispatchAction(
     actionId: string,
     controlId?: string,
-    event?: Event
+    event?: Event,
+    additionalMetadata?: Record<string, unknown>
   ): Promise<import("@/domain/types/result").Result<void, WindowError>> {
     const context: ActionContext = {
       windowInstanceId: this.instanceId,
@@ -256,11 +269,14 @@ export class WindowController implements IWindowController {
       metadata: {
         controller: this,
         ...(this.container !== undefined && { container: this.container }),
+        ...(additionalMetadata !== undefined && additionalMetadata),
       },
     };
 
     const result = await this.actionDispatcher.dispatch(actionId, context);
-    if (!result.ok) return err(result.error);
+    if (!result.ok) {
+      return err(result.error);
+    }
 
     return ok(undefined);
   }
@@ -331,6 +347,36 @@ export class WindowController implements IWindowController {
     const actions: Record<string, () => void> = {};
 
     for (const actionDef of this.definition.actions || []) {
+      // Special handling for journal-overview window actions with parameters
+      if (this.definitionId === "journal-overview") {
+        if (actionDef.id === "toggleJournalVisibility") {
+          // Create action that accepts journalId parameter
+          (actions as Record<string, unknown>)[actionDef.id] = (journalId: string) => {
+            this.dispatchAction(actionDef.id, undefined, undefined, { journalId });
+          };
+          continue;
+        } else if (actionDef.id === "setSort") {
+          // Create action that accepts column parameter
+          (actions as Record<string, unknown>)[actionDef.id] = (column: string) => {
+            this.dispatchAction(actionDef.id, undefined, undefined, { column });
+          };
+          continue;
+        } else if (actionDef.id === "setColumnFilter") {
+          // Create action that accepts column and value parameters
+          (actions as Record<string, unknown>)[actionDef.id] = (column: string, value: string) => {
+            this.dispatchAction(actionDef.id, undefined, undefined, { column, value });
+          };
+          continue;
+        } else if (actionDef.id === "setGlobalSearch") {
+          // Create action that accepts value parameter
+          (actions as Record<string, unknown>)[actionDef.id] = (value: string) => {
+            this.dispatchAction(actionDef.id, undefined, undefined, { value });
+          };
+          continue;
+        }
+      }
+
+      // Default: parameterless action
       actions[actionDef.id] = () => {
         this.dispatchAction(actionDef.id);
       };

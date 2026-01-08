@@ -32427,8 +32427,7 @@ const _WindowController = class _WindowController {
     this.statePort = this.createStatePort();
   }
   get state() {
-    const result = this.stateStore.getAll(this.instanceId);
-    return result.ok ? result.value : {};
+    return this.statePort.get();
   }
   async onFoundryRender(element2) {
     if (this.isMounted) {
@@ -32437,11 +32436,19 @@ const _WindowController = class _WindowController {
     this.element = element2;
     const currentState = this.stateStore.getAll(this.instanceId);
     if (currentState.ok && Object.keys(currentState.value).length === 0) {
-      this.statePort.patch({
+      const defaultState = {
         journals: [],
         isLoading: false,
         error: null
-      });
+      };
+      if (this.definitionId === "journal-overview") {
+        defaultState.sortColumn = null;
+        defaultState.sortDirection = "asc";
+        defaultState.columnFilters = {};
+        defaultState.globalSearch = "";
+        defaultState.filteredJournals = [];
+      }
+      this.statePort.patch(defaultState);
     }
     const bindResult = this.bindingEngine.initialize(this.definition, this.instanceId);
     if (!bindResult.ok) return err(bindResult.error);
@@ -32534,7 +32541,7 @@ const _WindowController = class _WindowController {
     }
     return ok(void 0);
   }
-  async dispatchAction(actionId, controlId, event2) {
+  async dispatchAction(actionId, controlId, event2, additionalMetadata) {
     const context = {
       windowInstanceId: this.instanceId,
       ...controlId !== void 0 && { controlId },
@@ -32542,11 +32549,14 @@ const _WindowController = class _WindowController {
       ...event2 !== void 0 && { event: event2 },
       metadata: {
         controller: this,
-        ...this.container !== void 0 && { container: this.container }
+        ...this.container !== void 0 && { container: this.container },
+        ...additionalMetadata !== void 0 && additionalMetadata
       }
     };
     const result = await this.actionDispatcher.dispatch(actionId, context);
-    if (!result.ok) return err(result.error);
+    if (!result.ok) {
+      return err(result.error);
+    }
     return ok(void 0);
   }
   async persist(meta) {
@@ -32597,6 +32607,29 @@ const _WindowController = class _WindowController {
   createActions() {
     const actions = {};
     for (const actionDef of this.definition.actions || []) {
+      if (this.definitionId === "journal-overview") {
+        if (actionDef.id === "toggleJournalVisibility") {
+          actions[actionDef.id] = (journalId) => {
+            this.dispatchAction(actionDef.id, void 0, void 0, { journalId });
+          };
+          continue;
+        } else if (actionDef.id === "setSort") {
+          actions[actionDef.id] = (column) => {
+            this.dispatchAction(actionDef.id, void 0, void 0, { column });
+          };
+          continue;
+        } else if (actionDef.id === "setColumnFilter") {
+          actions[actionDef.id] = (column, value2) => {
+            this.dispatchAction(actionDef.id, void 0, void 0, { column, value: value2 });
+          };
+          continue;
+        } else if (actionDef.id === "setGlobalSearch") {
+          actions[actionDef.id] = (value2) => {
+            this.dispatchAction(actionDef.id, void 0, void 0, { value: value2 });
+          };
+          continue;
+        }
+      }
       actions[actionDef.id] = () => {
         this.dispatchAction(actionDef.id);
       };
@@ -33192,6 +33225,37 @@ function getContainerFromContext(context) {
   return context.metadata?.container;
 }
 __name(getContainerFromContext, "getContainerFromContext");
+function createJournalSortComparator(sortColumn, sortDirection) {
+  return (a, b) => {
+    let aVal;
+    let bVal;
+    if (sortColumn === "name") {
+      aVal = (a.name || a.id).toLowerCase();
+      bVal = (b.name || b.id).toLowerCase();
+    } else if (sortColumn === "status") {
+      aVal = a.isHidden ? 1 : 0;
+      bVal = b.isHidden ? 1 : 0;
+    } else {
+      return 0;
+    }
+    if (aVal < bVal) {
+      if (sortDirection === "asc") {
+        return -1;
+      } else {
+        return 1;
+      }
+    }
+    if (aVal > bVal) {
+      if (sortDirection === "asc") {
+        return 1;
+      } else {
+        return -1;
+      }
+    }
+    return 0;
+  };
+}
+__name(createJournalSortComparator, "createJournalSortComparator");
 function createJournalOverviewWindowDefinition(component2) {
   return {
     definitionId: "journal-overview",
@@ -33262,8 +33326,333 @@ function createJournalOverviewWindowDefinition(component2) {
             await controller.updateStateLocal({
               isLoading: false,
               error: null,
+              journals: result.value,
+              sortColumn: null,
+              sortDirection: "asc",
+              columnFilters: {},
+              globalSearch: ""
+            });
+            await controller.dispatchAction("applyFilters");
+            return ok(void 0);
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            return err({
+              code: "UnexpectedError",
+              message: errorMessage
+            });
+          }
+        }, "handler")
+      },
+      {
+        id: "toggleJournalVisibility",
+        handler: /* @__PURE__ */ __name(async (context) => {
+          try {
+            const controller = getControllerFromContext(context);
+            const container = getContainerFromContext(context);
+            if (!controller || !container) {
+              return err({
+                code: "InvalidContext",
+                message: "Controller or container not found in context"
+              });
+            }
+            const journalId = context.metadata && typeof context.metadata.journalId === "string" ? context.metadata.journalId : void 0;
+            if (!journalId) {
+              return err({
+                code: "InvalidParameter",
+                message: "journalId not provided in metadata"
+              });
+            }
+            const currentState = controller.state;
+            const journals = Array.isArray(currentState.journals) ? currentState.journals : [];
+            const journal = journals.find((j) => j.id === journalId);
+            if (!journal) {
+              return err({
+                code: "JournalNotFound",
+                message: `Journal ${journalId} not found`
+              });
+            }
+            const repoResult = container.resolveWithError(platformJournalRepositoryToken);
+            if (!repoResult.ok) {
+              return err({
+                code: "ServiceNotFound",
+                message: `Failed to resolve PlatformJournalRepository: ${repoResult.error.message}`
+              });
+            }
+            const repository = castResolvedService(repoResult.value);
+            const newVisibility = !journal.isHidden;
+            let flagResult;
+            if (newVisibility) {
+              flagResult = await repository.setFlag(
+                journalId,
+                MODULE_METADATA.ID,
+                DOMAIN_FLAGS.HIDDEN,
+                true
+              );
+            } else {
+              flagResult = await repository.unsetFlag(
+                journalId,
+                MODULE_METADATA.ID,
+                DOMAIN_FLAGS.HIDDEN
+              );
+            }
+            if (!flagResult.ok) {
+              return err({
+                code: "ToggleFailed",
+                message: flagResult.error.message
+              });
+            }
+            const cacheResult = container.resolveWithError(cacheInvalidationPortToken);
+            if (cacheResult.ok) {
+              const cache = castResolvedService(cacheResult.value);
+              cache.invalidateWhere((meta) => meta.tags.includes(HIDDEN_JOURNAL_CACHE_TAG));
+            }
+            const schedulerResult = container.resolveWithError(
+              journalDirectoryRerenderSchedulerToken
+            );
+            if (schedulerResult.ok) {
+              const scheduler = castResolvedService(
+                schedulerResult.value
+              );
+              scheduler.requestRerender();
+            }
+            const serviceResult = container.resolveWithError(journalOverviewServiceToken);
+            if (serviceResult.ok) {
+              const service = castResolvedService(serviceResult.value);
+              const reloadResult = service.getAllJournalsWithVisibilityStatus();
+              if (reloadResult.ok) {
+                await controller.updateStateLocal({
+                  journals: reloadResult.value
+                });
+                await controller.dispatchAction("applyFilters");
+              }
+            }
+            return ok(void 0);
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            return err({
+              code: "UnexpectedError",
+              message: errorMessage
+            });
+          }
+        }, "handler")
+      },
+      {
+        id: "setAllVisible",
+        handler: /* @__PURE__ */ __name(async (context) => {
+          return handleBulkVisibilityChange(context, false);
+        }, "handler")
+      },
+      {
+        id: "setAllHidden",
+        handler: /* @__PURE__ */ __name(async (context) => {
+          return handleBulkVisibilityChange(context, true);
+        }, "handler")
+      },
+      {
+        id: "toggleAll",
+        handler: /* @__PURE__ */ __name(async (context) => {
+          return handleBulkVisibilityChange(context, null);
+        }, "handler")
+      },
+      {
+        id: "setSort",
+        handler: /* @__PURE__ */ __name(async (context) => {
+          try {
+            const controller = getControllerFromContext(context);
+            if (!controller) {
+              return err({
+                code: "InvalidContext",
+                message: "Controller not found in context"
+              });
+            }
+            const column = context.metadata && typeof context.metadata.column === "string" ? context.metadata.column : void 0;
+            if (!column) {
+              return err({
+                code: "InvalidParameter",
+                message: "column not provided in metadata"
+              });
+            }
+            const currentState = controller.state;
+            const currentSortColumn = currentState.sortColumn ?? null;
+            const currentSortDirection = currentState.sortDirection || "asc";
+            const newSortColumn = column;
+            let newSortDirection = "asc";
+            if (currentSortColumn === column) {
+              if (currentSortDirection === "asc") {
+                newSortDirection = "desc";
+              } else {
+                newSortDirection = "asc";
+              }
+            }
+            await controller.updateStateLocal({
+              sortColumn: newSortColumn,
+              sortDirection: newSortDirection
+            });
+            await controller.dispatchAction("applyFilters");
+            return ok(void 0);
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            return err({
+              code: "UnexpectedError",
+              message: errorMessage
+            });
+          }
+        }, "handler")
+      },
+      {
+        id: "setColumnFilter",
+        handler: /* @__PURE__ */ __name(async (context) => {
+          try {
+            const controller = getControllerFromContext(context);
+            if (!controller) {
+              return err({
+                code: "InvalidContext",
+                message: "Controller not found in context"
+              });
+            }
+            const column = context.metadata && typeof context.metadata.column === "string" ? context.metadata.column : void 0;
+            const value2 = context.metadata && typeof context.metadata.value === "string" ? context.metadata.value : void 0;
+            if (!column) {
+              return err({
+                code: "InvalidParameter",
+                message: "column not provided in metadata"
+              });
+            }
+            const currentState = controller.state;
+            const currentFilters = currentState.columnFilters || {};
+            const newFilters = { ...currentFilters };
+            if (value2 === void 0 || value2 === "") {
+              delete newFilters[column];
+            } else {
+              newFilters[column] = value2;
+            }
+            await controller.updateStateLocal({
+              columnFilters: newFilters
+            });
+            await controller.dispatchAction("applyFilters");
+            return ok(void 0);
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            return err({
+              code: "UnexpectedError",
+              message: errorMessage
+            });
+          }
+        }, "handler")
+      },
+      {
+        id: "setGlobalSearch",
+        handler: /* @__PURE__ */ __name(async (context) => {
+          try {
+            const controller = getControllerFromContext(context);
+            if (!controller) {
+              return err({
+                code: "InvalidContext",
+                message: "Controller not found in context"
+              });
+            }
+            const value2 = context.metadata && typeof context.metadata.value === "string" ? context.metadata.value : void 0;
+            await controller.updateStateLocal({
+              globalSearch: value2 ?? ""
+            });
+            await controller.dispatchAction("applyFilters");
+            return ok(void 0);
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            return err({
+              code: "UnexpectedError",
+              message: errorMessage
+            });
+          }
+        }, "handler")
+      },
+      {
+        id: "applyFilters",
+        handler: /* @__PURE__ */ __name(async (context) => {
+          try {
+            const controller = getControllerFromContext(context);
+            if (!controller) {
+              return err({
+                code: "InvalidContext",
+                message: "Controller not found in context"
+              });
+            }
+            const currentState = controller.state;
+            const journals = Array.isArray(currentState.journals) ? currentState.journals : [];
+            const globalSearch = currentState.globalSearch || "";
+            const columnFilters = currentState.columnFilters || {};
+            const sortColumn = currentState.sortColumn ?? null;
+            const sortDirection = currentState.sortDirection || "asc";
+            let filtered = [...journals];
+            if (globalSearch) {
+              const searchLower = globalSearch.toLowerCase();
+              filtered = filtered.filter((journal) => {
+                const name = (journal.name || journal.id).toLowerCase();
+                const status = journal.isHidden ? "versteckt" : "sichtbar";
+                return name.includes(searchLower) || status.includes(searchLower);
+              });
+            }
+            if (columnFilters.name) {
+              const filterLower = columnFilters.name.toLowerCase();
+              filtered = filtered.filter((journal) => {
+                const name = (journal.name || journal.id).toLowerCase();
+                return name.includes(filterLower);
+              });
+            }
+            if (columnFilters.status) {
+              const filterLower = columnFilters.status.toLowerCase();
+              filtered = filtered.filter((journal) => {
+                const status = journal.isHidden ? "versteckt" : "sichtbar";
+                return status.includes(filterLower);
+              });
+            }
+            if (sortColumn && (sortColumn === "name" || sortColumn === "status")) {
+              filtered.sort(createJournalSortComparator(sortColumn, sortDirection));
+            }
+            await controller.updateStateLocal({
+              filteredJournals: filtered
+            });
+            return ok(void 0);
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            return err({
+              code: "UnexpectedError",
+              message: errorMessage
+            });
+          }
+        }, "handler")
+      },
+      {
+        id: "refreshData",
+        handler: /* @__PURE__ */ __name(async (context) => {
+          try {
+            const controller = getControllerFromContext(context);
+            const container = getContainerFromContext(context);
+            if (!controller || !container) {
+              return err({
+                code: "InvalidContext",
+                message: "Controller or container not found in context"
+              });
+            }
+            const serviceResult = container.resolveWithError(journalOverviewServiceToken);
+            if (!serviceResult.ok) {
+              return err({
+                code: "ServiceNotFound",
+                message: `Failed to resolve JournalOverviewService: ${serviceResult.error.message}`
+              });
+            }
+            const service = castResolvedService(serviceResult.value);
+            const result = service.getAllJournalsWithVisibilityStatus();
+            if (!result.ok) {
+              return err({
+                code: "LoadFailed",
+                message: result.error.message
+              });
+            }
+            await controller.updateStateLocal({
               journals: result.value
             });
+            await controller.dispatchAction("applyFilters");
             return ok(void 0);
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -33278,6 +33667,89 @@ function createJournalOverviewWindowDefinition(component2) {
   };
 }
 __name(createJournalOverviewWindowDefinition, "createJournalOverviewWindowDefinition");
+async function handleBulkVisibilityChange(context, targetVisibility) {
+  try {
+    const controller = getControllerFromContext(context);
+    const container = getContainerFromContext(context);
+    if (!controller || !container) {
+      return err({
+        code: "InvalidContext",
+        message: "Controller or container not found in context"
+      });
+    }
+    const currentState = controller.state;
+    const filteredJournals = Array.isArray(currentState.filteredJournals) ? currentState.filteredJournals : [];
+    if (filteredJournals.length === 0) {
+      return ok(void 0);
+    }
+    const repoResult = container.resolveWithError(platformJournalRepositoryToken);
+    if (!repoResult.ok) {
+      return err({
+        code: "ServiceNotFound",
+        message: `Failed to resolve PlatformJournalRepository: ${repoResult.error.message}`
+      });
+    }
+    const repository = castResolvedService(repoResult.value);
+    const uiResult = container.resolveWithError(platformUIPortToken);
+    const notificationsResult = container.resolveWithError(notificationPublisherPortToken);
+    const ui2 = uiResult.ok ? castResolvedService(uiResult.value) : null;
+    const notifications = notificationsResult.ok ? castResolvedService(notificationsResult.value) : null;
+    let successCount = 0;
+    let errorCount = 0;
+    for (const journal of filteredJournals) {
+      const shouldBeHidden = targetVisibility === null ? !journal.isHidden : targetVisibility;
+      const flagResult = shouldBeHidden ? await repository.setFlag(journal.id, MODULE_METADATA.ID, DOMAIN_FLAGS.HIDDEN, true) : await repository.unsetFlag(journal.id, MODULE_METADATA.ID, DOMAIN_FLAGS.HIDDEN);
+      if (flagResult.ok) {
+        successCount++;
+      } else {
+        errorCount++;
+        if (notifications) {
+          notifications.warn(
+            `Failed to change visibility for journal "${journal.name || journal.id}"`,
+            { error: flagResult.error },
+            { channels: ["ConsoleChannel"] }
+          );
+        }
+      }
+    }
+    const cacheResult = container.resolveWithError(cacheInvalidationPortToken);
+    if (cacheResult.ok) {
+      const cache = castResolvedService(cacheResult.value);
+      cache.invalidateWhere((meta) => meta.tags.includes(HIDDEN_JOURNAL_CACHE_TAG));
+    }
+    const schedulerResult = container.resolveWithError(journalDirectoryRerenderSchedulerToken);
+    if (schedulerResult.ok) {
+      const scheduler = castResolvedService(
+        schedulerResult.value
+      );
+      scheduler.requestRerender();
+    }
+    if (ui2) {
+      const actionName = targetVisibility === null ? "umschalten" : targetVisibility ? "verstecken" : "anzeigen";
+      const message2 = errorCount > 0 ? `${successCount} Journals ${actionName}, ${errorCount} Fehler` : `${successCount} Journals ${actionName}`;
+      ui2.notify(message2, "info");
+    }
+    const serviceResult = container.resolveWithError(journalOverviewServiceToken);
+    if (serviceResult.ok) {
+      const service = castResolvedService(serviceResult.value);
+      const reloadResult = service.getAllJournalsWithVisibilityStatus();
+      if (reloadResult.ok) {
+        await controller.updateStateLocal({
+          journals: reloadResult.value
+        });
+        await controller.dispatchAction("applyFilters");
+      }
+    }
+    return ok(void 0);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return err({
+      code: "UnexpectedError",
+      message: errorMessage
+    });
+  }
+}
+__name(handleBulkVisibilityChange, "handleBulkVisibilityChange");
 const VERSION = "5.46.1";
 const PUBLIC_VERSION = "5";
 if (typeof window !== "undefined") {
@@ -33286,12 +33758,63 @@ if (typeof window !== "undefined") {
 var root_1 = /* @__PURE__ */ from_html(`<div class="loading svelte-k12gen"><i class="fas fa-spinner fa-spin"></i> Lade Journale...</div>`);
 var root_3 = /* @__PURE__ */ from_html(`<div class="error svelte-k12gen"><i class="fas fa-exclamation-triangle"></i> </div>`);
 var root_5 = /* @__PURE__ */ from_html(`<div class="empty svelte-k12gen"><i class="fas fa-inbox"></i> Keine Journale gefunden</div>`);
-var root_7 = /* @__PURE__ */ from_html(`<tr class="svelte-k12gen"><td class="journal-name svelte-k12gen"> </td><td class="journal-status svelte-k12gen"><span><i></i> </span></td></tr>`);
-var root_6 = /* @__PURE__ */ from_html(`<table class="journal-table svelte-k12gen"><thead class="svelte-k12gen"><tr><th class="svelte-k12gen">Name</th><th class="svelte-k12gen">Sichtbarkeitsstatus</th></tr></thead><tbody class="svelte-k12gen"></tbody></table>`);
+var root_7 = /* @__PURE__ */ from_html(`<tr class="svelte-k12gen"><td class="journal-name svelte-k12gen"> </td><td class="journal-status svelte-k12gen"><span><i></i> </span></td><td class="journal-actions svelte-k12gen"><button class="toggle-button svelte-k12gen" type="button"><i></i></button></td></tr>`);
+var root_6 = /* @__PURE__ */ from_html(`<div class="filter-section svelte-k12gen"><div class="filter-row svelte-k12gen"><div class="filter-group global-search svelte-k12gen"><label for="global-search" class="svelte-k12gen"><i class="fas fa-search"></i> Volltextsuche</label> <input id="global-search" type="text" placeholder="Alle Spalten durchsuchen..." class="svelte-k12gen"/></div></div></div> <table class="journal-table svelte-k12gen"><thead class="svelte-k12gen"><tr><th class="sortable svelte-k12gen"><div class="th-content svelte-k12gen"><button type="button" class="th-header svelte-k12gen"><span>Name</span> <i></i></button> <input id="name-filter" type="text" class="column-filter-input svelte-k12gen" placeholder="Filtern..."/></div></th><th class="sortable svelte-k12gen"><div class="th-content svelte-k12gen"><button type="button" class="th-header svelte-k12gen"><span>Sichtbarkeitsstatus</span> <i></i></button> <input id="status-filter" type="text" class="column-filter-input svelte-k12gen" placeholder="Filtern..."/></div></th><th class="action-column svelte-k12gen"><div class="th-content svelte-k12gen"><div class="th-header svelte-k12gen">Aktionen</div> <div class="column-filter-spacer svelte-k12gen"></div></div></th></tr></thead><tbody class="svelte-k12gen"></tbody></table> <div class="footer-section svelte-k12gen"><div class="info-text svelte-k12gen"> </div> <div class="bulk-actions svelte-k12gen" style="display: flex; flex-direction: row; gap: 0.5rem; flex-wrap: nowrap; align-items: center;"><button class="bulk-action-button svelte-k12gen" type="button"><i class="fas fa-eye"></i> Alle sichtbar</button> <button class="bulk-action-button svelte-k12gen" type="button"><i class="fas fa-eye-slash"></i> Alle unsichtbar</button> <button class="bulk-action-button svelte-k12gen" type="button"><i class="fas fa-exchange-alt"></i> Alle umschalten</button></div></div>`, 1);
 var root$1 = /* @__PURE__ */ from_html(`<div class="journal-overview-window svelte-k12gen"><!></div>`);
+const $$css = {
+  hash: "svelte-k12gen",
+  code: ".journal-overview-window.svelte-k12gen {padding:1rem;min-height:400px;}.loading.svelte-k12gen,\r\n  .error.svelte-k12gen,\r\n  .empty.svelte-k12gen {display:flex;align-items:center;justify-content:center;gap:0.5rem;padding:2rem;text-align:center;color:var(--color-text-secondary);}.error.svelte-k12gen {color:var(--color-error);}.journal-table.svelte-k12gen {width:100%;border-collapse:collapse;font-size:0.9rem;}.journal-table.svelte-k12gen thead:where(.svelte-k12gen) {background-color:var(--color-bg-secondary);border-bottom:2px solid var(--color-border);}.journal-table.svelte-k12gen th:where(.svelte-k12gen) {padding:0.75rem;text-align:left;font-weight:600;color:var(--color-text-primary);}.journal-table.svelte-k12gen tbody:where(.svelte-k12gen) tr:where(.svelte-k12gen) {border-bottom:1px solid var(--color-border);}.journal-table.svelte-k12gen tbody:where(.svelte-k12gen) tr:where(.svelte-k12gen):hover {background-color:var(--color-bg-hover);}.journal-table.svelte-k12gen td:where(.svelte-k12gen) {padding:0.75rem;vertical-align:middle;}.journal-name.svelte-k12gen {font-weight:500;color:var(--color-text-primary);}.journal-status.svelte-k12gen {text-align:right;}.status-badge.svelte-k12gen {display:inline-flex;align-items:center;gap:0.5rem;padding:0.25rem 0.75rem;border-radius:0.25rem;font-size:0.85rem;font-weight:500;}.status-visible.svelte-k12gen {background-color:var(--color-success-bg);color:var(--color-success-text);}.status-hidden.svelte-k12gen {background-color:var(--color-warning-bg);color:var(--color-warning-text);}.filter-section.svelte-k12gen {margin-bottom:1rem;padding:1rem;background-color:var(--color-bg-secondary);border-radius:0.25rem;}.filter-row.svelte-k12gen {display:flex;gap:1rem;margin-bottom:0.75rem;}.filter-row.svelte-k12gen:last-child {margin-bottom:0;}.filter-group.svelte-k12gen {flex:1;display:flex;flex-direction:column;gap:0.25rem;}.filter-group.global-search.svelte-k12gen {flex:1;}.filter-group.svelte-k12gen label:where(.svelte-k12gen) {font-size:0.85rem;font-weight:500;color:var(--color-text-secondary);display:flex;align-items:center;gap:0.5rem;}.filter-group.svelte-k12gen input:where(.svelte-k12gen) {padding:0.5rem;border:1px solid var(--color-border);border-radius:0.25rem;font-size:0.9rem;}.filter-group.svelte-k12gen input:where(.svelte-k12gen):focus {outline:none;border-color:var(--color-primary);box-shadow:0 0 0 2px color-mix(in srgb, var(--color-primary) 10%, transparent);}.journal-table.svelte-k12gen th.sortable:where(.svelte-k12gen) {-webkit-user-select:none;-moz-user-select:none;user-select:none;}.th-content.svelte-k12gen {display:flex;flex-direction:column;gap:0.5rem;}.th-header.svelte-k12gen {display:flex;align-items:center;justify-content:space-between;gap:0.5rem;cursor:pointer;background:none;border:none;padding:0;margin:0;font:inherit;color:inherit;text-align:left;width:100%;}.th-header.svelte-k12gen:hover {color:var(--color-primary);}.th-header.svelte-k12gen:focus {outline:2px solid var(--color-primary);outline-offset:2px;}.th-content.svelte-k12gen i:where(.svelte-k12gen) {font-size:0.85rem;color:var(--color-text-secondary);}.column-filter-input.svelte-k12gen {width:100%;padding:0.375rem 0.5rem;border:1px solid var(--color-border);border-radius:0.25rem;font-size:0.85rem;background-color:var(--color-bg-primary);}.column-filter-input.svelte-k12gen:focus {outline:none;border-color:var(--color-primary);box-shadow:0 0 0 2px color-mix(in srgb, var(--color-primary) 10%, transparent);}.action-column.svelte-k12gen {width:80px;text-align:center;}.action-column.svelte-k12gen .th-header:where(.svelte-k12gen) {justify-content:center;}.column-filter-spacer.svelte-k12gen {height:1.875rem; /* Gleiche Höhe wie column-filter-input (padding + border + line-height) */visibility:hidden;}.journal-actions.svelte-k12gen {text-align:center;}.toggle-button.svelte-k12gen {background:none;border:1px solid var(--color-border);border-radius:0.25rem;padding:0.5rem;cursor:pointer;color:var(--color-text-primary);transition:all 0.2s;}.toggle-button.svelte-k12gen:hover {background-color:var(--color-bg-hover);border-color:var(--color-primary);}.toggle-button.svelte-k12gen:active {transform:scale(0.95);}.footer-section.svelte-k12gen {margin-top:1rem;padding-top:1rem;border-top:1px solid var(--color-border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}.info-text.svelte-k12gen {font-size:0.9rem;color:var(--color-text-secondary);}.footer-section.svelte-k12gen .bulk-actions:where(.svelte-k12gen) {display:flex !important;flex-direction:row !important;gap:0.5rem;flex-wrap:nowrap !important;align-items:center;width:auto;min-width:0;}.bulk-action-button.svelte-k12gen {padding:0.5rem 1rem;border:1px solid var(--color-border);border-radius:0.25rem;background-color:var(--color-bg-primary);color:var(--color-text-primary);cursor:pointer;font-size:0.9rem;display:inline-flex !important;align-items:center;gap:0.5rem;transition:all 0.2s;white-space:nowrap;flex-shrink:0;width:auto;min-width:-moz-fit-content;min-width:fit-content;}.bulk-action-button.svelte-k12gen:hover:not(:disabled) {background-color:var(--color-bg-hover);border-color:var(--color-primary);}.bulk-action-button.svelte-k12gen:disabled {opacity:0.5;cursor:not-allowed;}.bulk-action-button.svelte-k12gen:active:not(:disabled) {transform:scale(0.98);}"
+};
 function JournalOverviewWindow($$anchor, $$props) {
   push($$props, true);
-  const state2 = /* @__PURE__ */ user_derived(() => $$props.viewModel.state.get());
+  append_styles$1($$anchor, $$css);
+  const viewModelState = /* @__PURE__ */ user_derived(() => $$props.viewModel.state.get());
+  let globalSearchValue = /* @__PURE__ */ state("");
+  let nameFilterValue = /* @__PURE__ */ state("");
+  let statusFilterValue = /* @__PURE__ */ state("");
+  user_effect(() => {
+    set(globalSearchValue, get$1(viewModelState).globalSearch || "", true);
+    set(nameFilterValue, get$1(viewModelState).columnFilters?.name || "", true);
+    set(statusFilterValue, get$1(viewModelState).columnFilters?.status || "", true);
+  });
+  const getSortIcon = /* @__PURE__ */ __name((column) => {
+    const sortColumn = get$1(viewModelState).sortColumn;
+    const sortDirection = get$1(viewModelState).sortDirection;
+    if (sortColumn !== column) {
+      return "fas fa-sort";
+    }
+    return sortDirection === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
+  }, "getSortIcon");
+  const nameSortIcon = /* @__PURE__ */ user_derived(() => getSortIcon("name"));
+  const statusSortIcon = /* @__PURE__ */ user_derived(() => getSortIcon("status"));
+  function handleSortClick(column) {
+    const action2 = $$props.viewModel.actions.setSort;
+    if (action2) {
+      action2(column);
+    }
+  }
+  __name(handleSortClick, "handleSortClick");
+  function handleGlobalSearchChange() {
+    const action2 = $$props.viewModel.actions.setGlobalSearch;
+    if (action2) {
+      action2(get$1(globalSearchValue));
+    }
+  }
+  __name(handleGlobalSearchChange, "handleGlobalSearchChange");
+  function handleColumnFilterChange(column, value2) {
+    const action2 = $$props.viewModel.actions.setColumnFilter;
+    if (action2) {
+      action2(column, value2);
+    }
+  }
+  __name(handleColumnFilterChange, "handleColumnFilterChange");
+  function handleToggleVisibility(journalId) {
+    const action2 = $$props.viewModel.actions.toggleJournalVisibility;
+    if (action2) {
+      action2(journalId);
+    }
+  }
+  __name(handleToggleVisibility, "handleToggleVisibility");
   function getStatusText(isHidden, i18n) {
     if (i18n) {
       return isHidden ? i18n.translate("journalOverview.status.hidden", "Versteckt") : i18n.translate("journalOverview.status.visible", "Sichtbar");
@@ -33322,7 +33845,7 @@ function JournalOverviewWindow($$anchor, $$props) {
           var div_2 = root_3();
           var text2 = sibling(child(div_2));
           reset(div_2);
-          template_effect(() => set_text(text2, ` ${get$1(state2).error ?? ""}`));
+          template_effect(() => set_text(text2, ` ${get$1(viewModelState).error ?? ""}`));
           append($$anchor3, div_2);
         }, "consequent_1");
         var alternate_1 = /* @__PURE__ */ __name(($$anchor3) => {
@@ -33334,43 +33857,124 @@ function JournalOverviewWindow($$anchor, $$props) {
               append($$anchor4, div_3);
             }, "consequent_2");
             var alternate = /* @__PURE__ */ __name(($$anchor4) => {
-              var table = root_6();
-              var tbody = sibling(child(table));
-              each(tbody, 21, () => get$1(state2).journals, (journal) => journal.id, ($$anchor5, journal) => {
-                var tr = root_7();
-                var td = child(tr);
+              var fragment_2 = root_6();
+              var div_4 = first_child(fragment_2);
+              var div_5 = child(div_4);
+              var div_6 = child(div_5);
+              var input = sibling(child(div_6), 2);
+              remove_input_defaults(input);
+              input.__input = handleGlobalSearchChange;
+              reset(div_6);
+              reset(div_5);
+              reset(div_4);
+              var table = sibling(div_4, 2);
+              var thead = child(table);
+              var tr = child(thead);
+              var th = child(tr);
+              var div_7 = child(th);
+              var button = child(div_7);
+              button.__click = () => handleSortClick("name");
+              var i = sibling(child(button), 2);
+              reset(button);
+              var input_1 = sibling(button, 2);
+              remove_input_defaults(input_1);
+              input_1.__input = () => handleColumnFilterChange("name", get$1(nameFilterValue));
+              input_1.__click = (e) => e.stopPropagation();
+              reset(div_7);
+              reset(th);
+              var th_1 = sibling(th);
+              var div_8 = child(th_1);
+              var button_1 = child(div_8);
+              button_1.__click = () => handleSortClick("status");
+              var i_1 = sibling(child(button_1), 2);
+              reset(button_1);
+              var input_2 = sibling(button_1, 2);
+              remove_input_defaults(input_2);
+              input_2.__input = () => handleColumnFilterChange("status", get$1(statusFilterValue));
+              input_2.__click = (e) => e.stopPropagation();
+              reset(div_8);
+              reset(th_1);
+              next();
+              reset(tr);
+              reset(thead);
+              var tbody = sibling(thead);
+              each(tbody, 21, () => get$1(viewModelState).filteredJournals || [], (journal) => journal.id, ($$anchor5, journal) => {
+                var tr_1 = root_7();
+                var td = child(tr_1);
                 var text_1 = child(td, true);
                 reset(td);
                 var td_1 = sibling(td);
                 var span = child(td_1);
-                var i = child(span);
-                var text_2 = sibling(i);
+                var i_2 = child(span);
+                var text_2 = sibling(i_2);
                 reset(span);
                 reset(td_1);
-                reset(tr);
+                var td_2 = sibling(td_1);
+                var button_2 = child(td_2);
+                button_2.__click = () => handleToggleVisibility(get$1(journal).id);
+                var i_3 = child(button_2);
+                reset(button_2);
+                reset(td_2);
+                reset(tr_1);
                 template_effect(
-                  ($0, $1, $2) => {
+                  ($0, $1, $2, $3) => {
                     set_text(text_1, get$1(journal).name || get$1(journal).id);
                     set_class(span, 1, `status-badge ${$0 ?? ""}`, "svelte-k12gen");
-                    set_class(i, 1, $1, "svelte-k12gen");
+                    set_class(i_2, 1, $1, "svelte-k12gen");
                     set_text(text_2, ` ${$2 ?? ""}`);
+                    set_attribute(button_2, "title", get$1(journal).isHidden ? "Journal anzeigen" : "Journal verstecken");
+                    set_class(i_3, 1, $3, "svelte-k12gen");
                   },
                   [
                     () => getStatusClass(get$1(journal).isHidden),
                     () => clsx(getStatusIcon(get$1(journal).isHidden)),
-                    () => getStatusText(get$1(journal).isHidden, $$props.viewModel.i18n)
+                    () => getStatusText(get$1(journal).isHidden, $$props.viewModel.i18n),
+                    () => clsx(getStatusIcon(get$1(journal).isHidden))
                   ]
                 );
-                append($$anchor5, tr);
+                append($$anchor5, tr_1);
               });
               reset(tbody);
               reset(table);
-              append($$anchor4, table);
+              var div_9 = sibling(table, 2);
+              var div_10 = child(div_9);
+              var text_3 = child(div_10);
+              reset(div_10);
+              var div_11 = sibling(div_10, 2);
+              var button_3 = child(div_11);
+              button_3.__click = () => {
+                const action2 = $$props.viewModel.actions.setAllVisible;
+                if (action2) action2();
+              };
+              var button_4 = sibling(button_3, 2);
+              button_4.__click = () => {
+                const action2 = $$props.viewModel.actions.setAllHidden;
+                if (action2) action2();
+              };
+              var button_5 = sibling(button_4, 2);
+              button_5.__click = () => {
+                const action2 = $$props.viewModel.actions.toggleAll;
+                if (action2) action2();
+              };
+              reset(div_11);
+              reset(div_9);
+              template_effect(() => {
+                set_class(i, 1, clsx(get$1(nameSortIcon)), "svelte-k12gen");
+                set_class(i_1, 1, clsx(get$1(statusSortIcon)), "svelte-k12gen");
+                set_text(text_3, `${(get$1(viewModelState).filteredJournals || []).length ?? ""} von ${(get$1(viewModelState).journals || []).length ?? ""} Journals angezeigt`);
+                button_3.disabled = (get$1(viewModelState).filteredJournals || []).length === 0;
+                button_4.disabled = (get$1(viewModelState).filteredJournals || []).length === 0;
+                button_5.disabled = (get$1(viewModelState).filteredJournals || []).length === 0;
+              });
+              bind_value(input, () => get$1(globalSearchValue), ($$value) => set(globalSearchValue, $$value));
+              bind_value(input_1, () => get$1(nameFilterValue), ($$value) => set(nameFilterValue, $$value));
+              bind_value(input_2, () => get$1(statusFilterValue), ($$value) => set(statusFilterValue, $$value));
+              append($$anchor4, fragment_2);
             }, "alternate");
             if_block(
               node_2,
               ($$render) => {
-                if (get$1(state2).journals.length === 0) $$render(consequent_2);
+                if (get$1(viewModelState).journals.length === 0) $$render(consequent_2);
                 else $$render(alternate, false);
               },
               true
@@ -33381,7 +33985,7 @@ function JournalOverviewWindow($$anchor, $$props) {
         if_block(
           node_1,
           ($$render) => {
-            if (get$1(state2).error) $$render(consequent_1);
+            if (get$1(viewModelState).error) $$render(consequent_1);
             else $$render(alternate_1, false);
           },
           true
@@ -33390,7 +33994,7 @@ function JournalOverviewWindow($$anchor, $$props) {
       append($$anchor2, fragment);
     }, "alternate_2");
     if_block(node, ($$render) => {
-      if (get$1(state2).isLoading) $$render(consequent);
+      if (get$1(viewModelState).isLoading) $$render(consequent);
       else $$render(alternate_2, false);
     });
   }
@@ -33399,6 +34003,7 @@ function JournalOverviewWindow($$anchor, $$props) {
   pop();
 }
 __name(JournalOverviewWindow, "JournalOverviewWindow");
+delegate(["input", "click"]);
 function registerJournalOverviewWindow(container) {
   const registryResult = container.resolveWithError(windowRegistryToken);
   if (!registryResult.ok) {

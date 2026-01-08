@@ -152,7 +152,7 @@ describe("WindowController", () => {
 
   describe("state getter", () => {
     it("should return state from stateStore", () => {
-      vi.mocked(mockStateStore.getAll).mockReturnValue(ok({ count: 42 }));
+      vi.mocked(mockStatePort.get).mockReturnValue({ count: 42 });
 
       const state = controller.state;
 
@@ -160,12 +160,7 @@ describe("WindowController", () => {
     });
 
     it("should return empty object if getAll fails", () => {
-      vi.mocked(mockStateStore.getAll).mockReturnValue(
-        err({
-          code: "StateStoreError",
-          message: "Failed to get state",
-        })
-      );
+      vi.mocked(mockStatePort.get).mockReturnValue({});
 
       const state = controller.state;
 
@@ -595,7 +590,7 @@ describe("WindowController", () => {
         "test-action",
         expect.objectContaining({
           windowInstanceId: "instance-1",
-          state: {},
+          state: expect.any(Object),
           metadata: expect.objectContaining({
             controller: controller,
           }),
@@ -612,7 +607,7 @@ describe("WindowController", () => {
         expect.objectContaining({
           windowInstanceId: "instance-1",
           controlId: "control-1",
-          state: {},
+          state: expect.any(Object),
           metadata: expect.objectContaining({
             controller: controller,
           }),
@@ -629,7 +624,7 @@ describe("WindowController", () => {
         "test-action",
         expect.objectContaining({
           windowInstanceId: "instance-1",
-          state: {},
+          state: expect.any(Object),
           event,
           metadata: expect.objectContaining({
             controller: controller,
@@ -1064,6 +1059,125 @@ describe("WindowController", () => {
       expect(Object.keys(viewModel.actions)).toHaveLength(0);
     });
 
+    it("should create journal-overview specific actions with parameters", () => {
+      const journalOverviewDefinition: WindowDefinition = {
+        definitionId: "journal-overview",
+        title: "Journal Overview",
+        component: {
+          type: "svelte",
+          component: vi.fn(),
+          props: {},
+        },
+        actions: [
+          {
+            id: "toggleJournalVisibility",
+            handler: vi.fn().mockResolvedValue(ok(undefined)),
+          },
+          {
+            id: "setSort",
+            handler: vi.fn().mockResolvedValue(ok(undefined)),
+          },
+          {
+            id: "setColumnFilter",
+            handler: vi.fn().mockResolvedValue(ok(undefined)),
+          },
+          {
+            id: "setGlobalSearch",
+            handler: vi.fn().mockResolvedValue(ok(undefined)),
+          },
+          {
+            id: "regularAction",
+            handler: vi.fn().mockResolvedValue(ok(undefined)),
+          },
+        ],
+      };
+
+      const journalOverviewController = new WindowController(
+        "journal-overview:1",
+        "journal-overview",
+        journalOverviewDefinition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+        mockRendererRegistry,
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockPersistAdapter
+      );
+
+      const viewModel = journalOverviewController.getViewModel();
+
+      expect(viewModel.actions).toBeDefined();
+      // toggleJournalVisibility should accept journalId parameter
+      expect(typeof viewModel.actions["toggleJournalVisibility"]).toBe("function");
+      const toggleAction = viewModel.actions["toggleJournalVisibility"] as (
+        journalId: string
+      ) => void;
+      toggleAction("journal-1");
+      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith(
+        "toggleJournalVisibility",
+        expect.objectContaining({
+          metadata: expect.objectContaining({ journalId: "journal-1" }),
+        })
+      );
+
+      vi.mocked(mockActionDispatcher.dispatch).mockClear();
+
+      // setSort should accept column parameter
+      expect(typeof viewModel.actions["setSort"]).toBe("function");
+      const setSortAction = viewModel.actions["setSort"] as (column: string) => void;
+      setSortAction("name");
+      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith(
+        "setSort",
+        expect.objectContaining({
+          metadata: expect.objectContaining({ column: "name" }),
+        })
+      );
+
+      vi.mocked(mockActionDispatcher.dispatch).mockClear();
+
+      // setColumnFilter should accept column and value parameters
+      expect(typeof viewModel.actions["setColumnFilter"]).toBe("function");
+      const setColumnFilterAction = viewModel.actions["setColumnFilter"] as (
+        column: string,
+        value: string
+      ) => void;
+      setColumnFilterAction("name", "test");
+      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith(
+        "setColumnFilter",
+        expect.objectContaining({
+          metadata: expect.objectContaining({ column: "name", value: "test" }),
+        })
+      );
+
+      vi.mocked(mockActionDispatcher.dispatch).mockClear();
+
+      // setGlobalSearch should accept value parameter
+      expect(typeof viewModel.actions["setGlobalSearch"]).toBe("function");
+      const setGlobalSearchAction = viewModel.actions["setGlobalSearch"] as (value: string) => void;
+      setGlobalSearchAction("search term");
+      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith(
+        "setGlobalSearch",
+        expect.objectContaining({
+          metadata: expect.objectContaining({ value: "search term" }),
+        })
+      );
+
+      vi.mocked(mockActionDispatcher.dispatch).mockClear();
+
+      // regularAction should be parameterless (default behavior)
+      expect(typeof viewModel.actions["regularAction"]).toBe("function");
+      const regularAction = viewModel.actions["regularAction"] as () => void;
+      regularAction();
+      expect(mockActionDispatcher.dispatch).toHaveBeenCalledWith(
+        "regularAction",
+        expect.any(Object)
+      );
+    });
+
     it("should call dispatchAction when action is invoked", async () => {
       const definitionWithActions: WindowDefinition = {
         ...mockDefinition,
@@ -1155,7 +1269,7 @@ describe("WindowController", () => {
         expect.objectContaining({
           windowInstanceId: "instance-1",
           controlId: "control-1",
-          state: {},
+          state: expect.any(Object),
           metadata: expect.objectContaining({
             controller: controller,
           }),
@@ -1901,7 +2015,7 @@ describe("WindowController", () => {
         "test-action",
         expect.objectContaining({
           windowInstanceId: "instance-1",
-          state: {},
+          state: expect.any(Object),
           metadata: expect.objectContaining({
             controller: controllerWithContainer,
             container: mockContainer,
@@ -1919,7 +2033,7 @@ describe("WindowController", () => {
         "test-action",
         expect.objectContaining({
           windowInstanceId: "instance-1",
-          state: {},
+          state: expect.any(Object),
           metadata: expect.objectContaining({
             controller: controller,
           }),
