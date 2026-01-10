@@ -38,7 +38,7 @@ export const logLevelSetting: SettingDefinition<LogLevel> = {
       ),
       scope: "world",
       config: true,
-      type: Number,
+      type: "number",
       choices: {
         [LogLevel.DEBUG]: unwrapOr(
           i18n.translate(

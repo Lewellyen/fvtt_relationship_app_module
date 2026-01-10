@@ -119,7 +119,7 @@ describe("ModuleSettingsRegistrar", () => {
         expect.objectContaining({
           name: "Log Level",
           scope: "world",
-          type: Number,
+          type: "number",
           default: LogLevel.INFO,
         })
       );
@@ -512,7 +512,7 @@ describe("ModuleSettingsRegistrar", () => {
         createConfig: vi.fn().mockReturnValue({
           name: "Test Setting",
           scope: "world",
-          type: String,
+          type: "string",
           default: "test",
         }),
       };

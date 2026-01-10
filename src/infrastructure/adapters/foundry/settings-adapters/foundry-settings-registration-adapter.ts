@@ -1,9 +1,14 @@
 import type { Result } from "@/domain/types/result";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
-import type { DomainSettingConfig, DomainSettingsError } from "@/domain/types/settings";
+import type {
+  DomainSettingConfig,
+  DomainSettingType,
+  DomainSettingsError,
+} from "@/domain/types/settings";
 import type { SettingValidator } from "@/domain/types/setting-validator";
 import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import type { FoundryError } from "@/infrastructure/adapters/foundry/errors/FoundryErrors";
+import type { SettingConfig } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
 import * as v from "valibot";
 
@@ -44,12 +49,12 @@ export class FoundrySettingsRegistrationAdapter implements PlatformSettingsRegis
     config: DomainSettingConfig<T>
   ): Result<void, DomainSettingsError> {
     // Map domain config to Foundry config
-    const foundryConfig = {
+    const foundryConfig: SettingConfig<T> = {
       name: config.name,
       ...(config.hint !== undefined && { hint: config.hint }),
       scope: config.scope,
       config: config.config,
-      type: config.type,
+      type: this.mapDomainTypeToFoundryType(config.type),
       ...(config.choices !== undefined && { choices: config.choices }),
       default: config.default,
       ...(config.onChange !== undefined && { onChange: config.onChange }),
@@ -118,6 +123,32 @@ export class FoundrySettingsRegistrationAdapter implements PlatformSettingsRegis
   }
 
   // ===== Private Helpers =====
+
+  /**
+   * Maps domain-agnostic setting type (string literal) to Foundry constructor type.
+   *
+   * This mapping encapsulates the platform-specific detail of using constructor types
+   * instead of string literals, keeping the domain layer platform-agnostic.
+   */
+  private mapDomainTypeToFoundryType(
+    domainType: DomainSettingType
+  ): typeof String | typeof Number | typeof Boolean {
+    switch (domainType) {
+      case "string":
+        return String;
+      case "number":
+        return Number;
+      case "boolean":
+        return Boolean;
+      default:
+        /* c8 ignore start -- Defensive Programming: Exhaustive check, unreachable in practice due to TypeScript types */
+        // This should never happen due to TypeScript's type system, but provides
+        // a runtime fallback for safety
+        const exhaustiveCheck: never = domainType;
+        throw new Error(`Unknown domain setting type: ${exhaustiveCheck}`);
+      /* c8 ignore stop */
+    }
+  }
 
   private mapFoundryError(
     foundryError: FoundryError,

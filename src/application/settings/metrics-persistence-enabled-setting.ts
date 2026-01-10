@@ -24,7 +24,7 @@ export const metricsPersistenceEnabledSetting: SettingDefinition<boolean> = {
       ),
       scope: "world",
       config: true,
-      type: Boolean,
+      type: "boolean",
       default: false,
       onChange: (value: boolean) => {
         const action = value ? "enabled" : "disabled";

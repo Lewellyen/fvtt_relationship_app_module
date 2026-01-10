@@ -3,8 +3,11 @@
  *
  * Platform-agnostic representation of a module setting.
  * This type is used by the domain layer and does not depend on
- * any infrastructure-specific types (like Valibot schemas).
+ * any infrastructure-specific types (like Valibot schemas or constructor types).
  */
+export type DomainSettingType = "string" | "number" | "boolean";
+export type DomainSettingScope = "world" | "client" | "user";
+
 export interface DomainSettingConfig<T> {
   /** Display name shown in settings UI */
   name: string;
@@ -13,13 +16,13 @@ export interface DomainSettingConfig<T> {
   hint?: string;
 
   /** Scope determines where the setting is stored */
-  scope: "world" | "client" | "user";
+  scope: DomainSettingScope;
 
   /** Whether to show in module configuration UI */
   config: boolean;
 
-  /** Type constructor (String, Number, Boolean) */
-  type: typeof String | typeof Number | typeof Boolean;
+  /** Platform-agnostic type (mapped to constructor types in infrastructure layer) */
+  type: DomainSettingType;
 
   /** Available choices for select dropdown */
   choices?: Record<string | number, string>;

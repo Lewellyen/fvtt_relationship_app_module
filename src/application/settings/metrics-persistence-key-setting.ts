@@ -24,7 +24,7 @@ export const metricsPersistenceKeySetting: SettingDefinition<string> = {
       ),
       scope: "world",
       config: true,
-      type: String,
+      type: "string",
       default: `${MODULE_METADATA.ID}.metrics`,
       onChange: (value: string) => {
         logger.info(`Metrics persistence key set to: ${value || "(empty)"}`);

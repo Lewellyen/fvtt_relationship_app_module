@@ -14,6 +14,10 @@ import type { IFoundryWindowAdapter } from "@/domain/windows/ports/foundry-windo
 import type { IStatePortFactory } from "../ports/state-port-factory-port.interface";
 import type { ISharedDocumentCache } from "../ports/shared-document-cache-port.interface";
 import type { IWindowHooksBridge } from "../ports/window-hooks-bridge-port.interface";
+import type { IWindowStateInitializer } from "../ports/window-state-initializer-port.interface";
+import type { IWindowRendererCoordinator } from "../ports/window-renderer-coordinator-port.interface";
+import type { IWindowPersistenceCoordinator } from "../ports/window-persistence-coordinator-port.interface";
+import type { IWindowDefaultStateProviderRegistry } from "../services/window-default-state-provider-registry.interface";
 
 /**
  * Window Framework DI Tokens
@@ -41,6 +45,16 @@ export const windowPositionManagerToken =
   >("WindowPositionManager");
 
 export const windowHooksBridgeToken = createInjectionToken<IWindowHooksBridge>("WindowHooksBridge");
+
+export const windowDefaultStateProviderRegistryToken =
+  createInjectionToken<IWindowDefaultStateProviderRegistry>("WindowDefaultStateProviderRegistry");
+export const windowStateInitializerToken =
+  createInjectionToken<IWindowStateInitializer>("WindowStateInitializer");
+export const windowRendererCoordinatorToken = createInjectionToken<IWindowRendererCoordinator>(
+  "WindowRendererCoordinator"
+);
+export const windowPersistenceCoordinatorToken =
+  createInjectionToken<IWindowPersistenceCoordinator>("WindowPersistenceCoordinator");
 
 // WindowHooksService Token
 // Type import vermeidet zirkuläre Abhängigkeit (window-hooks-service.ts importiert diese Tokens)

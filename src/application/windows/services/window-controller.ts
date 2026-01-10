@@ -8,13 +8,14 @@ import type { PersistMeta } from "@/domain/windows/types/persist-config.interfac
 import type { IWindowRegistry } from "@/domain/windows/ports/window-registry-port.interface";
 import type { IStateStore } from "@/domain/windows/ports/state-store-port.interface";
 import type { IActionDispatcher } from "@/domain/windows/ports/action-dispatcher-port.interface";
-import type { IRendererRegistry } from "@/domain/windows/ports/renderer-registry-port.interface";
 import type { IBindingEngine } from "@/domain/windows/ports/binding-engine-port.interface";
 import type { IViewModelBuilder } from "@/domain/windows/ports/view-model-builder-port.interface";
 import type { IEventBus } from "@/domain/windows/ports/event-bus-port.interface";
 import type { IRemoteSyncGate } from "@/domain/windows/ports/remote-sync-gate-port.interface";
-import type { IPersistAdapter } from "@/domain/windows/ports/persist-adapter-port.interface";
 import type { IStatePortFactory } from "../ports/state-port-factory-port.interface";
+import type { IWindowStateInitializer } from "../ports/window-state-initializer-port.interface";
+import type { IWindowRendererCoordinator } from "../ports/window-renderer-coordinator-port.interface";
+import type { IWindowPersistenceCoordinator } from "../ports/window-persistence-coordinator-port.interface";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { JournalOverviewService } from "@/application/services/JournalOverviewService";
@@ -26,9 +27,14 @@ import { castResolvedService } from "@/application/windows/utils/service-casts";
 import { ok, err } from "@/domain/utils/result";
 
 /**
- * WindowController - Kernstück des Window-Frameworks
+ * WindowController - Facade für Window-Lifecycle-Orchestrierung
  *
- * Orchestriert Lifecycle, Bindings, Props, Actions.
+ * Verantwortlichkeit: Koordiniert Lifecycle-Schritte (render/update/close).
+ * Delegiert spezialisierte Aufgaben an:
+ * - WindowStateInitializer: State-Initialisierung
+ * - WindowRendererCoordinator: Rendering/Mounting
+ * - WindowPersistenceCoordinator: Persistenz
+ *
  * Wird von FoundryApplicationWrapper bei render() und close() aufgerufen.
  */
 export class WindowController implements IWindowController {
@@ -51,12 +57,13 @@ export class WindowController implements IWindowController {
     private readonly stateStore: IStateStore,
     private readonly statePortFactory: IStatePortFactory,
     private readonly actionDispatcher: IActionDispatcher,
-    private readonly rendererRegistry: IRendererRegistry,
     private readonly bindingEngine: IBindingEngine,
     private readonly viewModelBuilder: IViewModelBuilder,
     private readonly eventBus: IEventBus,
     private readonly remoteSyncGate: IRemoteSyncGate,
-    private readonly persistAdapter: IPersistAdapter | undefined,
+    private readonly stateInitializer: IWindowStateInitializer,
+    private readonly rendererCoordinator: IWindowRendererCoordinator,
+    private readonly persistenceCoordinator: IWindowPersistenceCoordinator,
     private readonly container?: PlatformContainerPort
   ) {
     this.instanceId = instanceId;
@@ -86,22 +93,8 @@ export class WindowController implements IWindowController {
     // 0. Initialize state if not already set (for windows that need initial state)
     const currentState = this.stateStore.getAll(this.instanceId);
     if (currentState.ok && Object.keys(currentState.value).length === 0) {
-      // Initialize with default state if empty
-      const defaultState: Record<string, unknown> = {
-        journals: [],
-        isLoading: false,
-        error: null,
-      };
-
-      // For journal-overview window, add filter/sort state
-      if (this.definitionId === "journal-overview") {
-        defaultState.sortColumn = null;
-        defaultState.sortDirection = "asc";
-        defaultState.columnFilters = {};
-        defaultState.globalSearch = "";
-        defaultState.filteredJournals = [];
-      }
-
+      // Initialize with state from WindowStateInitializer
+      const defaultState = this.stateInitializer.buildInitialState(this.definitionId);
       this.statePort.patch(defaultState);
     }
 
@@ -117,11 +110,7 @@ export class WindowController implements IWindowController {
     );
     this.cachedViewModel = viewModel;
 
-    // 3. Renderer holen
-    const rendererResult = this.rendererRegistry.get(this.definition.component.type);
-    if (!rendererResult.ok) return err(rendererResult.error);
-
-    // 4. Mount-Point finden
+    // 3. Mount-Point finden
     const mountPoint: HTMLElement | null = element.querySelector("#svelte-mount-point");
     if (!mountPoint) {
       return err({
@@ -130,8 +119,8 @@ export class WindowController implements IWindowController {
       });
     }
 
-    // 5. Component mounten
-    const mountResult = rendererResult.value.mount(
+    // 4. Component mounten (via WindowRendererCoordinator)
+    const mountResult = this.rendererCoordinator.mount(
       this.definition.component,
       mountPoint,
       viewModel
@@ -181,23 +170,27 @@ export class WindowController implements IWindowController {
       }
     }
 
-    // 2. Component unmounten
+    // 2. Component unmounten (via WindowRendererCoordinator)
     if (this.componentInstance !== null) {
-      const rendererResult = this.rendererRegistry.get(this.definition.component.type);
-      if (rendererResult.ok) {
-        if (this.componentInstance !== null) {
-          rendererResult.value.unmount(this.componentInstance);
-        }
+      const unmountResult = this.rendererCoordinator.unmount(
+        this.definition.component,
+        this.componentInstance
+      );
+      // Log error but don't fail close (graceful degradation)
+      if (!unmountResult.ok) {
+        console.error("Failed to unmount component:", unmountResult.error);
       }
       this.componentInstance = null;
     }
 
     this.isMounted = false;
 
-    // 2. Persistieren (wenn konfiguriert, mit Origin-Meta)
+    // 3. Persistieren (wenn konfiguriert, mit Origin-Meta)
     if (this.definition.persist) {
       const meta = this.remoteSyncGate.makePersistMeta(this.instanceId);
-      await this.persist(meta);
+      const state = this.statePort.get();
+      await this.persistenceCoordinator.persist(this.definition.persist, state, meta);
+      // Log error but don't fail close (graceful degradation)
     }
 
     // 3. Event emittieren
@@ -223,7 +216,12 @@ export class WindowController implements IWindowController {
     // Persistieren (wenn gewünscht, mit Origin-Meta)
     if (persist && this.definition.persist) {
       const meta = this.remoteSyncGate.makePersistMeta(this.instanceId);
-      const persistResult = await this.persist(meta);
+      const state = this.statePort.get();
+      const persistResult = await this.persistenceCoordinator.persist(
+        this.definition.persist,
+        state,
+        meta
+      );
       if (!persistResult.ok) return err(persistResult.error);
     }
 
@@ -291,19 +289,9 @@ export class WindowController implements IWindowController {
       });
     }
 
-    if (!this.persistAdapter) {
-      return err({
-        code: "NoPersistAdapter",
-        message: "No persist adapter available",
-      });
-    }
-
     const state = this.statePort.get();
     const persistMeta = meta ?? this.remoteSyncGate.makePersistMeta(this.instanceId);
-    const result = await this.persistAdapter.save(this.definition.persist, state, persistMeta);
-    if (!result.ok) return err(result.error);
-
-    return ok(undefined);
+    return await this.persistenceCoordinator.persist(this.definition.persist, state, persistMeta);
   }
 
   async restore(): Promise<import("@/domain/types/result").Result<void, WindowError>> {
@@ -311,14 +299,7 @@ export class WindowController implements IWindowController {
       return ok(undefined);
     }
 
-    if (!this.persistAdapter) {
-      return err({
-        code: "NoPersistAdapter",
-        message: "No persist adapter available",
-      });
-    }
-
-    const result = await this.persistAdapter.load(this.definition.persist);
+    const result = await this.persistenceCoordinator.restore(this.definition.persist);
     if (!result.ok) return err(result.error);
 
     await this.applyRemotePatch(result.value);

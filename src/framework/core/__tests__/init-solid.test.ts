@@ -203,18 +203,18 @@ describe("init-solid Bootstrap", () => {
 
       const { ServiceContainer: serviceContainerClass } =
         await import("@/infrastructure/di/container");
-      const { notificationCenterToken } =
-        await import("@/application/tokens/notifications/notification-center.token");
+      const { notificationChannelRegistryToken } =
+        await import("@/application/tokens/notifications/notification-channel-registry.token");
       const originalResolve = serviceContainerClass.prototype.resolveWithError;
       const resolveSpy = vi
         .spyOn(serviceContainerClass.prototype, "resolveWithError")
         .mockImplementation(function (this: PlatformContainerPort, token: symbol) {
-          if (token === notificationCenterToken) {
+          if (token === notificationChannelRegistryToken) {
             return {
               ok: false as const,
               error: {
                 code: "DependencyResolveFailed" as const,
-                message: "NotificationCenter missing",
+                message: "NotificationChannelRegistry missing",
               },
             };
           }

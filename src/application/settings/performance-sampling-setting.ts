@@ -24,7 +24,7 @@ export const performanceSamplingSetting: SettingDefinition<number> = {
       ),
       scope: "world",
       config: true,
-      type: Number,
+      type: "number",
       default: 1,
       onChange: (value: number) => {
         const clamped = Math.max(0, Math.min(1, Number(value) || 0));

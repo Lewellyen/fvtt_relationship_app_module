@@ -1,10 +1,10 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
+import { notificationChannelRegistryToken } from "@/application/tokens/notifications/notification-channel-registry.token";
 import { queuedUIChannelToken } from "@/application/tokens/notifications/queued-ui-channel.token";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
-import type { NotificationService } from "@/application/services/notification-center.interface";
+import type { NotificationChannelRegistry } from "@/application/services/notification-center.interface";
 import type { PlatformChannelPort } from "@/domain/ports/notifications/platform-channel-port.interface";
 
 /**
@@ -28,11 +28,11 @@ export class NotificationBootstrapper {
    * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
    */
   static attachNotificationChannels(container: PlatformContainerPort): Result<void, string> {
-    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
-    if (!notificationCenterResult.ok) {
-      // NotificationCenter resolution failure - return error so orchestrator can log warning
+    const channelRegistryResult = container.resolveWithError(notificationChannelRegistryToken);
+    if (!channelRegistryResult.ok) {
+      // NotificationChannelRegistry resolution failure - return error so orchestrator can log warning
       return err(
-        `NotificationCenter could not be resolved: ${notificationCenterResult.error.message}`
+        `NotificationChannelRegistry could not be resolved: ${channelRegistryResult.error.message}`
       );
     }
 
@@ -42,11 +42,11 @@ export class NotificationBootstrapper {
       return err(`QueuedUIChannel could not be resolved: ${queuedUIChannelResult.error.message}`);
     }
 
-    const notificationCenter = castResolvedService<NotificationService>(
-      notificationCenterResult.value
+    const channelRegistry = castResolvedService<NotificationChannelRegistry>(
+      channelRegistryResult.value
     );
     const queuedUIChannel = castResolvedService<PlatformChannelPort>(queuedUIChannelResult.value);
-    notificationCenter.addChannel(queuedUIChannel);
+    channelRegistry.addChannel(queuedUIChannel);
     return ok(undefined);
   }
 }

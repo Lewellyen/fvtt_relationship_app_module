@@ -50,6 +50,14 @@ export interface ChannelManager {
 }
 
 /**
+ * Interface for managing notification channels (alias for ChannelManager).
+ *
+ * Provides methods for adding, removing, and querying notification channels.
+ * This alias improves semantic clarity when using the interface in isolation.
+ */
+export type NotificationChannelRegistry = ChannelManager;
+
+/**
  * Service interface for NotificationCenter.
  *
  * Platform-agnostic interface for sending notifications through channels.

@@ -19,34 +19,10 @@ import { DILocalTranslationHandler } from "@/infrastructure/i18n/LocalTranslatio
 import { DIFallbackTranslationHandler } from "@/infrastructure/i18n/FallbackTranslationHandler";
 import { DITranslationHandlerChain } from "@/infrastructure/i18n/TranslationHandlerChain";
 import type { TranslationHandler } from "@/infrastructure/i18n/TranslationHandler.interface";
+import type { TerminalTranslationHandler } from "@/infrastructure/i18n/TerminalTranslationHandler.interface";
+import { TerminalTranslationHandlerAdapter } from "@/infrastructure/i18n/TerminalTranslationHandlerAdapter";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import { DII18nPortAdapter } from "@/infrastructure/adapters/i18n/platform-i18n-port-adapter";
-
-/**
- * Helper function to resolve multiple services and extract their values.
- * This function respects the Result-Pattern by propagating errors through Results
- * before converting to an exception (which is required by FactoryFunction<T>).
- *
- * @template T - The type of service to resolve
- * @param container - The service container
- * @param tokens - Array of tokens to resolve
- * @returns Array of resolved service instances
- * @throws Error if any service resolution fails
- */
-function resolveMultipleServices<T>(
-  container: ServiceContainer,
-  tokens: Array<{ token: symbol; name: string }>
-): T[] {
-  const results: T[] = [];
-  for (const { token, name } of tokens) {
-    const result = container.resolveWithError(token);
-    if (!result.ok) {
-      throw new Error(`Failed to resolve ${name}: ${result.error.message}`);
-    }
-    results.push(castResolvedService<T>(result.value));
-  }
-  return results;
-}
 
 /**
  * Registers internationalization (i18n) services.
@@ -124,14 +100,38 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
   // This allows handlers to be resolved after container validation
   // NOTE: Factory functions must return T, not Result<T, E>, so we use a helper
   // that respects the Result-Pattern by propagating Results before converting to exception
+  // The fallback handler (terminal handler) is wrapped in an adapter to make it compatible
   const handlersArrayResult = container.registerFactory(
     translationHandlersToken,
     (): TranslationHandler[] => {
-      return resolveMultipleServices<TranslationHandler>(container, [
-        { token: foundryTranslationHandlerToken, name: "FoundryTranslationHandler" },
-        { token: localTranslationHandlerToken, name: "LocalTranslationHandler" },
-        { token: fallbackTranslationHandlerToken, name: "FallbackTranslationHandler" },
-      ]);
+      const foundryHandlerResult = container.resolveWithError(foundryTranslationHandlerToken);
+      if (!foundryHandlerResult.ok) {
+        throw new Error(
+          `Failed to resolve FoundryTranslationHandler: ${foundryHandlerResult.error.message}`
+        );
+      }
+      const foundryHandler = castResolvedService<TranslationHandler>(foundryHandlerResult.value);
+
+      const localHandlerResult = container.resolveWithError(localTranslationHandlerToken);
+      if (!localHandlerResult.ok) {
+        throw new Error(
+          `Failed to resolve LocalTranslationHandler: ${localHandlerResult.error.message}`
+        );
+      }
+      const localHandler = castResolvedService<TranslationHandler>(localHandlerResult.value);
+
+      const fallbackHandlerResult = container.resolveWithError(fallbackTranslationHandlerToken);
+      if (!fallbackHandlerResult.ok) {
+        throw new Error(
+          `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`
+        );
+      }
+      const fallbackHandler = castResolvedService<TerminalTranslationHandler>(
+        fallbackHandlerResult.value
+      );
+      // Wrap the terminal handler in an adapter to make it compatible with TranslationHandler
+      const fallbackHandlerAdapter = new TerminalTranslationHandlerAdapter(fallbackHandler);
+      return [foundryHandler, localHandler, fallbackHandlerAdapter];
     },
     ServiceLifecycle.SINGLETON,
     [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]

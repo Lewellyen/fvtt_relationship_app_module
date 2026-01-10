@@ -26,7 +26,7 @@ describe("RuntimeConfigSync", () => {
       const config = {
         name: "Test Setting",
         scope: "world" as const,
-        type: Number,
+        type: "number" as const,
         default: LogLevel.INFO,
         hint: "Test hint",
         config: true,
@@ -64,7 +64,7 @@ describe("RuntimeConfigSync", () => {
       const config = {
         name: "Test Setting",
         scope: "world" as const,
-        type: Number,
+        type: "number" as const,
         default: LogLevel.INFO,
         hint: "Test hint",
         config: true,
@@ -99,7 +99,7 @@ describe("RuntimeConfigSync", () => {
       const config = {
         name: "Test Setting",
         scope: "world" as const,
-        type: Number,
+        type: "number" as const,
         default: 0,
         hint: "Test hint",
         config: true,

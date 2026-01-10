@@ -1,7 +1,7 @@
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { RuntimeConfigKey, RuntimeConfigValues } from "@/domain/types/runtime-config";
 import type { PlatformRuntimeConfigPort } from "@/domain/ports/platform-runtime-config-port.interface";
-import type { SettingConfig as ModuleSettingConfig } from "@/application/settings/setting-definition.interface";
+import type { DomainSettingConfig } from "@/domain/types/settings";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { SettingValidator } from "@/domain/types/setting-validator";
@@ -45,14 +45,14 @@ export class RuntimeConfigSync {
    *
    * Wraps the original onChange callback and adds RuntimeConfig synchronization.
    *
-   * @param config - The Setting configuration
+   * @param config - The Setting configuration (platform-agnostic DomainSettingConfig)
    * @param binding - Binding configuration for RuntimeConfig sync
    * @returns Modified config with RuntimeConfig bridge attached
    */
   attachBinding<TSchema, K extends RuntimeConfigKey>(
-    config: ModuleSettingConfig<TSchema>,
+    config: DomainSettingConfig<TSchema>,
     binding: RuntimeConfigBinding<TSchema, K>
-  ): ModuleSettingConfig<TSchema> {
+  ): DomainSettingConfig<TSchema> {
     const originalOnChange = config.onChange;
     return {
       ...config,

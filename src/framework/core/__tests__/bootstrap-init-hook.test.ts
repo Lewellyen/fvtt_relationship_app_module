@@ -10,7 +10,7 @@ import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
 import { journalContextMenuLibWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry/journal-context-menu-lib-wrapper-service.token";
-import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
+import { notificationChannelRegistryToken } from "@/application/tokens/notifications/notification-channel-registry.token";
 import { queuedUIChannelToken } from "@/application/tokens/notifications/queued-ui-channel.token";
 import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core/module-settings-registrar.token";
 import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
@@ -174,7 +174,7 @@ describe("BootstrapInitHookService", () => {
     });
 
     it("should attach QueuedUI channel to NotificationCenter when available", async () => {
-      const mockNotificationCenter = {
+      const mockChannelRegistry = {
         addChannel: vi.fn(),
       };
 
@@ -195,8 +195,8 @@ describe("BootstrapInitHookService", () => {
       };
 
       (mockContainer.resolveWithError as any).mockImplementation((token: symbol) => {
-        if (token === notificationCenterToken) {
-          return ok(mockNotificationCenter);
+        if (token === notificationChannelRegistryToken) {
+          return ok(mockChannelRegistry);
         }
         if (token === queuedUIChannelToken) {
           return ok(mockQueuedUIChannel);
@@ -222,10 +222,10 @@ describe("BootstrapInitHookService", () => {
       expect(capturedInitCallback).toBeDefined();
       capturedInitCallback!();
 
-      expect(mockNotificationCenter.addChannel).toHaveBeenCalledWith(mockQueuedUIChannel);
+      expect(mockChannelRegistry.addChannel).toHaveBeenCalledWith(mockQueuedUIChannel);
     });
 
-    it("should warn when NotificationCenter cannot be resolved", async () => {
+    it("should warn when NotificationChannelRegistry cannot be resolved", async () => {
       const mockApiInitializer = {
         expose: vi.fn().mockReturnValue(ok(undefined)),
       };
@@ -239,10 +239,10 @@ describe("BootstrapInitHookService", () => {
       };
 
       (mockContainer.resolveWithError as any).mockImplementation((token: symbol) => {
-        if (token === notificationCenterToken) {
+        if (token === notificationChannelRegistryToken) {
           return err({
             code: "DependencyResolveFailed" as const,
-            message: "NotificationCenter not found",
+            message: "NotificationChannelRegistry not found",
           });
         }
         if (token === moduleApiInitializerToken) {

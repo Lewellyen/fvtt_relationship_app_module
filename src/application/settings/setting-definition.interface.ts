@@ -8,28 +8,15 @@
  * - Single Responsibility: Each setting definition is separate
  * - Open/Closed: Easy to add new settings without modifying ModuleSettingsRegistrar
  * - Testability: Each setting can be tested in isolation
+ * - Dependency Inversion: Uses domain-agnostic DomainSettingConfig instead of platform-specific types
  *
  * @see ModuleSettingsRegistrar for usage
  */
 
+import type { DomainSettingConfig } from "@/domain/types/settings";
 import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
-
-/**
- * Configuration for a Foundry setting.
- * Matches Foundry's game.settings.register() options.
- */
-export interface SettingConfig<T> {
-  name: string;
-  hint: string;
-  scope: "client" | "world";
-  config: boolean;
-  type: NumberConstructor | StringConstructor | BooleanConstructor;
-  choices?: Record<number | string, string>;
-  default: T;
-  onChange?: (value: T) => void;
-}
 
 /**
  * Definition for a module setting.
@@ -43,6 +30,10 @@ export interface SettingConfig<T> {
  *   createConfig(i18n, logger) {
  *     return {
  *       name: i18n.translate('setting.name', 'Enable Feature'),
+ *       scope: "world",
+ *       config: true,
+ *       type: "boolean",
+ *       default: true,
  *       // ... other config
  *     };
  *   }
@@ -61,14 +52,17 @@ export interface SettingDefinition<T> {
    * This method is called during settings registration to build
    * the configuration object with localized strings.
    *
+   * Returns a platform-agnostic DomainSettingConfig that will be
+   * mapped to platform-specific types by the infrastructure layer.
+   *
    * @param i18n - I18n facade for translating strings
    * @param logger - Logger for the onChange callback
    * @param validator - Validation port for validating setting values
-   * @returns Complete setting configuration
+   * @returns Platform-agnostic setting configuration
    */
   createConfig(
     i18n: PlatformI18nPort,
     logger: PlatformLoggingPort,
     validator: PlatformValidationPort
-  ): SettingConfig<T>;
+  ): DomainSettingConfig<T>;
 }

@@ -13,12 +13,13 @@ import {
   stateStoreToken,
   statePortFactoryToken,
   actionDispatcherToken,
-  rendererRegistryToken,
   bindingEngineToken,
   viewModelBuilderToken,
   eventBusToken,
   remoteSyncGateToken,
-  persistAdapterToken,
+  windowStateInitializerToken,
+  windowRendererCoordinatorToken,
+  windowPersistenceCoordinatorToken,
 } from "../tokens/window.tokens";
 import { castResolvedService } from "@/application/windows/utils/service-casts";
 
@@ -158,16 +159,6 @@ export class WindowFactory implements IWindowFactory {
       import("@/domain/windows/ports/action-dispatcher-port.interface").IActionDispatcher
     >(actionDispatcherResult.value);
 
-    const rendererRegistryResult = this.container.resolveWithError(rendererRegistryToken);
-    if (!rendererRegistryResult.ok) {
-      throw new Error(
-        `Failed to resolve RendererRegistry: ${rendererRegistryResult.error.message}`
-      );
-    }
-    const rendererRegistry = castResolvedService<
-      import("@/domain/windows/ports/renderer-registry-port.interface").IRendererRegistry
-    >(rendererRegistryResult.value);
-
     const bindingEngineResult = this.container.resolveWithError(bindingEngineToken);
     if (!bindingEngineResult.ok) {
       throw new Error(`Failed to resolve BindingEngine: ${bindingEngineResult.error.message}`);
@@ -202,14 +193,39 @@ export class WindowFactory implements IWindowFactory {
       import("@/domain/windows/ports/remote-sync-gate-port.interface").IRemoteSyncGate
     >(remoteSyncGateResult.value);
 
-    const persistAdapterResult = this.container.resolveWithError(persistAdapterToken);
-    const persistAdapter = persistAdapterResult.ok
-      ? (castResolvedService<
-          import("@/domain/windows/ports/persist-adapter-port.interface").IPersistAdapter
-        >(persistAdapterResult.value) as
-          | import("@/domain/windows/ports/persist-adapter-port.interface").IPersistAdapter
-          | undefined)
-      : undefined;
+    const stateInitializerResult = this.container.resolveWithError(windowStateInitializerToken);
+    if (!stateInitializerResult.ok) {
+      throw new Error(
+        `Failed to resolve WindowStateInitializer: ${stateInitializerResult.error.message}`
+      );
+    }
+    const stateInitializer = castResolvedService<
+      import("../ports/window-state-initializer-port.interface").IWindowStateInitializer
+    >(stateInitializerResult.value);
+
+    const rendererCoordinatorResult = this.container.resolveWithError(
+      windowRendererCoordinatorToken
+    );
+    if (!rendererCoordinatorResult.ok) {
+      throw new Error(
+        `Failed to resolve WindowRendererCoordinator: ${rendererCoordinatorResult.error.message}`
+      );
+    }
+    const rendererCoordinator = castResolvedService<
+      import("../ports/window-renderer-coordinator-port.interface").IWindowRendererCoordinator
+    >(rendererCoordinatorResult.value);
+
+    const persistenceCoordinatorResult = this.container.resolveWithError(
+      windowPersistenceCoordinatorToken
+    );
+    if (!persistenceCoordinatorResult.ok) {
+      throw new Error(
+        `Failed to resolve WindowPersistenceCoordinator: ${persistenceCoordinatorResult.error.message}`
+      );
+    }
+    const persistenceCoordinator = castResolvedService<
+      import("../ports/window-persistence-coordinator-port.interface").IWindowPersistenceCoordinator
+    >(persistenceCoordinatorResult.value);
 
     return new WindowController(
       instanceId,
@@ -219,12 +235,13 @@ export class WindowFactory implements IWindowFactory {
       stateStore,
       statePortFactory,
       actionDispatcher,
-      rendererRegistry,
       bindingEngine,
       viewModelBuilder,
       eventBus,
       remoteSyncGate,
-      persistAdapter,
+      stateInitializer,
+      rendererCoordinator,
+      persistenceCoordinator,
       this.container // Pass container for action handlers
     );
   }

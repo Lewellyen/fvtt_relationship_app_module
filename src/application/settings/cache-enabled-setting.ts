@@ -24,7 +24,7 @@ export const cacheEnabledSetting: SettingDefinition<boolean> = {
       ),
       scope: "world",
       config: true,
-      type: Boolean,
+      type: "boolean",
       default: true,
       onChange: (value: boolean) => {
         const action = value ? "enabled" : "disabled";

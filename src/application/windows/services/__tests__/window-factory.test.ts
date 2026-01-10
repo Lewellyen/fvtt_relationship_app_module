@@ -11,12 +11,13 @@ import {
   stateStoreToken,
   statePortFactoryToken,
   actionDispatcherToken,
-  rendererRegistryToken,
   bindingEngineToken,
   viewModelBuilderToken,
   eventBusToken,
   remoteSyncGateToken,
-  persistAdapterToken,
+  windowStateInitializerToken,
+  windowRendererCoordinatorToken,
+  windowPersistenceCoordinatorToken,
 } from "../../tokens/window.tokens";
 
 describe("WindowFactory", () => {
@@ -75,10 +76,6 @@ describe("WindowFactory", () => {
         return {
           dispatch: vi.fn().mockResolvedValue(ok(undefined)),
         };
-      if (token === rendererRegistryToken)
-        return {
-          get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
-        };
       if (token === bindingEngineToken)
         return {
           initialize: vi.fn().mockReturnValue(ok(undefined)),
@@ -106,7 +103,25 @@ describe("WindowFactory", () => {
           isFromWindow: vi.fn().mockReturnValue(false),
           getClientId: vi.fn().mockReturnValue("client-1"),
         };
-      if (token === persistAdapterToken) return undefined;
+      if (token === windowStateInitializerToken)
+        return {
+          buildInitialState: vi.fn().mockReturnValue({
+            journals: [],
+            isLoading: false,
+            error: null,
+          }),
+        };
+      if (token === windowRendererCoordinatorToken)
+        return {
+          mount: vi.fn().mockReturnValue(ok({})),
+          unmount: vi.fn().mockReturnValue(ok(undefined)),
+          update: vi.fn().mockReturnValue(ok(undefined)),
+        };
+      if (token === windowPersistenceCoordinatorToken)
+        return {
+          persist: vi.fn().mockResolvedValue(ok(undefined)),
+          restore: vi.fn().mockResolvedValue(ok({})),
+        };
       return undefined;
     };
 
@@ -428,9 +443,19 @@ describe("WindowFactory", () => {
           return {
             dispatch: vi.fn().mockResolvedValue(ok(undefined)),
           };
-        if (token === rendererRegistryToken)
+        if (token === windowStateInitializerToken)
           return {
-            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+            buildInitialState: vi.fn().mockReturnValue({
+              journals: [],
+              isLoading: false,
+              error: null,
+            }),
+          };
+        if (token === windowRendererCoordinatorToken)
+          return {
+            mount: vi.fn().mockReturnValue(ok({})),
+            unmount: vi.fn().mockReturnValue(ok(undefined)),
+            update: vi.fn().mockReturnValue(ok(undefined)),
           };
         if (token === bindingEngineToken)
           return {
@@ -459,7 +484,11 @@ describe("WindowFactory", () => {
             isFromWindow: vi.fn().mockReturnValue(false),
             getClientId: vi.fn().mockReturnValue("client-1"),
           };
-        if (token === persistAdapterToken) return undefined;
+        if (token === windowPersistenceCoordinatorToken)
+          return {
+            persist: vi.fn().mockResolvedValue(ok(undefined)),
+            restore: vi.fn().mockResolvedValue(ok({})),
+          };
         return undefined;
       };
 
@@ -508,10 +537,6 @@ describe("WindowFactory", () => {
     });
 
     it("should create window handle with persist method", async () => {
-      const mockPersistAdapter = {
-        save: vi.fn().mockResolvedValue(ok(undefined)),
-        load: vi.fn().mockResolvedValue(ok({})),
-      };
       const mockStatePort = {
         get: vi.fn().mockReturnValue({ count: 0 }),
         patch: vi.fn().mockReturnValue(ok(undefined)),
@@ -536,9 +561,11 @@ describe("WindowFactory", () => {
           return {
             dispatch: vi.fn().mockResolvedValue(ok(undefined)),
           };
-        if (token === rendererRegistryToken)
+        if (token === windowRendererCoordinatorToken)
           return {
-            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+            mount: vi.fn().mockReturnValue(ok({})),
+            unmount: vi.fn().mockReturnValue(ok(undefined)),
+            update: vi.fn().mockReturnValue(ok(undefined)),
           };
         if (token === bindingEngineToken)
           return {
@@ -567,7 +594,25 @@ describe("WindowFactory", () => {
             isFromWindow: vi.fn().mockReturnValue(false),
             getClientId: vi.fn().mockReturnValue("client-1"),
           };
-        if (token === persistAdapterToken) return mockPersistAdapter;
+        if (token === windowStateInitializerToken)
+          return {
+            buildInitialState: vi.fn().mockReturnValue({
+              journals: [],
+              isLoading: false,
+              error: null,
+            }),
+          };
+        if (token === windowRendererCoordinatorToken)
+          return {
+            mount: vi.fn().mockReturnValue(ok({})),
+            unmount: vi.fn().mockReturnValue(ok(undefined)),
+            update: vi.fn().mockReturnValue(ok(undefined)),
+          };
+        if (token === windowPersistenceCoordinatorToken)
+          return {
+            persist: vi.fn().mockResolvedValue(ok(undefined)),
+            restore: vi.fn().mockResolvedValue(ok({})),
+          };
         return undefined;
       };
 
@@ -645,9 +690,11 @@ describe("WindowFactory", () => {
           return {
             dispatch: vi.fn().mockResolvedValue(ok(undefined)),
           };
-        if (token === rendererRegistryToken)
+        if (token === windowRendererCoordinatorToken)
           return {
-            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+            mount: vi.fn().mockReturnValue(ok({})),
+            unmount: vi.fn().mockReturnValue(ok(undefined)),
+            update: vi.fn().mockReturnValue(ok(undefined)),
           };
         if (token === bindingEngineToken)
           return {
@@ -676,7 +723,7 @@ describe("WindowFactory", () => {
             isFromWindow: vi.fn().mockReturnValue(false),
             getClientId: vi.fn().mockReturnValue("client-1"),
           };
-        if (token === persistAdapterToken) return undefined;
+        if (token === windowPersistenceCoordinatorToken) return undefined;
         return undefined;
       });
 
@@ -825,7 +872,7 @@ describe("WindowFactory", () => {
       );
     });
 
-    it("should throw error when RendererRegistry cannot be resolved", async () => {
+    it("should throw error when WindowStateInitializer cannot be resolved", async () => {
       vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
 
       const resolveService = (token: symbol) => {
@@ -849,6 +896,44 @@ describe("WindowFactory", () => {
           return {
             dispatch: vi.fn().mockResolvedValue(ok(undefined)),
           };
+        if (token === windowRendererCoordinatorToken)
+          return {
+            mount: vi.fn().mockReturnValue(ok({})),
+            unmount: vi.fn().mockReturnValue(ok(undefined)),
+            update: vi.fn().mockReturnValue(ok(undefined)),
+          };
+        if (token === bindingEngineToken)
+          return {
+            initialize: vi.fn().mockReturnValue(ok(undefined)),
+            sync: vi.fn().mockResolvedValue(ok(undefined)),
+            getNormalizedBindings: vi.fn().mockReturnValue([]),
+          };
+        if (token === viewModelBuilderToken)
+          return {
+            build: vi.fn().mockReturnValue({
+              state: { get: vi.fn(), patch: vi.fn(), subscribe: vi.fn() },
+              computed: {},
+              actions: {},
+            }),
+          };
+        if (token === eventBusToken)
+          return {
+            emit: vi.fn(),
+            on: vi.fn(() => () => {}),
+            off: vi.fn(),
+            once: vi.fn(),
+          };
+        if (token === remoteSyncGateToken)
+          return {
+            makePersistMeta: vi.fn().mockReturnValue({}),
+            isFromWindow: vi.fn().mockReturnValue(false),
+            getClientId: vi.fn().mockReturnValue("client-1"),
+          };
+        if (token === windowPersistenceCoordinatorToken)
+          return {
+            persist: vi.fn().mockResolvedValue(ok(undefined)),
+            restore: vi.fn().mockResolvedValue(ok({})),
+          };
         return undefined;
       };
 
@@ -857,10 +942,10 @@ describe("WindowFactory", () => {
         if (service !== undefined) {
           return ok(service);
         }
-        if (token === rendererRegistryToken) {
+        if (token === windowStateInitializerToken) {
           return err({
             code: "SERVICE_NOT_FOUND",
-            message: "RendererRegistry not found",
+            message: "WindowStateInitializer not found",
             details: {},
           });
         }
@@ -872,7 +957,190 @@ describe("WindowFactory", () => {
       });
 
       await expect(factory.createWindow("test-window")).rejects.toThrow(
-        "Failed to resolve RendererRegistry: RendererRegistry not found"
+        "Failed to resolve WindowStateInitializer: WindowStateInitializer not found"
+      );
+    });
+
+    it("should throw error when WindowRendererCoordinator cannot be resolved", async () => {
+      vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
+
+      const resolveService = (token: symbol) => {
+        if (token === windowRegistryToken) return mockRegistry;
+        if (token === stateStoreToken)
+          return {
+            set: vi.fn().mockReturnValue(ok(undefined)),
+            get: vi.fn(),
+            getAll: vi.fn().mockReturnValue(ok({})),
+            clear: vi.fn(),
+          };
+        if (token === statePortFactoryToken)
+          return {
+            create: vi.fn().mockReturnValue({
+              get: vi.fn(),
+              patch: vi.fn().mockReturnValue(ok(undefined)),
+              subscribe: vi.fn(),
+            }),
+          };
+        if (token === actionDispatcherToken)
+          return {
+            dispatch: vi.fn().mockResolvedValue(ok(undefined)),
+          };
+        if (token === windowStateInitializerToken)
+          return {
+            buildInitialState: vi.fn().mockReturnValue({
+              journals: [],
+              isLoading: false,
+              error: null,
+            }),
+          };
+        if (token === bindingEngineToken)
+          return {
+            initialize: vi.fn().mockReturnValue(ok(undefined)),
+            sync: vi.fn().mockResolvedValue(ok(undefined)),
+            getNormalizedBindings: vi.fn().mockReturnValue([]),
+          };
+        if (token === viewModelBuilderToken)
+          return {
+            build: vi.fn().mockReturnValue({
+              state: { get: vi.fn(), patch: vi.fn(), subscribe: vi.fn() },
+              computed: {},
+              actions: {},
+            }),
+          };
+        if (token === eventBusToken)
+          return {
+            emit: vi.fn(),
+            on: vi.fn(() => () => {}),
+            off: vi.fn(),
+            once: vi.fn(),
+          };
+        if (token === remoteSyncGateToken)
+          return {
+            makePersistMeta: vi.fn().mockReturnValue({}),
+            isFromWindow: vi.fn().mockReturnValue(false),
+            getClientId: vi.fn().mockReturnValue("client-1"),
+          };
+        if (token === windowPersistenceCoordinatorToken)
+          return {
+            persist: vi.fn().mockResolvedValue(ok(undefined)),
+            restore: vi.fn().mockResolvedValue(ok({})),
+          };
+        return undefined;
+      };
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        const service = resolveService(token);
+        if (service !== undefined) {
+          return ok(service);
+        }
+        if (token === windowRendererCoordinatorToken) {
+          return err({
+            code: "SERVICE_NOT_FOUND",
+            message: "WindowRendererCoordinator not found",
+            details: {},
+          });
+        }
+        return err({
+          code: "SERVICE_NOT_FOUND",
+          message: `Token not registered: ${String(token)}`,
+          details: {},
+        });
+      });
+
+      await expect(factory.createWindow("test-window")).rejects.toThrow(
+        "Failed to resolve WindowRendererCoordinator: WindowRendererCoordinator not found"
+      );
+    });
+
+    it("should throw error when WindowPersistenceCoordinator cannot be resolved", async () => {
+      vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
+
+      const resolveService = (token: symbol) => {
+        if (token === windowRegistryToken) return mockRegistry;
+        if (token === stateStoreToken)
+          return {
+            set: vi.fn().mockReturnValue(ok(undefined)),
+            get: vi.fn(),
+            getAll: vi.fn().mockReturnValue(ok({})),
+            clear: vi.fn(),
+          };
+        if (token === statePortFactoryToken)
+          return {
+            create: vi.fn().mockReturnValue({
+              get: vi.fn(),
+              patch: vi.fn().mockReturnValue(ok(undefined)),
+              subscribe: vi.fn(),
+            }),
+          };
+        if (token === actionDispatcherToken)
+          return {
+            dispatch: vi.fn().mockResolvedValue(ok(undefined)),
+          };
+        if (token === windowStateInitializerToken)
+          return {
+            buildInitialState: vi.fn().mockReturnValue({
+              journals: [],
+              isLoading: false,
+              error: null,
+            }),
+          };
+        if (token === windowRendererCoordinatorToken)
+          return {
+            mount: vi.fn().mockReturnValue(ok({})),
+            unmount: vi.fn().mockReturnValue(ok(undefined)),
+            update: vi.fn().mockReturnValue(ok(undefined)),
+          };
+        if (token === bindingEngineToken)
+          return {
+            initialize: vi.fn().mockReturnValue(ok(undefined)),
+            sync: vi.fn().mockResolvedValue(ok(undefined)),
+            getNormalizedBindings: vi.fn().mockReturnValue([]),
+          };
+        if (token === viewModelBuilderToken)
+          return {
+            build: vi.fn().mockReturnValue({
+              state: { get: vi.fn(), patch: vi.fn(), subscribe: vi.fn() },
+              computed: {},
+              actions: {},
+            }),
+          };
+        if (token === eventBusToken)
+          return {
+            emit: vi.fn(),
+            on: vi.fn(() => () => {}),
+            off: vi.fn(),
+            once: vi.fn(),
+          };
+        if (token === remoteSyncGateToken)
+          return {
+            makePersistMeta: vi.fn().mockReturnValue({}),
+            isFromWindow: vi.fn().mockReturnValue(false),
+            getClientId: vi.fn().mockReturnValue("client-1"),
+          };
+        return undefined;
+      };
+
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        const service = resolveService(token);
+        if (service !== undefined) {
+          return ok(service);
+        }
+        if (token === windowPersistenceCoordinatorToken) {
+          return err({
+            code: "SERVICE_NOT_FOUND",
+            message: "WindowPersistenceCoordinator not found",
+            details: {},
+          });
+        }
+        return err({
+          code: "SERVICE_NOT_FOUND",
+          message: `Token not registered: ${String(token)}`,
+          details: {},
+        });
+      });
+
+      await expect(factory.createWindow("test-window")).rejects.toThrow(
+        "Failed to resolve WindowPersistenceCoordinator: WindowPersistenceCoordinator not found"
       );
     });
 
@@ -900,9 +1168,11 @@ describe("WindowFactory", () => {
           return {
             dispatch: vi.fn().mockResolvedValue(ok(undefined)),
           };
-        if (token === rendererRegistryToken)
+        if (token === windowRendererCoordinatorToken)
           return {
-            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+            mount: vi.fn().mockReturnValue(ok({})),
+            unmount: vi.fn().mockReturnValue(ok(undefined)),
+            update: vi.fn().mockReturnValue(ok(undefined)),
           };
         return undefined;
       };
@@ -955,9 +1225,11 @@ describe("WindowFactory", () => {
           return {
             dispatch: vi.fn().mockResolvedValue(ok(undefined)),
           };
-        if (token === rendererRegistryToken)
+        if (token === windowRendererCoordinatorToken)
           return {
-            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+            mount: vi.fn().mockReturnValue(ok({})),
+            unmount: vi.fn().mockReturnValue(ok(undefined)),
+            update: vi.fn().mockReturnValue(ok(undefined)),
           };
         if (token === bindingEngineToken)
           return {
@@ -1016,9 +1288,11 @@ describe("WindowFactory", () => {
           return {
             dispatch: vi.fn().mockResolvedValue(ok(undefined)),
           };
-        if (token === rendererRegistryToken)
+        if (token === windowRendererCoordinatorToken)
           return {
-            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+            mount: vi.fn().mockReturnValue(ok({})),
+            unmount: vi.fn().mockReturnValue(ok(undefined)),
+            update: vi.fn().mockReturnValue(ok(undefined)),
           };
         if (token === bindingEngineToken)
           return {
@@ -1085,9 +1359,11 @@ describe("WindowFactory", () => {
           return {
             dispatch: vi.fn().mockResolvedValue(ok(undefined)),
           };
-        if (token === rendererRegistryToken)
+        if (token === windowRendererCoordinatorToken)
           return {
-            get: vi.fn().mockReturnValue(ok({ mount: vi.fn(), unmount: vi.fn(), update: vi.fn() })),
+            mount: vi.fn().mockReturnValue(ok({})),
+            unmount: vi.fn().mockReturnValue(ok(undefined)),
+            update: vi.fn().mockReturnValue(ok(undefined)),
           };
         if (token === bindingEngineToken)
           return {

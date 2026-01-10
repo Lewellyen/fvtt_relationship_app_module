@@ -27,13 +27,58 @@ const baseConfig = {
   hint: "Demo",
   scope: "world" as const,
   config: true,
-  type: Boolean,
+  type: "boolean" as const,
   choices: { on: "On", off: "Off" },
   default: true,
   onChange: vi.fn(),
 };
 
 describe("FoundrySettingsRegistrationAdapter", () => {
+  it("maps all domain setting types correctly", () => {
+    const register = vi.fn().mockReturnValue({ ok: true, value: undefined });
+    const { adapter } = createFoundrySettingsMock({ register });
+
+    // Test all three domain types
+    adapter.registerSetting("module", "string-setting", {
+      ...baseConfig,
+      type: "string" as const,
+      default: "test",
+    });
+    adapter.registerSetting("module", "number-setting", {
+      ...baseConfig,
+      type: "number" as const,
+      default: 42,
+    });
+    adapter.registerSetting("module", "boolean-setting", {
+      ...baseConfig,
+      type: "boolean" as const,
+    });
+
+    expect(register).toHaveBeenCalledTimes(3);
+
+    const call1 = register.mock.calls[0]!;
+    const call2 = register.mock.calls[1]!;
+    const call3 = register.mock.calls[2]!;
+
+    expect((call1[2] as { type: typeof String }).type).toBe(String);
+    expect((call2[2] as { type: typeof Number }).type).toBe(Number);
+    expect((call3[2] as { type: typeof Boolean }).type).toBe(Boolean);
+  });
+
+  it("throws error for invalid domain setting type (exhaustive check)", () => {
+    const register = vi.fn().mockReturnValue({ ok: true, value: undefined });
+    const { adapter } = createFoundrySettingsMock({ register });
+
+    // Use type assertion to bypass TypeScript's type checking and test the exhaustive check
+    const invalidConfig = {
+      ...baseConfig,
+      type: "invalid" as any, // Type assertion to test defensive code path
+    };
+
+    expect(() => adapter.registerSetting("module", "invalid-setting", invalidConfig)).toThrow(
+      "Unknown domain setting type: invalid"
+    );
+  });
   it("registers settings via Foundry API and maps config fields", () => {
     const register = vi.fn().mockReturnValue({ ok: true, value: undefined });
     const { adapter, mock } = createFoundrySettingsMock({ register });

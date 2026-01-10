@@ -12,6 +12,65 @@
 
 ### Upgrade-Hinweise
 
+## [0.55.1] - 2026-01-10
+### Hinzugefügt
+- **WindowStateInitializer Interface**: Neues Port-Interface für Window-State-Initialisierung ([Details](src/application/windows/ports/window-state-initializer-port.interface.ts))
+- `IWindowStateInitializer` Interface für plug-in-Strategie zur State-Initialisierung pro Window-Definition
+- `DefaultWindowStateInitializer` für generische Windows
+- `JournalOverviewStateInitializer` für journal-overview-spezifische State-Initialisierung
+- `WindowStateInitializer` als Composite-Strategie
+- **WindowRendererCoordinator Interface**: Neues Port-Interface für Rendering-Koordination ([Details](src/application/windows/ports/window-renderer-coordinator-port.interface.ts))
+- `IWindowRendererCoordinator` Interface für isolierte Rendering/Mounting/Unmounting-Logik
+- `WindowRendererCoordinator` Implementation
+- **WindowPersistenceCoordinator Interface**: Neues Port-Interface für Persistenz-Koordination ([Details](src/application/windows/ports/window-persistence-coordinator-port.interface.ts))
+- `IWindowPersistenceCoordinator` Interface für isolierte Persist/Restore-Logik
+- `WindowPersistenceCoordinator` Implementation
+
+### Geändert
+- **FallbackTranslationHandler Refactoring (LSP-001)**: FallbackTranslationHandler implementiert jetzt TerminalTranslationHandler Interface ([Details](docs/refactoring/LSP/LSP-001-fallback-translation-handler-short-circuit.md))
+- `TerminalTranslationHandler` Interface hinzugefügt (ohne `setNext`-Methode)
+- `FallbackTranslationHandler` implementiert jetzt `TerminalTranslationHandler` statt `AbstractTranslationHandler`
+- `TerminalTranslationHandlerAdapter` hinzugefügt, um Terminal-Handler in Chains zu verwenden
+- Verhindert, dass Fallback-Handler in der Mitte der Chain eingesetzt werden können (LSP-Konformität)
+- DI-Konfiguration wurde angepasst, um Terminal-Handler korrekt zu wrappen
+- Keine Breaking Changes in der Public API - bestehende Tests bestehen weiterhin
+- **WindowController Refactoring (SRP-001)**: WindowController wurde in orchestrierende Facade + spezialisierte Services zerlegt ([Details](docs/refactoring/SRP/SRP-001-split-window-controller.md))
+- State-Initialisierung an `WindowStateInitializer` delegiert
+- Rendering/Mounting/Unmounting an `WindowRendererCoordinator` delegiert
+- Persistenz-Operationen an `WindowPersistenceCoordinator` delegiert
+- WindowController fungiert jetzt als Facade für Lifecycle-Orchestrierung
+- Feature-spezifische State-Logik (z.B. journal-overview) in `JournalOverviewStateInitializer` ausgelagert
+- Verbesserte Testbarkeit und Erweiterbarkeit durch SRP-Konformität
+- Neue Window-Definitionen können Default-State hinzufügen ohne `WindowController` zu ändern
+- **WindowStateInitializer Refactoring (OCP-001)**: Registry-basierte Lösung für Window-Default-State-Provider implementiert ([Details](docs/refactoring/OCP/OCP-001-hardcoded-window-defaults.md))
+- `WindowDefaultStateProviderRegistry` Interface und Implementierung hinzugefügt
+- `WindowStateInitializer` nutzt jetzt Registry statt hardcodierter if/else-Logik
+- Neue Window-Default-States können durch Registrierung neuer Provider hinzugefügt werden, ohne `WindowStateInitializer` zu modifizieren
+- OCP-Konformität: `WindowStateInitializer` ist jetzt geschlossen für Modifikation, offen für Erweiterung
+- `journal-overview` Provider wird in DI-Konfiguration registriert
+- **DI-Registrierung**: Neue Services in DI-Container registriert ([Details](src/framework/config/modules/window-services.config.ts))
+- `WindowDefaultStateProviderRegistry` als Singleton Value registriert (mit `journal-overview` Provider)
+- `WindowStateInitializer` als Singleton registriert (abhängig von `WindowDefaultStateProviderRegistry`)
+- `WindowRendererCoordinator` als Singleton registriert (abhängig von `RendererRegistry`)
+- `WindowPersistenceCoordinator` als Singleton registriert (abhängig von `PersistAdapter`)
+- **NotificationService ISP-Refactoring (ISP-001)**: NotificationService-Interface wurde nach Interface Segregation Principle (ISP) refactored ([Details](docs/refactoring/ISP/ISP-001-notification-service-fat-interface.md))
+- Neue Tokens `notificationSenderToken` und `notificationChannelRegistryToken` für getrennte Abhängigkeiten
+- `NotificationChannelRegistry` Interface (alias von `ChannelManager`) für bessere semantische Klarheit
+- `NotificationBootstrapper` verwendet jetzt `notificationChannelRegistryToken` für Channel-Management
+- DI-Registrierung: Beide neuen Tokens als Aliase zu `notificationCenterToken` registriert
+- Framework/Infrastructure-Abhängigkeiten können jetzt `NotificationSender` statt `NotificationService` verwenden
+- Verbesserte Entkopplung: Konsumenten hängen nur von den Methoden ab, die sie benötigen
+- Keine Breaking Changes: Public API bleibt kompatibel, `notificationCenterToken` funktioniert weiterhin
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.55.0] - 2026-01-10
 ### Hinzugefügt
 - **Journal Directory Buttons Permissions Setting**: Neue Einstellung für Berechtigungen von Journal-Directory-Buttons ([Details](src/application/settings/journal-directory-buttons-permissions-setting.ts))

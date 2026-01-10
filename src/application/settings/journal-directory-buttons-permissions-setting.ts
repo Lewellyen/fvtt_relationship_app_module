@@ -21,7 +21,7 @@ export const journalDirectoryButtonsPlayerSetting: SettingDefinition<boolean> = 
       ),
       scope: "world",
       config: true,
-      type: Boolean,
+      type: "boolean",
       default: false,
     };
   },
@@ -45,7 +45,7 @@ export const journalDirectoryButtonsTrustedSetting: SettingDefinition<boolean> =
       ),
       scope: "world",
       config: true,
-      type: Boolean,
+      type: "boolean",
       default: false,
     };
   },
@@ -72,7 +72,7 @@ export const journalDirectoryButtonsAssistantSetting: SettingDefinition<boolean>
       ),
       scope: "world",
       config: true,
-      type: Boolean,
+      type: "boolean",
       default: false,
     };
   },
@@ -96,7 +96,7 @@ export const journalDirectoryButtonsGamemasterSetting: SettingDefinition<boolean
       ),
       scope: "world",
       config: true,
-      type: Boolean,
+      type: "boolean",
       default: true,
     };
   },

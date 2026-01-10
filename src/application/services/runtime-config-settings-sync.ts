@@ -1,5 +1,5 @@
 import type { RuntimeConfigKey } from "@/domain/types/runtime-config";
-import type { SettingConfig as ModuleSettingConfig } from "@/application/settings/setting-definition.interface";
+import type { DomainSettingConfig } from "@/domain/types/settings";
 import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import {
   RuntimeConfigSync,
@@ -17,14 +17,14 @@ export interface IRuntimeConfigSettingsSync {
   /**
    * Attaches RuntimeConfig synchronization binding to a setting configuration.
    *
-   * @param config - The Setting configuration
+   * @param config - The Setting configuration (platform-agnostic DomainSettingConfig)
    * @param binding - Binding configuration for RuntimeConfig sync
    * @returns Modified config with RuntimeConfig bridge attached
    */
   attachBinding<TSchema, K extends RuntimeConfigKey>(
-    config: ModuleSettingConfig<TSchema>,
+    config: DomainSettingConfig<TSchema>,
     binding: RuntimeConfigBinding<TSchema, K>
-  ): ModuleSettingConfig<TSchema>;
+  ): DomainSettingConfig<TSchema>;
 
   /**
    * Synchronizes initial Setting value to RuntimeConfig.
@@ -65,14 +65,14 @@ export class RuntimeConfigSettingsSync implements IRuntimeConfigSettingsSync {
    *
    * Delegates to RuntimeConfigSync.attachBinding().
    *
-   * @param config - The Setting configuration
+   * @param config - The Setting configuration (platform-agnostic DomainSettingConfig)
    * @param binding - Binding configuration for RuntimeConfig sync
    * @returns Modified config with RuntimeConfig bridge attached
    */
   attachBinding<TSchema, K extends RuntimeConfigKey>(
-    config: ModuleSettingConfig<TSchema>,
+    config: DomainSettingConfig<TSchema>,
     binding: RuntimeConfigBinding<TSchema, K>
-  ): ModuleSettingConfig<TSchema> {
+  ): DomainSettingConfig<TSchema> {
     return this.runtimeConfigSync.attachBinding(config, binding);
   }
 

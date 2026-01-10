@@ -4,12 +4,13 @@ import type { IWindowRegistry } from "@/domain/windows/ports/window-registry-por
 import type { IStateStore } from "@/domain/windows/ports/state-store-port.interface";
 import type { IStatePortFactory } from "@/application/windows/ports/state-port-factory-port.interface";
 import type { IActionDispatcher } from "@/domain/windows/ports/action-dispatcher-port.interface";
-import type { IRendererRegistry } from "@/domain/windows/ports/renderer-registry-port.interface";
 import type { IBindingEngine } from "@/domain/windows/ports/binding-engine-port.interface";
 import type { IViewModelBuilder } from "@/domain/windows/ports/view-model-builder-port.interface";
 import type { IEventBus } from "@/domain/windows/ports/event-bus-port.interface";
 import type { IRemoteSyncGate } from "@/domain/windows/ports/remote-sync-gate-port.interface";
-import type { IPersistAdapter } from "@/domain/windows/ports/persist-adapter-port.interface";
+import type { IWindowStateInitializer } from "@/application/windows/ports/window-state-initializer-port.interface";
+import type { IWindowRendererCoordinator } from "@/application/windows/ports/window-renderer-coordinator-port.interface";
+import type { IWindowPersistenceCoordinator } from "@/application/windows/ports/window-persistence-coordinator-port.interface";
 import type { WindowDefinition } from "@/domain/windows/types/window-definition.interface";
 import type { IWindowState } from "@/domain/windows/types/view-model.interface";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
@@ -28,12 +29,13 @@ describe("WindowController", () => {
   let mockStateStore: IStateStore;
   let mockStatePortFactory: IStatePortFactory;
   let mockActionDispatcher: IActionDispatcher;
-  let mockRendererRegistry: IRendererRegistry;
   let mockBindingEngine: IBindingEngine;
   let mockViewModelBuilder: IViewModelBuilder;
   let mockEventBus: IEventBus;
   let mockRemoteSyncGate: IRemoteSyncGate;
-  let mockPersistAdapter: IPersistAdapter;
+  let mockStateInitializer: IWindowStateInitializer;
+  let mockRendererCoordinator: IWindowRendererCoordinator;
+  let mockPersistenceCoordinator: IWindowPersistenceCoordinator;
   let mockStatePort: IWindowState<Record<string, unknown>>;
   let mockDefinition: WindowDefinition;
 
@@ -69,16 +71,6 @@ describe("WindowController", () => {
       dispatch: vi.fn().mockResolvedValue(ok(undefined)),
     } as unknown as IActionDispatcher;
 
-    mockRendererRegistry = {
-      get: vi.fn().mockReturnValue(
-        ok({
-          mount: vi.fn().mockReturnValue(ok({})),
-          unmount: vi.fn(),
-          update: vi.fn(),
-        })
-      ),
-    } as unknown as IRendererRegistry;
-
     mockBindingEngine = {
       initialize: vi.fn().mockReturnValue(ok(undefined)),
       sync: vi.fn().mockResolvedValue(ok(undefined)),
@@ -106,10 +98,24 @@ describe("WindowController", () => {
       getClientId: vi.fn().mockReturnValue("client-1"),
     } as unknown as IRemoteSyncGate;
 
-    mockPersistAdapter = {
-      save: vi.fn().mockResolvedValue(ok(undefined)),
-      load: vi.fn().mockResolvedValue(ok({})),
-    } as unknown as IPersistAdapter;
+    mockStateInitializer = {
+      buildInitialState: vi.fn().mockReturnValue({
+        journals: [],
+        isLoading: false,
+        error: null,
+      }),
+    } as unknown as IWindowStateInitializer;
+
+    mockRendererCoordinator = {
+      mount: vi.fn().mockReturnValue(ok({})),
+      unmount: vi.fn().mockReturnValue(ok(undefined)),
+      update: vi.fn().mockReturnValue(ok(undefined)),
+    } as unknown as IWindowRendererCoordinator;
+
+    mockPersistenceCoordinator = {
+      persist: vi.fn().mockResolvedValue(ok(undefined)),
+      restore: vi.fn().mockResolvedValue(ok({})),
+    } as unknown as IWindowPersistenceCoordinator;
 
     mockDefinition = {
       definitionId: "test-window",
@@ -129,12 +135,13 @@ describe("WindowController", () => {
       mockStateStore,
       mockStatePortFactory,
       mockActionDispatcher,
-      mockRendererRegistry,
       mockBindingEngine,
       mockViewModelBuilder,
       mockEventBus,
       mockRemoteSyncGate,
-      mockPersistAdapter
+      mockStateInitializer,
+      mockRendererCoordinator,
+      mockPersistenceCoordinator
     );
   });
 
@@ -180,7 +187,7 @@ describe("WindowController", () => {
       expectResultOk(result);
       expect(mockBindingEngine.initialize).toHaveBeenCalled();
       expect(mockViewModelBuilder.build).toHaveBeenCalled();
-      expect(mockRendererRegistry.get).toHaveBeenCalled();
+      expect(mockRendererCoordinator.mount).toHaveBeenCalled();
       expect(mockEventBus.emit).toHaveBeenCalledWith("window:rendered", {
         instanceId: "instance-1",
       });
@@ -223,7 +230,7 @@ describe("WindowController", () => {
     });
 
     it("should return error if renderer not found", async () => {
-      vi.mocked(mockRendererRegistry.get).mockReturnValue(
+      vi.mocked(mockRendererCoordinator.mount).mockReturnValue(
         err({
           code: "RendererNotFound",
           message: "Renderer not found",
@@ -252,16 +259,10 @@ describe("WindowController", () => {
     });
 
     it("should return error if mount fails", async () => {
-      vi.mocked(mockRendererRegistry.get).mockReturnValue(
-        ok({
-          mount: vi.fn().mockReturnValue(
-            err({
-              code: "MountFailed",
-              message: "Failed to mount",
-            })
-          ),
-          unmount: vi.fn(),
-          update: vi.fn(),
+      vi.mocked(mockRendererCoordinator.mount).mockReturnValue(
+        err({
+          code: "MountFailed",
+          message: "Failed to mount",
         })
       );
 
@@ -305,15 +306,6 @@ describe("WindowController", () => {
     });
 
     it("should unmount component if mounted", async () => {
-      const mockUnmount = vi.fn();
-      vi.mocked(mockRendererRegistry.get).mockReturnValue(
-        ok({
-          mount: vi.fn().mockReturnValue(ok({})),
-          unmount: mockUnmount,
-          update: vi.fn(),
-        })
-      );
-
       // First render to set up component
       const element = document.createElement("div");
       const mountPoint = document.createElement("div");
@@ -324,7 +316,7 @@ describe("WindowController", () => {
       const result = await controller.onFoundryClose();
 
       expectResultOk(result);
-      expect(mockUnmount).toHaveBeenCalled();
+      expect(mockRendererCoordinator.unmount).toHaveBeenCalled();
     });
 
     it("should persist if persist config exists", async () => {
@@ -346,25 +338,27 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const result = await controllerWithPersist.onFoundryClose();
 
       expectResultOk(result);
-      expect(mockPersistAdapter.save).toHaveBeenCalled();
+      expect(mockPersistenceCoordinator.persist).toHaveBeenCalled();
     });
 
     it("should not persist if persist config does not exist", async () => {
       const result = await controller.onFoundryClose();
 
       expectResultOk(result);
-      expect(mockPersistAdapter.save).not.toHaveBeenCalled();
+      expect(mockPersistenceCoordinator.persist).not.toHaveBeenCalled();
     });
 
     it("should handle close when component is not mounted", async () => {
@@ -382,11 +376,11 @@ describe("WindowController", () => {
       element.appendChild(mountPoint);
       await controller.onFoundryRender(element);
 
-      // Mock rendererRegistry.get to fail
-      vi.mocked(mockRendererRegistry.get).mockReturnValue(
+      // Mock rendererCoordinator.unmount to fail (should be handled gracefully)
+      vi.mocked(mockRendererCoordinator.unmount).mockReturnValue(
         err({
-          code: "RendererNotFound",
-          message: "Renderer not found",
+          code: "UnmountFailed",
+          message: "Failed to unmount",
         })
       );
 
@@ -410,26 +404,16 @@ describe("WindowController", () => {
       const controllerAny = controller as any;
       const originalComponentInstance = controllerAny.componentInstance;
 
-      // Mock rendererRegistry.get to succeed, but set componentInstance to null
-      // between the outer check (line 130) and inner check (line 133)
-      // This simulates the defensive check in line 133
-      vi.mocked(mockRendererRegistry.get).mockImplementation(() => {
-        // Set componentInstance to null AFTER the outer check (line 130) passes
-        // but BEFORE the inner check (line 133) - this triggers the else branch
-        controllerAny.componentInstance = null;
-        return ok({
-          mount: vi.fn().mockReturnValue(ok({})),
-          unmount: vi.fn(),
-          update: vi.fn(),
-        });
-      });
+      // Mock rendererCoordinator.unmount - the defensive check is no longer needed
+      // since unmount is called directly on the coordinator
+      vi.mocked(mockRendererCoordinator.unmount).mockReturnValue(ok(undefined));
 
       // Ensure componentInstance is set before calling onFoundryClose
       controllerAny.componentInstance = originalComponentInstance;
 
       const result = await controller.onFoundryClose();
 
-      // Should still return ok (graceful degradation)
+      // Should still return ok
       expectResultOk(result);
       // componentInstance should be cleared
       expect(controllerAny.componentInstance).toBeNull();
@@ -468,18 +452,20 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const result = await controllerWithPersist.updateStateLocal({ count: 1 }, { persist: true });
 
       expectResultOk(result);
-      expect(mockPersistAdapter.save).toHaveBeenCalled();
+      expect(mockPersistenceCoordinator.persist).toHaveBeenCalled();
     });
 
     it("should sync bindings if sync option is not none", async () => {
@@ -490,7 +476,7 @@ describe("WindowController", () => {
     });
 
     it("should return error if persist fails", async () => {
-      vi.mocked(mockPersistAdapter.save).mockResolvedValue(
+      vi.mocked(mockPersistenceCoordinator.persist).mockResolvedValue(
         err({
           code: "SaveFailed",
           message: "Failed to save",
@@ -515,12 +501,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const result = await controllerWithPersist.updateStateLocal({ count: 1 }, { persist: true });
@@ -668,18 +656,20 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const result = await controllerWithPersist.persist();
 
       expectResultOk(result);
-      expect(mockPersistAdapter.save).toHaveBeenCalled();
+      expect(mockPersistenceCoordinator.persist).toHaveBeenCalled();
     });
 
     it("should return error if no persist config", async () => {
@@ -700,6 +690,21 @@ describe("WindowController", () => {
         },
       };
 
+      const mockPersistenceCoordinatorWithoutAdapter = {
+        persist: vi.fn().mockResolvedValue(
+          err({
+            code: "NoPersistAdapter",
+            message: "No persist adapter available",
+          })
+        ),
+        restore: vi.fn().mockResolvedValue(
+          err({
+            code: "NoPersistAdapter",
+            message: "No persist adapter available",
+          })
+        ),
+      };
+
       const controllerWithoutAdapter = new WindowController(
         "instance-1",
         "test-window",
@@ -708,12 +713,13 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        undefined
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinatorWithoutAdapter
       );
 
       const result = await controllerWithoutAdapter.persist();
@@ -741,19 +747,21 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const customMeta = { originClientId: "custom-client", originWindowInstanceId: "instance-1" };
       const result = await controllerWithPersist.persist(customMeta);
 
       expectResultOk(result);
-      expect(mockPersistAdapter.save).toHaveBeenCalledWith(
+      expect(mockPersistenceCoordinator.persist).toHaveBeenCalledWith(
         definitionWithPersist.persist,
         expect.any(Object),
         customMeta
@@ -779,12 +787,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const result = await controllerWithPersist.persist();
@@ -794,7 +804,7 @@ describe("WindowController", () => {
     });
 
     it("should return error if save fails", async () => {
-      vi.mocked(mockPersistAdapter.save).mockResolvedValue(
+      vi.mocked(mockPersistenceCoordinator.persist).mockResolvedValue(
         err({
           code: "SaveFailed",
           message: "Failed to save",
@@ -819,12 +829,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const result = await controllerWithPersist.persist();
@@ -855,20 +867,22 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
-      vi.mocked(mockPersistAdapter.load).mockResolvedValue(ok({ count: 42 }));
+      vi.mocked(mockPersistenceCoordinator.restore).mockResolvedValue(ok({ count: 42 }));
 
       const result = await controllerWithPersist.restore();
 
       expectResultOk(result);
-      expect(mockPersistAdapter.load).toHaveBeenCalled();
+      expect(mockPersistenceCoordinator.restore).toHaveBeenCalled();
       expect(mockStatePort.patch).toHaveBeenCalledWith({ count: 42 });
     });
 
@@ -892,18 +906,20 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const result = await controllerWithPersist.restore();
 
       expectResultOk(result);
-      expect(mockPersistAdapter.load).not.toHaveBeenCalled();
+      expect(mockPersistenceCoordinator.restore).not.toHaveBeenCalled();
     });
 
     it("should return ok if no persist config", async () => {
@@ -924,6 +940,21 @@ describe("WindowController", () => {
         },
       };
 
+      const mockPersistenceCoordinatorWithoutAdapter = {
+        persist: vi.fn().mockResolvedValue(
+          err({
+            code: "NoPersistAdapter",
+            message: "No persist adapter available",
+          })
+        ),
+        restore: vi.fn().mockResolvedValue(
+          err({
+            code: "NoPersistAdapter",
+            message: "No persist adapter available",
+          })
+        ),
+      };
+
       const controllerWithoutAdapter = new WindowController(
         "instance-1",
         "test-window",
@@ -932,12 +963,13 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        undefined
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinatorWithoutAdapter
       );
 
       const result = await controllerWithoutAdapter.restore();
@@ -947,7 +979,7 @@ describe("WindowController", () => {
     });
 
     it("should return error if load fails", async () => {
-      vi.mocked(mockPersistAdapter.load).mockResolvedValue(
+      vi.mocked(mockPersistenceCoordinator.restore).mockResolvedValue(
         err({
           code: "LoadFailed",
           message: "Failed to load",
@@ -973,12 +1005,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const result = await controllerWithPersist.restore();
@@ -1037,12 +1071,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const viewModel = controllerWithActions.getViewModel();
@@ -1100,12 +1136,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const viewModel = journalOverviewController.getViewModel();
@@ -1198,12 +1236,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const viewModel = controllerWithActions.getViewModel();
@@ -1345,12 +1385,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter,
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator,
         mockContainer
       );
 
@@ -1422,12 +1464,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter,
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator,
         mockContainer
       );
 
@@ -1481,12 +1525,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
         // No container provided
       );
 
@@ -1580,12 +1626,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter,
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator,
         mockContainer
       );
 
@@ -1645,12 +1693,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter,
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator,
         mockContainer
       );
 
@@ -1720,12 +1770,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter,
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator,
         mockContainer
       );
 
@@ -1783,12 +1835,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
         // No container
       );
 
@@ -1848,12 +1902,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter,
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator,
         mockContainer
       );
 
@@ -1940,12 +1996,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter,
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator,
         mockContainer
       );
 
@@ -1999,12 +2057,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter,
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator,
         mockContainer
       );
 
@@ -2068,12 +2128,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const element = document.createElement("div");
@@ -2122,12 +2184,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       const element = document.createElement("div");
@@ -2194,12 +2258,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter,
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator,
         mockContainer
       );
 
@@ -2255,12 +2321,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter,
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator,
         mockContainer
       );
 
@@ -2301,12 +2369,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       expect(mockStatePortFactory.create).toHaveBeenCalledWith("instance-2", { count: 42 });
@@ -2328,12 +2398,14 @@ describe("WindowController", () => {
         mockStateStore,
         mockStatePortFactory,
         mockActionDispatcher,
-        mockRendererRegistry,
+
         mockBindingEngine,
         mockViewModelBuilder,
         mockEventBus,
         mockRemoteSyncGate,
-        mockPersistAdapter
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator
       );
 
       expect(mockStatePortFactory.create).toHaveBeenCalledWith("instance-3", {});

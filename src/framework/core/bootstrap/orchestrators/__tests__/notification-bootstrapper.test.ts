@@ -1,28 +1,28 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NotificationBootstrapper } from "../notification-bootstrapper";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
+import { notificationChannelRegistryToken } from "@/application/tokens/notifications/notification-channel-registry.token";
 import { queuedUIChannelToken } from "@/application/tokens/notifications/queued-ui-channel.token";
 import { ok, err } from "@/domain/utils/result";
-import type { NotificationService } from "@/application/services/notification-center.interface";
+import type { NotificationChannelRegistry } from "@/application/services/notification-center.interface";
 import type { PlatformChannelPort } from "@/domain/ports/notifications/platform-channel-port.interface";
 
 describe("NotificationBootstrapper", () => {
   let mockContainer: PlatformContainerPort;
-  let mockNotificationCenter: NotificationService;
+  let mockChannelRegistry: NotificationChannelRegistry;
   let mockQueuedUIChannel: PlatformChannelPort;
 
   beforeEach(() => {
-    mockNotificationCenter = {
+    mockChannelRegistry = {
       addChannel: vi.fn(),
-    } as unknown as NotificationService;
+    } as unknown as NotificationChannelRegistry;
 
     mockQueuedUIChannel = {} as unknown as PlatformChannelPort;
 
     mockContainer = {
       resolveWithError: vi.fn((token) => {
-        if (token === notificationCenterToken) {
-          return ok(mockNotificationCenter);
+        if (token === notificationChannelRegistryToken) {
+          return ok(mockChannelRegistry);
         }
         if (token === queuedUIChannelToken) {
           return ok(mockQueuedUIChannel);
@@ -40,17 +40,17 @@ describe("NotificationBootstrapper", () => {
     const result = NotificationBootstrapper.attachNotificationChannels(mockContainer);
 
     expect(result.ok).toBe(true);
-    expect(mockContainer.resolveWithError).toHaveBeenCalledWith(notificationCenterToken);
+    expect(mockContainer.resolveWithError).toHaveBeenCalledWith(notificationChannelRegistryToken);
     expect(mockContainer.resolveWithError).toHaveBeenCalledWith(queuedUIChannelToken);
-    expect(mockNotificationCenter.addChannel).toHaveBeenCalledWith(mockQueuedUIChannel);
+    expect(mockChannelRegistry.addChannel).toHaveBeenCalledWith(mockQueuedUIChannel);
   });
 
-  it("should return error when NotificationCenter cannot be resolved", () => {
+  it("should return error when NotificationChannelRegistry cannot be resolved", () => {
     vi.mocked(mockContainer.resolveWithError).mockReturnValue(
       err({
         code: "TokenNotRegistered",
-        message: "NotificationCenter not found",
-        tokenDescription: String(notificationCenterToken),
+        message: "NotificationChannelRegistry not found",
+        tokenDescription: String(notificationChannelRegistryToken),
       })
     );
 
@@ -58,15 +58,15 @@ describe("NotificationBootstrapper", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error).toContain("NotificationCenter could not be resolved");
+      expect(result.error).toContain("NotificationChannelRegistry could not be resolved");
     }
-    expect(mockNotificationCenter.addChannel).not.toHaveBeenCalled();
+    expect(mockChannelRegistry.addChannel).not.toHaveBeenCalled();
   });
 
   it("should return error when QueuedUIChannel cannot be resolved", () => {
     vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
-      if (token === notificationCenterToken) {
-        return ok(mockNotificationCenter);
+      if (token === notificationChannelRegistryToken) {
+        return ok(mockChannelRegistry);
       }
       if (token === queuedUIChannelToken) {
         return err({
@@ -88,6 +88,6 @@ describe("NotificationBootstrapper", () => {
     if (!result.ok) {
       expect(result.error).toContain("QueuedUIChannel could not be resolved");
     }
-    expect(mockNotificationCenter.addChannel).not.toHaveBeenCalled();
+    expect(mockChannelRegistry.addChannel).not.toHaveBeenCalled();
   });
 });

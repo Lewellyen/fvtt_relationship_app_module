@@ -40,10 +40,19 @@ import { WindowFactory } from "@/application/windows/services/window-factory";
 import { WindowHooksService } from "@/application/windows/services/window-hooks-service";
 import { WindowPositionManager } from "@/application/windows/services/window-position-manager";
 import { WindowHooksBridge } from "@/infrastructure/windows/adapters/foundry/hooks/window-hooks";
+import { WindowStateInitializer } from "@/application/windows/services/window-state-initializer";
+import { WindowRendererCoordinator } from "@/application/windows/services/window-renderer-coordinator";
+import { WindowPersistenceCoordinator } from "@/application/windows/services/window-persistence-coordinator";
+import { WindowDefaultStateProviderRegistry } from "@/application/windows/services/window-default-state-provider-registry";
+import { JournalOverviewStateInitializer } from "@/application/windows/services/journal-overview-state-initializer";
 import {
   windowHooksServiceToken,
   windowHooksBridgeToken,
   windowPositionManagerToken,
+  windowDefaultStateProviderRegistryToken,
+  windowStateInitializerToken,
+  windowRendererCoordinatorToken,
+  windowPersistenceCoordinatorToken,
 } from "@/application/windows/tokens/window.tokens";
 import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
 
@@ -179,6 +188,56 @@ export function registerWindowServices(container: ServiceContainer): Result<void
   );
   if (isErr(viewModelBuilderResult)) {
     return err(`Failed to register ViewModelBuilder: ${viewModelBuilderResult.error.message}`);
+  }
+
+  // 5a. Register WindowDefaultStateProviderRegistry and populate with providers
+  const providerRegistry = new WindowDefaultStateProviderRegistry();
+  // Register journal-overview provider
+  providerRegistry.register("journal-overview", new JournalOverviewStateInitializer());
+  const providerRegistryResult = container.registerValue(
+    windowDefaultStateProviderRegistryToken,
+    providerRegistry
+  );
+  if (isErr(providerRegistryResult)) {
+    return err(
+      `Failed to register WindowDefaultStateProviderRegistry: ${providerRegistryResult.error.message}`
+    );
+  }
+
+  // 5b. Register WindowStateInitializer (depends on WindowDefaultStateProviderRegistry)
+  const stateInitializerResult = container.registerClass(
+    windowStateInitializerToken,
+    WindowStateInitializer,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(stateInitializerResult)) {
+    return err(
+      `Failed to register WindowStateInitializer: ${stateInitializerResult.error.message}`
+    );
+  }
+
+  // 5c. Register WindowRendererCoordinator (depends on RendererRegistry)
+  const rendererCoordinatorResult = container.registerClass(
+    windowRendererCoordinatorToken,
+    WindowRendererCoordinator,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(rendererCoordinatorResult)) {
+    return err(
+      `Failed to register WindowRendererCoordinator: ${rendererCoordinatorResult.error.message}`
+    );
+  }
+
+  // 5d. Register WindowPersistenceCoordinator (depends on PersistAdapter)
+  const persistenceCoordinatorResult = container.registerClass(
+    windowPersistenceCoordinatorToken,
+    WindowPersistenceCoordinator,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(persistenceCoordinatorResult)) {
+    return err(
+      `Failed to register WindowPersistenceCoordinator: ${persistenceCoordinatorResult.error.message}`
+    );
   }
 
   // 6. Register WindowFactory (needs Container for resolving dependencies)

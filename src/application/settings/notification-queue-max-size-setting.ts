@@ -79,7 +79,7 @@ export const notificationQueueMaxSizeSetting: SettingDefinition<number> = {
       ),
       scope: "world",
       config: true,
-      type: Number,
+      type: "number",
       default: constants.defaultSize,
       onChange: (value: number) => {
         const numericValue = Number(value);

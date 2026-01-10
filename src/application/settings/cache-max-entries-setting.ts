@@ -24,7 +24,7 @@ export const cacheMaxEntriesSetting: SettingDefinition<number> = {
       ),
       scope: "world",
       config: true,
-      type: Number,
+      type: "number",
       default: 0,
       onChange: (value: number) => {
         const numericValue = Number(value);

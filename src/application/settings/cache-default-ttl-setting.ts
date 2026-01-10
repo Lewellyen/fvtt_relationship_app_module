@@ -24,7 +24,7 @@ export const cacheDefaultTtlSetting: SettingDefinition<number> = {
       ),
       scope: "world",
       config: true,
-      type: Number,
+      type: "number",
       default: APP_DEFAULTS.CACHE_TTL_MS,
       onChange: (value: number) => {
         const numericValue = Number(value);

@@ -3,6 +3,8 @@ import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
+import { notificationSenderToken } from "@/application/tokens/notifications/notification-sender.token";
+import { notificationChannelRegistryToken } from "@/application/tokens/notifications/notification-channel-registry.token";
 import { consoleChannelToken } from "@/application/tokens/notifications/console-channel.token";
 import { uiChannelToken } from "@/application/tokens/notifications/ui-channel.token";
 import { queuedUIChannelToken } from "@/application/tokens/notifications/queued-ui-channel.token";
@@ -105,6 +107,28 @@ export function registerNotifications(container: ServiceContainer): Result<void,
 
   if (isErr(notificationCenterResult)) {
     return err(`Failed to register NotificationCenter: ${notificationCenterResult.error.message}`);
+  }
+
+  // Register NotificationSender as alias to NotificationCenter (ISP-compliant: send-only)
+  const notificationSenderAliasResult = container.registerAlias(
+    notificationSenderToken,
+    notificationCenterToken
+  );
+  if (isErr(notificationSenderAliasResult)) {
+    return err(
+      `Failed to register NotificationSender alias: ${notificationSenderAliasResult.error.message}`
+    );
+  }
+
+  // Register NotificationChannelRegistry as alias to NotificationCenter (ISP-compliant: channel management only)
+  const notificationChannelRegistryAliasResult = container.registerAlias(
+    notificationChannelRegistryToken,
+    notificationCenterToken
+  );
+  if (isErr(notificationChannelRegistryAliasResult)) {
+    return err(
+      `Failed to register NotificationChannelRegistry alias: ${notificationChannelRegistryAliasResult.error.message}`
+    );
   }
 
   // Register PlatformNotificationPort (full interface)
