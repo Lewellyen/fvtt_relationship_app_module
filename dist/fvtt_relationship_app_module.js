@@ -13708,6 +13708,9 @@ const _MetricsInitPhase = class _MetricsInitPhase {
 };
 __name(_MetricsInitPhase, "MetricsInitPhase");
 let MetricsInitPhase = _MetricsInitPhase;
+const notificationChannelRegistryToken = createInjectionToken(
+  "NotificationChannelRegistry"
+);
 const queuedUIChannelToken = createInjectionToken("QueuedUIChannel");
 const _NotificationBootstrapper = class _NotificationBootstrapper {
   /**
@@ -13722,21 +13725,21 @@ const _NotificationBootstrapper = class _NotificationBootstrapper {
    * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
    */
   static attachNotificationChannels(container) {
-    const notificationCenterResult = container.resolveWithError(notificationCenterToken);
-    if (!notificationCenterResult.ok) {
+    const channelRegistryResult = container.resolveWithError(notificationChannelRegistryToken);
+    if (!channelRegistryResult.ok) {
       return err(
-        `NotificationCenter could not be resolved: ${notificationCenterResult.error.message}`
+        `NotificationChannelRegistry could not be resolved: ${channelRegistryResult.error.message}`
       );
     }
     const queuedUIChannelResult = container.resolveWithError(queuedUIChannelToken);
     if (!queuedUIChannelResult.ok) {
       return err(`QueuedUIChannel could not be resolved: ${queuedUIChannelResult.error.message}`);
     }
-    const notificationCenter = castResolvedService$1(
-      notificationCenterResult.value
+    const channelRegistry = castResolvedService$1(
+      channelRegistryResult.value
     );
     const queuedUIChannel = castResolvedService$1(queuedUIChannelResult.value);
-    notificationCenter.addChannel(queuedUIChannel);
+    channelRegistry.addChannel(queuedUIChannel);
     return ok(void 0);
   }
 };
@@ -13899,6 +13902,12 @@ const statePortFactoryToken = createInjectionToken("StatePortFactory");
 const sharedDocumentCacheToken = createInjectionToken("SharedDocumentCache");
 const windowPositionManagerToken = createInjectionToken("WindowPositionManager");
 const windowHooksBridgeToken = createInjectionToken("WindowHooksBridge");
+const windowDefaultStateProviderRegistryToken = createInjectionToken("WindowDefaultStateProviderRegistry");
+const windowStateInitializerToken = createInjectionToken("WindowStateInitializer");
+const windowRendererCoordinatorToken = createInjectionToken(
+  "WindowRendererCoordinator"
+);
+const windowPersistenceCoordinatorToken = createInjectionToken("WindowPersistenceCoordinator");
 const windowHooksServiceToken = createInjectionToken("WindowHooksService");
 const _EventsBootstrapper = class _EventsBootstrapper {
   /**
@@ -16020,7 +16029,7 @@ const _FoundrySettingsRegistrationAdapter = class _FoundrySettingsRegistrationAd
       ...config2.hint !== void 0 && { hint: config2.hint },
       scope: config2.scope,
       config: config2.config,
-      type: config2.type,
+      type: this.mapDomainTypeToFoundryType(config2.type),
       ...config2.choices !== void 0 && { choices: config2.choices },
       default: config2.default,
       ...config2.onChange !== void 0 && { onChange: config2.onChange }
@@ -16066,6 +16075,25 @@ const _FoundrySettingsRegistrationAdapter = class _FoundrySettingsRegistrationAd
     return { ok: true, value: void 0 };
   }
   // ===== Private Helpers =====
+  /**
+   * Maps domain-agnostic setting type (string literal) to Foundry constructor type.
+   *
+   * This mapping encapsulates the platform-specific detail of using constructor types
+   * instead of string literals, keeping the domain layer platform-agnostic.
+   */
+  mapDomainTypeToFoundryType(domainType) {
+    switch (domainType) {
+      case "string":
+        return String;
+      case "number":
+        return Number;
+      case "boolean":
+        return Boolean;
+      default:
+        const exhaustiveCheck = domainType;
+        throw new Error(`Unknown domain setting type: ${exhaustiveCheck}`);
+    }
+  }
   mapFoundryError(foundryError, operation, key2) {
     let code;
     switch (foundryError.code) {
@@ -16907,11 +16935,11 @@ const _DILocalTranslationHandler = class _DILocalTranslationHandler extends Loca
 __name(_DILocalTranslationHandler, "DILocalTranslationHandler");
 _DILocalTranslationHandler.dependencies = [localI18nToken];
 let DILocalTranslationHandler = _DILocalTranslationHandler;
-const _FallbackTranslationHandler = class _FallbackTranslationHandler extends AbstractTranslationHandler {
-  doHandle(key2, _data, fallback2) {
+const _FallbackTranslationHandler = class _FallbackTranslationHandler {
+  handle(key2, _data, fallback2) {
     return ok(fallback2 ?? key2);
   }
-  doHas(_key) {
+  has(_key) {
     return ok(false);
   }
 };
@@ -16962,6 +16990,22 @@ function assertNonEmptyHandlers(handlers2) {
   }
 }
 __name(assertNonEmptyHandlers, "assertNonEmptyHandlers");
+const _TerminalTranslationHandlerAdapter = class _TerminalTranslationHandlerAdapter {
+  constructor(terminalHandler) {
+    this.terminalHandler = terminalHandler;
+  }
+  setNext(_handler) {
+    return this;
+  }
+  handle(key2, data, fallback2) {
+    return this.terminalHandler.handle(key2, data, fallback2);
+  }
+  has(key2) {
+    return this.terminalHandler.has(key2);
+  }
+};
+__name(_TerminalTranslationHandlerAdapter, "TerminalTranslationHandlerAdapter");
+let TerminalTranslationHandlerAdapter = _TerminalTranslationHandlerAdapter;
 const _I18nPortAdapter = class _I18nPortAdapter {
   constructor(i18nFacade) {
     this.i18nFacade = i18nFacade;
@@ -16989,18 +17033,6 @@ const _DII18nPortAdapter = class _DII18nPortAdapter extends I18nPortAdapter {
 __name(_DII18nPortAdapter, "DII18nPortAdapter");
 _DII18nPortAdapter.dependencies = [i18nFacadeToken];
 let DII18nPortAdapter = _DII18nPortAdapter;
-function resolveMultipleServices$1(container, tokens) {
-  const results = [];
-  for (const { token, name } of tokens) {
-    const result = container.resolveWithError(token);
-    if (!result.ok) {
-      throw new Error(`Failed to resolve ${name}: ${result.error.message}`);
-    }
-    results.push(castResolvedService$1(result.value));
-  }
-  return results;
-}
-__name(resolveMultipleServices$1, "resolveMultipleServices$1");
 function registerI18nServices(container) {
   const foundryI18nResult = container.registerClass(
     foundryI18nToken,
@@ -17049,11 +17081,31 @@ function registerI18nServices(container) {
   const handlersArrayResult = container.registerFactory(
     translationHandlersToken,
     () => {
-      return resolveMultipleServices$1(container, [
-        { token: foundryTranslationHandlerToken, name: "FoundryTranslationHandler" },
-        { token: localTranslationHandlerToken, name: "LocalTranslationHandler" },
-        { token: fallbackTranslationHandlerToken, name: "FallbackTranslationHandler" }
-      ]);
+      const foundryHandlerResult2 = container.resolveWithError(foundryTranslationHandlerToken);
+      if (!foundryHandlerResult2.ok) {
+        throw new Error(
+          `Failed to resolve FoundryTranslationHandler: ${foundryHandlerResult2.error.message}`
+        );
+      }
+      const foundryHandler = castResolvedService$1(foundryHandlerResult2.value);
+      const localHandlerResult2 = container.resolveWithError(localTranslationHandlerToken);
+      if (!localHandlerResult2.ok) {
+        throw new Error(
+          `Failed to resolve LocalTranslationHandler: ${localHandlerResult2.error.message}`
+        );
+      }
+      const localHandler = castResolvedService$1(localHandlerResult2.value);
+      const fallbackHandlerResult2 = container.resolveWithError(fallbackTranslationHandlerToken);
+      if (!fallbackHandlerResult2.ok) {
+        throw new Error(
+          `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult2.error.message}`
+        );
+      }
+      const fallbackHandler = castResolvedService$1(
+        fallbackHandlerResult2.value
+      );
+      const fallbackHandlerAdapter = new TerminalTranslationHandlerAdapter(fallbackHandler);
+      return [foundryHandler, localHandler, fallbackHandlerAdapter];
     },
     ServiceLifecycle.SINGLETON,
     [foundryTranslationHandlerToken, localTranslationHandlerToken, fallbackTranslationHandlerToken]
@@ -17095,6 +17147,7 @@ registerDependencyStep({
   priority: 120,
   execute: registerI18nServices
 });
+const notificationSenderToken = createInjectionToken("NotificationSender");
 const consoleChannelToken = createInjectionToken("ConsoleChannel");
 const uiChannelToken = createInjectionToken("UIChannel");
 const notificationQueueToken = createInjectionToken("NotificationQueue");
@@ -17657,6 +17710,24 @@ function registerNotifications(container) {
   if (isErr(notificationCenterResult)) {
     return err(`Failed to register NotificationCenter: ${notificationCenterResult.error.message}`);
   }
+  const notificationSenderAliasResult = container.registerAlias(
+    notificationSenderToken,
+    notificationCenterToken
+  );
+  if (isErr(notificationSenderAliasResult)) {
+    return err(
+      `Failed to register NotificationSender alias: ${notificationSenderAliasResult.error.message}`
+    );
+  }
+  const notificationChannelRegistryAliasResult = container.registerAlias(
+    notificationChannelRegistryToken,
+    notificationCenterToken
+  );
+  if (isErr(notificationChannelRegistryAliasResult)) {
+    return err(
+      `Failed to register NotificationChannelRegistry alias: ${notificationChannelRegistryAliasResult.error.message}`
+    );
+  }
   const notificationPortResult = container.registerClass(
     platformNotificationPortToken,
     DINotificationPortAdapter,
@@ -17791,7 +17862,7 @@ const _RuntimeConfigSync = class _RuntimeConfigSync {
    *
    * Wraps the original onChange callback and adds RuntimeConfig synchronization.
    *
-   * @param config - The Setting configuration
+   * @param config - The Setting configuration (platform-agnostic DomainSettingConfig)
    * @param binding - Binding configuration for RuntimeConfig sync
    * @returns Modified config with RuntimeConfig bridge attached
    */
@@ -17853,7 +17924,7 @@ const _RuntimeConfigSettingsSync = class _RuntimeConfigSettingsSync {
    *
    * Delegates to RuntimeConfigSync.attachBinding().
    *
-   * @param config - The Setting configuration
+   * @param config - The Setting configuration (platform-agnostic DomainSettingConfig)
    * @param binding - Binding configuration for RuntimeConfig sync
    * @returns Modified config with RuntimeConfig bridge attached
    */
@@ -17945,7 +18016,7 @@ const logLevelSetting = {
       ),
       scope: "world",
       config: true,
-      type: Number,
+      type: "number",
       choices: {
         [LogLevel.DEBUG]: unwrapOr(
           i18n.translate(
@@ -17994,7 +18065,7 @@ const cacheEnabledSetting = {
       ),
       scope: "world",
       config: true,
-      type: Boolean,
+      type: "boolean",
       default: true,
       onChange: /* @__PURE__ */ __name((value2) => {
         const action2 = value2 ? "enabled" : "disabled";
@@ -18020,7 +18091,7 @@ const cacheDefaultTtlSetting = {
       ),
       scope: "world",
       config: true,
-      type: Number,
+      type: "number",
       default: APP_DEFAULTS.CACHE_TTL_MS,
       onChange: /* @__PURE__ */ __name((value2) => {
         const numericValue = Number(value2);
@@ -18047,7 +18118,7 @@ const cacheMaxEntriesSetting = {
       ),
       scope: "world",
       config: true,
-      type: Number,
+      type: "number",
       default: 0,
       onChange: /* @__PURE__ */ __name((value2) => {
         const numericValue = Number(value2);
@@ -18078,7 +18149,7 @@ const performanceTrackingSetting = {
       ),
       scope: "world",
       config: true,
-      type: Boolean,
+      type: "boolean",
       default: false,
       onChange: /* @__PURE__ */ __name((value2) => {
         const action2 = value2 ? "enabled" : "disabled";
@@ -18104,7 +18175,7 @@ const performanceSamplingSetting = {
       ),
       scope: "world",
       config: true,
-      type: Number,
+      type: "number",
       default: 1,
       onChange: /* @__PURE__ */ __name((value2) => {
         const clamped = Math.max(0, Math.min(1, Number(value2) || 0));
@@ -18132,7 +18203,7 @@ const metricsPersistenceEnabledSetting = {
       ),
       scope: "world",
       config: true,
-      type: Boolean,
+      type: "boolean",
       default: false,
       onChange: /* @__PURE__ */ __name((value2) => {
         const action2 = value2 ? "enabled" : "disabled";
@@ -18158,7 +18229,7 @@ const metricsPersistenceKeySetting = {
       ),
       scope: "world",
       config: true,
-      type: String,
+      type: "string",
       default: `${MODULE_METADATA.ID}.metrics`,
       onChange: /* @__PURE__ */ __name((value2) => {
         logger.info(`Metrics persistence key set to: ${value2 || "(empty)"}`);
@@ -18196,7 +18267,7 @@ const notificationQueueMaxSizeSetting = {
       ),
       scope: "world",
       config: true,
-      type: Number,
+      type: "number",
       default: constants.defaultSize,
       onChange: /* @__PURE__ */ __name((value2) => {
         const numericValue = Number(value2);
@@ -18229,7 +18300,7 @@ const journalDirectoryButtonsPlayerSetting = {
       ),
       scope: "world",
       config: true,
-      type: Boolean,
+      type: "boolean",
       default: false
     };
   }
@@ -18248,7 +18319,7 @@ const journalDirectoryButtonsTrustedSetting = {
       ),
       scope: "world",
       config: true,
-      type: Boolean,
+      type: "boolean",
       default: false
     };
   }
@@ -18270,7 +18341,7 @@ const journalDirectoryButtonsAssistantSetting = {
       ),
       scope: "world",
       config: true,
-      type: Boolean,
+      type: "boolean",
       default: false
     };
   }
@@ -18289,7 +18360,7 @@ const journalDirectoryButtonsGamemasterSetting = {
       ),
       scope: "world",
       config: true,
-      type: Boolean,
+      type: "boolean",
       default: true
     };
   }
@@ -32530,17 +32601,18 @@ function castResolvedService(value2) {
 }
 __name(castResolvedService, "castResolvedService");
 const _WindowController = class _WindowController {
-  constructor(instanceId, definitionId, definition, registry, stateStore, statePortFactory, actionDispatcher, rendererRegistry, bindingEngine, viewModelBuilder, eventBus, remoteSyncGate, persistAdapter, container) {
+  constructor(instanceId, definitionId, definition, registry, stateStore, statePortFactory, actionDispatcher, bindingEngine, viewModelBuilder, eventBus, remoteSyncGate, stateInitializer, rendererCoordinator, persistenceCoordinator, container) {
     this.registry = registry;
     this.stateStore = stateStore;
     this.statePortFactory = statePortFactory;
     this.actionDispatcher = actionDispatcher;
-    this.rendererRegistry = rendererRegistry;
     this.bindingEngine = bindingEngine;
     this.viewModelBuilder = viewModelBuilder;
     this.eventBus = eventBus;
     this.remoteSyncGate = remoteSyncGate;
-    this.persistAdapter = persistAdapter;
+    this.stateInitializer = stateInitializer;
+    this.rendererCoordinator = rendererCoordinator;
+    this.persistenceCoordinator = persistenceCoordinator;
     this.container = container;
     this.componentInstance = null;
     this.isMounted = false;
@@ -32559,18 +32631,7 @@ const _WindowController = class _WindowController {
     this.element = element2;
     const currentState = this.stateStore.getAll(this.instanceId);
     if (currentState.ok && Object.keys(currentState.value).length === 0) {
-      const defaultState = {
-        journals: [],
-        isLoading: false,
-        error: null
-      };
-      if (this.definitionId === "journal-overview") {
-        defaultState.sortColumn = null;
-        defaultState.sortDirection = "asc";
-        defaultState.columnFilters = {};
-        defaultState.globalSearch = "";
-        defaultState.filteredJournals = [];
-      }
+      const defaultState = this.stateInitializer.buildInitialState(this.definitionId);
       this.statePort.patch(defaultState);
     }
     const bindResult = this.bindingEngine.initialize(this.definition, this.instanceId);
@@ -32582,8 +32643,6 @@ const _WindowController = class _WindowController {
       this.createActions()
     );
     this.cachedViewModel = viewModel;
-    const rendererResult = this.rendererRegistry.get(this.definition.component.type);
-    if (!rendererResult.ok) return err(rendererResult.error);
     const mountPoint = element2.querySelector("#svelte-mount-point");
     if (!mountPoint) {
       return err({
@@ -32591,7 +32650,7 @@ const _WindowController = class _WindowController {
         message: "Mount point #svelte-mount-point not found"
       });
     }
-    const mountResult = rendererResult.value.mount(
+    const mountResult = this.rendererCoordinator.mount(
       this.definition.component,
       mountPoint,
       viewModel
@@ -32624,18 +32683,20 @@ const _WindowController = class _WindowController {
       }
     }
     if (this.componentInstance !== null) {
-      const rendererResult = this.rendererRegistry.get(this.definition.component.type);
-      if (rendererResult.ok) {
-        if (this.componentInstance !== null) {
-          rendererResult.value.unmount(this.componentInstance);
-        }
+      const unmountResult = this.rendererCoordinator.unmount(
+        this.definition.component,
+        this.componentInstance
+      );
+      if (!unmountResult.ok) {
+        console.error("Failed to unmount component:", unmountResult.error);
       }
       this.componentInstance = null;
     }
     this.isMounted = false;
     if (this.definition.persist) {
       const meta = this.remoteSyncGate.makePersistMeta(this.instanceId);
-      await this.persist(meta);
+      const state2 = this.statePort.get();
+      await this.persistenceCoordinator.persist(this.definition.persist, state2, meta);
     }
     this.eventBus.emit("window:closed", { instanceId: this.instanceId });
     return ok(void 0);
@@ -32645,7 +32706,12 @@ const _WindowController = class _WindowController {
     this.statePort.patch(updates);
     if (persist && this.definition.persist) {
       const meta = this.remoteSyncGate.makePersistMeta(this.instanceId);
-      const persistResult = await this.persist(meta);
+      const state2 = this.statePort.get();
+      const persistResult = await this.persistenceCoordinator.persist(
+        this.definition.persist,
+        state2,
+        meta
+      );
       if (!persistResult.ok) return err(persistResult.error);
     }
     if (sync !== "none") {
@@ -32689,29 +32755,15 @@ const _WindowController = class _WindowController {
         message: "No persist configuration found"
       });
     }
-    if (!this.persistAdapter) {
-      return err({
-        code: "NoPersistAdapter",
-        message: "No persist adapter available"
-      });
-    }
     const state2 = this.statePort.get();
     const persistMeta = meta ?? this.remoteSyncGate.makePersistMeta(this.instanceId);
-    const result = await this.persistAdapter.save(this.definition.persist, state2, persistMeta);
-    if (!result.ok) return err(result.error);
-    return ok(void 0);
+    return await this.persistenceCoordinator.persist(this.definition.persist, state2, persistMeta);
   }
   async restore() {
     if (!this.definition.persist?.restoreOnOpen) {
       return ok(void 0);
     }
-    if (!this.persistAdapter) {
-      return err({
-        code: "NoPersistAdapter",
-        message: "No persist adapter available"
-      });
-    }
-    const result = await this.persistAdapter.load(this.definition.persist);
+    const result = await this.persistenceCoordinator.restore(this.definition.persist);
     if (!result.ok) return err(result.error);
     await this.applyRemotePatch(result.value);
     return ok(void 0);
@@ -32896,13 +32948,6 @@ const _WindowFactory = class _WindowFactory {
       );
     }
     const actionDispatcher = castResolvedService(actionDispatcherResult.value);
-    const rendererRegistryResult = this.container.resolveWithError(rendererRegistryToken);
-    if (!rendererRegistryResult.ok) {
-      throw new Error(
-        `Failed to resolve RendererRegistry: ${rendererRegistryResult.error.message}`
-      );
-    }
-    const rendererRegistry = castResolvedService(rendererRegistryResult.value);
     const bindingEngineResult = this.container.resolveWithError(bindingEngineToken);
     if (!bindingEngineResult.ok) {
       throw new Error(`Failed to resolve BindingEngine: ${bindingEngineResult.error.message}`);
@@ -32925,8 +32970,31 @@ const _WindowFactory = class _WindowFactory {
       throw new Error(`Failed to resolve RemoteSyncGate: ${remoteSyncGateResult.error.message}`);
     }
     const remoteSyncGate = castResolvedService(remoteSyncGateResult.value);
-    const persistAdapterResult = this.container.resolveWithError(persistAdapterToken);
-    const persistAdapter = persistAdapterResult.ok ? castResolvedService(persistAdapterResult.value) : void 0;
+    const stateInitializerResult = this.container.resolveWithError(windowStateInitializerToken);
+    if (!stateInitializerResult.ok) {
+      throw new Error(
+        `Failed to resolve WindowStateInitializer: ${stateInitializerResult.error.message}`
+      );
+    }
+    const stateInitializer = castResolvedService(stateInitializerResult.value);
+    const rendererCoordinatorResult = this.container.resolveWithError(
+      windowRendererCoordinatorToken
+    );
+    if (!rendererCoordinatorResult.ok) {
+      throw new Error(
+        `Failed to resolve WindowRendererCoordinator: ${rendererCoordinatorResult.error.message}`
+      );
+    }
+    const rendererCoordinator = castResolvedService(rendererCoordinatorResult.value);
+    const persistenceCoordinatorResult = this.container.resolveWithError(
+      windowPersistenceCoordinatorToken
+    );
+    if (!persistenceCoordinatorResult.ok) {
+      throw new Error(
+        `Failed to resolve WindowPersistenceCoordinator: ${persistenceCoordinatorResult.error.message}`
+      );
+    }
+    const persistenceCoordinator = castResolvedService(persistenceCoordinatorResult.value);
     return new WindowController(
       instanceId,
       definitionId,
@@ -32935,12 +33003,13 @@ const _WindowFactory = class _WindowFactory {
       stateStore,
       statePortFactory,
       actionDispatcher,
-      rendererRegistry,
       bindingEngine,
       viewModelBuilder,
       eventBus,
       remoteSyncGate,
-      persistAdapter,
+      stateInitializer,
+      rendererCoordinator,
+      persistenceCoordinator,
       this.container
       // Pass container for action handlers
     );
@@ -33182,6 +33251,193 @@ const _WindowHooksBridge = class _WindowHooksBridge {
 };
 __name(_WindowHooksBridge, "WindowHooksBridge");
 let WindowHooksBridge = _WindowHooksBridge;
+const _DefaultWindowStateInitializer = class _DefaultWindowStateInitializer {
+  buildInitialState(_definitionId) {
+    return {
+      journals: [],
+      isLoading: false,
+      error: null
+    };
+  }
+};
+__name(_DefaultWindowStateInitializer, "DefaultWindowStateInitializer");
+let DefaultWindowStateInitializer = _DefaultWindowStateInitializer;
+const _WindowStateInitializer = class _WindowStateInitializer {
+  constructor(providerRegistry) {
+    this.providerRegistry = providerRegistry;
+    this.defaultInitializer = new DefaultWindowStateInitializer();
+  }
+  buildInitialState(definitionId) {
+    const provider = this.providerRegistry.get(definitionId);
+    if (provider) {
+      return provider.buildInitialState(definitionId);
+    }
+    return this.defaultInitializer.buildInitialState(definitionId);
+  }
+};
+__name(_WindowStateInitializer, "WindowStateInitializer");
+_WindowStateInitializer.dependencies = [windowDefaultStateProviderRegistryToken];
+let WindowStateInitializer = _WindowStateInitializer;
+const _WindowRendererCoordinator = class _WindowRendererCoordinator {
+  constructor(rendererRegistry) {
+    this.rendererRegistry = rendererRegistry;
+  }
+  mount(descriptor, mountPoint, viewModel) {
+    const rendererResult = this.rendererRegistry.get(descriptor.type);
+    if (!rendererResult.ok) {
+      return err({
+        code: "RendererNotFound",
+        message: `Renderer for type "${descriptor.type}" not found: ${rendererResult.error.message}`
+      });
+    }
+    const mountResult = rendererResult.value.mount(descriptor, mountPoint, viewModel);
+    if (!mountResult.ok) {
+      return err({
+        code: "MountFailed",
+        message: `Failed to mount component: ${mountResult.error.message}`
+      });
+    }
+    return mountResult;
+  }
+  unmount(descriptor, instance2) {
+    const rendererResult = this.rendererRegistry.get(descriptor.type);
+    if (!rendererResult.ok) {
+      return err({
+        code: "RendererNotFound",
+        message: `Renderer for type "${descriptor.type}" not found: ${rendererResult.error.message}`
+      });
+    }
+    const unmountResult = rendererResult.value.unmount(instance2);
+    if (!unmountResult.ok) {
+      return err({
+        code: "UnmountFailed",
+        message: `Failed to unmount component: ${unmountResult.error.message}`
+      });
+    }
+    return unmountResult;
+  }
+  update(descriptor, instance2, viewModel) {
+    const rendererResult = this.rendererRegistry.get(descriptor.type);
+    if (!rendererResult.ok) {
+      return err({
+        code: "RendererNotFound",
+        message: `Renderer for type "${descriptor.type}" not found: ${rendererResult.error.message}`
+      });
+    }
+    const updateResult = rendererResult.value.update(instance2, viewModel);
+    if (!updateResult.ok) {
+      return err({
+        code: "UpdateFailed",
+        message: `Failed to update component: ${updateResult.error.message}`
+      });
+    }
+    return updateResult;
+  }
+};
+__name(_WindowRendererCoordinator, "WindowRendererCoordinator");
+_WindowRendererCoordinator.dependencies = [rendererRegistryToken];
+let WindowRendererCoordinator = _WindowRendererCoordinator;
+const _WindowPersistenceCoordinator = class _WindowPersistenceCoordinator {
+  constructor(persistAdapter) {
+    this.persistAdapter = persistAdapter;
+  }
+  async persist(config2, state2, meta) {
+    if (!this.persistAdapter) {
+      return err({
+        code: "NoPersistAdapter",
+        message: "No persist adapter available"
+      });
+    }
+    const result = await this.persistAdapter.save(config2, state2, meta);
+    if (!result.ok) {
+      return err({
+        code: "PersistFailed",
+        message: `Failed to persist state: ${result.error.message}`
+      });
+    }
+    return result;
+  }
+  async restore(config2) {
+    if (!this.persistAdapter) {
+      return err({
+        code: "NoPersistAdapter",
+        message: "No persist adapter available"
+      });
+    }
+    const result = await this.persistAdapter.load(config2);
+    if (!result.ok) {
+      return err({
+        code: "RestoreFailed",
+        message: `Failed to restore state: ${result.error.message}`
+      });
+    }
+    return result;
+  }
+};
+__name(_WindowPersistenceCoordinator, "WindowPersistenceCoordinator");
+_WindowPersistenceCoordinator.dependencies = [persistAdapterToken];
+let WindowPersistenceCoordinator = _WindowPersistenceCoordinator;
+const _WindowDefaultStateProviderRegistry = class _WindowDefaultStateProviderRegistry {
+  constructor() {
+    this.providers = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Registers a default state provider for a window definition.
+   *
+   * @param definitionId - The window definition ID
+   * @param provider - The state initializer provider
+   * @throws Error if a provider for the definitionId already exists
+   */
+  register(definitionId, provider) {
+    if (this.providers.has(definitionId)) {
+      throw new Error(
+        `Window default state provider for definitionId "${definitionId}" already exists. Use a different definitionId or remove the existing provider first.`
+      );
+    }
+    this.providers.set(definitionId, provider);
+  }
+  /**
+   * Gets a default state provider by definitionId.
+   *
+   * @param definitionId - The window definition ID
+   * @returns The state initializer provider or undefined if not found
+   */
+  get(definitionId) {
+    return this.providers.get(definitionId);
+  }
+  /**
+   * Checks if a provider exists for a definitionId.
+   *
+   * @param definitionId - The window definition ID
+   * @returns True if a provider exists
+   */
+  has(definitionId) {
+    return this.providers.has(definitionId);
+  }
+};
+__name(_WindowDefaultStateProviderRegistry, "WindowDefaultStateProviderRegistry");
+let WindowDefaultStateProviderRegistry = _WindowDefaultStateProviderRegistry;
+const _JournalOverviewStateInitializer = class _JournalOverviewStateInitializer {
+  buildInitialState(definitionId) {
+    if (definitionId !== "journal-overview") {
+      throw new Error(
+        `JournalOverviewStateInitializer can only handle "journal-overview" definition, got: ${definitionId}`
+      );
+    }
+    return {
+      journals: [],
+      isLoading: false,
+      error: null,
+      sortColumn: null,
+      sortDirection: "asc",
+      columnFilters: {},
+      globalSearch: "",
+      filteredJournals: []
+    };
+  }
+};
+__name(_JournalOverviewStateInitializer, "JournalOverviewStateInitializer");
+let JournalOverviewStateInitializer = _JournalOverviewStateInitializer;
 function registerWindowServices(container) {
   const eventBusResult = container.registerClass(
     eventBusToken,
@@ -33274,6 +33530,47 @@ function registerWindowServices(container) {
   );
   if (isErr(viewModelBuilderResult)) {
     return err(`Failed to register ViewModelBuilder: ${viewModelBuilderResult.error.message}`);
+  }
+  const providerRegistry = new WindowDefaultStateProviderRegistry();
+  providerRegistry.register("journal-overview", new JournalOverviewStateInitializer());
+  const providerRegistryResult = container.registerValue(
+    windowDefaultStateProviderRegistryToken,
+    providerRegistry
+  );
+  if (isErr(providerRegistryResult)) {
+    return err(
+      `Failed to register WindowDefaultStateProviderRegistry: ${providerRegistryResult.error.message}`
+    );
+  }
+  const stateInitializerResult = container.registerClass(
+    windowStateInitializerToken,
+    WindowStateInitializer,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(stateInitializerResult)) {
+    return err(
+      `Failed to register WindowStateInitializer: ${stateInitializerResult.error.message}`
+    );
+  }
+  const rendererCoordinatorResult = container.registerClass(
+    windowRendererCoordinatorToken,
+    WindowRendererCoordinator,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(rendererCoordinatorResult)) {
+    return err(
+      `Failed to register WindowRendererCoordinator: ${rendererCoordinatorResult.error.message}`
+    );
+  }
+  const persistenceCoordinatorResult = container.registerClass(
+    windowPersistenceCoordinatorToken,
+    WindowPersistenceCoordinator,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(persistenceCoordinatorResult)) {
+    return err(
+      `Failed to register WindowPersistenceCoordinator: ${persistenceCoordinatorResult.error.message}`
+    );
   }
   const windowFactoryFactoryResult = container.registerFactory(
     windowFactoryToken,
@@ -33512,10 +33809,11 @@ function createJournalOverviewWindowDefinition(component2) {
                 true
               );
             } else {
-              flagResult = await repository.unsetFlag(
+              flagResult = await repository.setFlag(
                 journalId,
                 MODULE_METADATA.ID,
-                DOMAIN_FLAGS.HIDDEN
+                DOMAIN_FLAGS.HIDDEN,
+                false
               );
             }
             if (!flagResult.ok) {
@@ -33821,7 +34119,7 @@ async function handleBulkVisibilityChange(context, targetVisibility) {
     let errorCount = 0;
     for (const journal of filteredJournals) {
       const shouldBeHidden = targetVisibility === null ? !journal.isHidden : targetVisibility;
-      const flagResult = shouldBeHidden ? await repository.setFlag(journal.id, MODULE_METADATA.ID, DOMAIN_FLAGS.HIDDEN, true) : await repository.unsetFlag(journal.id, MODULE_METADATA.ID, DOMAIN_FLAGS.HIDDEN);
+      const flagResult = shouldBeHidden ? await repository.setFlag(journal.id, MODULE_METADATA.ID, DOMAIN_FLAGS.HIDDEN, true) : await repository.setFlag(journal.id, MODULE_METADATA.ID, DOMAIN_FLAGS.HIDDEN, false);
       if (flagResult.ok) {
         successCount++;
       } else {

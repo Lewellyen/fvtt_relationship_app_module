@@ -12,6 +12,25 @@
 
 ### Upgrade-Hinweise
 
+## [0.55.2] - 2026-01-10
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **Journal Overview Window - Sichtbarkeits-Propagierung**: Sichtbar-Schalten im Journal-Overview-Fenster propagiert jetzt korrekt in allen Clients ([Details](src/application/windows/definitions/journal-overview-window.definition.ts))
+- `unsetFlag()` durch `setFlag(..., false)` ersetzt, damit das Flag-Änderungs-Event korrekt erkannt wird
+- `TriggerJournalDirectoryReRenderUseCase` erkennt jetzt Flag-Änderungen beim Sichtbar-Schalten
+- Directory-Rerender wird im zweiten Client sofort ausgelöst (konsistent mit Sidebar-Button "Alle Journale einblenden")
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.55.1] - 2026-01-10
 ### Hinzugefügt
 - **WindowStateInitializer Interface**: Neues Port-Interface für Window-State-Initialisierung ([Details](src/application/windows/ports/window-state-initializer-port.interface.ts))

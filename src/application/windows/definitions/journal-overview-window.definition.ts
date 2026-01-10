@@ -201,10 +201,11 @@ export function createJournalOverviewWindowDefinition(component: unknown): Windo
                 true
               );
             } else {
-              flagResult = await repository.unsetFlag(
+              flagResult = await repository.setFlag(
                 journalId,
                 MODULE_METADATA.ID,
-                DOMAIN_FLAGS.HIDDEN
+                DOMAIN_FLAGS.HIDDEN,
+                false
               );
             }
 
@@ -636,7 +637,7 @@ async function handleBulkVisibilityChange(
 
       const flagResult = shouldBeHidden
         ? await repository.setFlag(journal.id, MODULE_METADATA.ID, DOMAIN_FLAGS.HIDDEN, true)
-        : await repository.unsetFlag(journal.id, MODULE_METADATA.ID, DOMAIN_FLAGS.HIDDEN);
+        : await repository.setFlag(journal.id, MODULE_METADATA.ID, DOMAIN_FLAGS.HIDDEN, false);
 
       if (flagResult.ok) {
         successCount++;

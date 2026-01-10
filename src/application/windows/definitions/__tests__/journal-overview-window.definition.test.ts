@@ -383,14 +383,19 @@ describe("createJournalOverviewWindowDefinition", () => {
         ...context,
         metadata: {
           ...context.metadata,
-          journalId: "journal-2", // journal-2 is hidden, so unsetFlag will be called
+          journalId: "journal-2", // journal-2 is hidden, so setFlag(..., false) will be called
         },
       };
 
       const result = await handler(testContext);
 
       expect(result.ok).toBe(true);
-      expect(mockRepository.unsetFlag).toHaveBeenCalled();
+      expect(mockRepository.setFlag).toHaveBeenCalledWith(
+        "journal-2",
+        expect.any(String),
+        expect.any(String),
+        false
+      );
       expect(mockCache.invalidateWhere).toHaveBeenCalled();
       expect(mockScheduler.requestRerender).toHaveBeenCalled();
     });
@@ -547,9 +552,9 @@ describe("createJournalOverviewWindowDefinition", () => {
       }
     });
 
-    it("should return error when unsetFlag fails", async () => {
-      vi.mocked(mockRepository.unsetFlag).mockResolvedValueOnce(
-        err({ code: "OPERATION_FAILED", message: "Failed to unset flag" })
+    it("should return error when setFlag fails for making visible", async () => {
+      vi.mocked(mockRepository.setFlag).mockResolvedValueOnce(
+        err({ code: "OPERATION_FAILED", message: "Failed to set flag" })
       );
 
       const definition = createJournalOverviewWindowDefinition(mockComponent);
@@ -562,7 +567,7 @@ describe("createJournalOverviewWindowDefinition", () => {
         ...context,
         metadata: {
           ...context.metadata,
-          journalId: "journal-2", // journal-2 is hidden, so unsetFlag will be called
+          journalId: "journal-2", // journal-2 is hidden, so setFlag(..., false) will be called
         },
       };
 
@@ -571,7 +576,7 @@ describe("createJournalOverviewWindowDefinition", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("ToggleFailed");
-        expect(result.error.message).toBe("Failed to unset flag");
+        expect(result.error.message).toBe("Failed to set flag");
       }
     });
 
@@ -2137,7 +2142,14 @@ describe("createJournalOverviewWindowDefinition", () => {
       const result = await handler(context);
 
       expect(result.ok).toBe(true);
-      expect(mockRepository.unsetFlag).toHaveBeenCalledTimes(2);
+      expect(mockRepository.setFlag).toHaveBeenCalledTimes(2);
+      // Verify that setFlag was called with false for making visible
+      expect(mockRepository.setFlag).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        false
+      );
       expect(mockCache.invalidateWhere).toHaveBeenCalled();
 
       // Test that the arrow function passed to invalidateWhere is executed
@@ -2182,7 +2194,10 @@ describe("createJournalOverviewWindowDefinition", () => {
       const result = await handler(context);
 
       expect(result.ok).toBe(true);
-      expect(mockRepository.unsetFlag).not.toHaveBeenCalled();
+      // setFlag should not be called with false when no journals need to be made visible
+      const setFlagCalls = vi.mocked(mockRepository.setFlag).mock.calls;
+      const setFlagFalseCalls = setFlagCalls.filter((call) => call[3] === false);
+      expect(setFlagFalseCalls.length).toBe(0);
     });
 
     it("should handle repository errors and show notification", async () => {
@@ -2190,7 +2205,7 @@ describe("createJournalOverviewWindowDefinition", () => {
         warn: vi.fn(),
       } as unknown as NotificationPublisherPort;
 
-      vi.mocked(mockRepository.unsetFlag).mockResolvedValueOnce(
+      vi.mocked(mockRepository.setFlag).mockResolvedValueOnce(
         err({ code: "OPERATION_FAILED", message: "Failed" })
       );
 
@@ -2233,7 +2248,7 @@ describe("createJournalOverviewWindowDefinition", () => {
     });
 
     it("should handle repository errors when notifications cannot be resolved", async () => {
-      vi.mocked(mockRepository.unsetFlag).mockResolvedValueOnce(
+      vi.mocked(mockRepository.setFlag).mockResolvedValueOnce(
         err({ code: "OPERATION_FAILED", message: "Failed" })
       );
 
@@ -2276,7 +2291,12 @@ describe("createJournalOverviewWindowDefinition", () => {
       const result = await handler(context);
 
       expect(result.ok).toBe(true);
-      expect(mockRepository.unsetFlag).toHaveBeenCalled();
+      expect(mockRepository.setFlag).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        false
+      );
       // notifications.warn should not be called when notifications cannot be resolved
     });
 
@@ -2358,7 +2378,7 @@ describe("createJournalOverviewWindowDefinition", () => {
     });
 
     it("should handle unexpected errors", async () => {
-      vi.mocked(mockRepository.unsetFlag).mockImplementation(() => {
+      vi.mocked(mockRepository.setFlag).mockImplementation(() => {
         throw new Error("Unexpected error");
       });
 
@@ -2390,7 +2410,10 @@ describe("createJournalOverviewWindowDefinition", () => {
       const result = await handler(context);
 
       expect(result.ok).toBe(true);
-      expect(mockRepository.unsetFlag).not.toHaveBeenCalled();
+      // setFlag should not be called with false when no journals need to be made visible
+      const setFlagCalls = vi.mocked(mockRepository.setFlag).mock.calls;
+      const setFlagFalseCalls = setFlagCalls.filter((call) => call[3] === false);
+      expect(setFlagFalseCalls.length).toBe(0);
     });
 
     it("should handle when UI resolution fails", async () => {
@@ -2433,7 +2456,12 @@ describe("createJournalOverviewWindowDefinition", () => {
       const result = await handler(context);
 
       expect(result.ok).toBe(true);
-      expect(mockRepository.unsetFlag).toHaveBeenCalled();
+      expect(mockRepository.setFlag).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        false
+      );
       // UI notify should not be called when UI resolution fails
     });
 
@@ -2477,7 +2505,12 @@ describe("createJournalOverviewWindowDefinition", () => {
       const result = await handler(context);
 
       expect(result.ok).toBe(true);
-      expect(mockRepository.unsetFlag).toHaveBeenCalled();
+      expect(mockRepository.setFlag).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        false
+      );
       // Cache invalidateWhere should not be called when cache resolution fails
     });
 
@@ -2521,7 +2554,12 @@ describe("createJournalOverviewWindowDefinition", () => {
       const result = await handler(context);
 
       expect(result.ok).toBe(true);
-      expect(mockRepository.unsetFlag).toHaveBeenCalled();
+      expect(mockRepository.setFlag).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        false
+      );
       // Scheduler requestRerender should not be called when scheduler resolution fails
     });
 
@@ -2541,7 +2579,12 @@ describe("createJournalOverviewWindowDefinition", () => {
       const result = await handler(context);
 
       expect(result.ok).toBe(true);
-      expect(mockRepository.unsetFlag).toHaveBeenCalled();
+      expect(mockRepository.setFlag).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        false
+      );
       expect(mockService.getAllJournalsWithVisibilityStatus).toHaveBeenCalled();
       // State should not be updated when reload fails
     });
@@ -2587,7 +2630,12 @@ describe("createJournalOverviewWindowDefinition", () => {
       const result = await handler(context);
 
       expect(result.ok).toBe(true);
-      expect(mockRepository.unsetFlag).toHaveBeenCalled();
+      expect(mockRepository.setFlag).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        false
+      );
       // State should not be updated when service cannot be resolved for reload
     });
 
@@ -2596,7 +2644,7 @@ describe("createJournalOverviewWindowDefinition", () => {
         warn: vi.fn(),
       } as unknown as NotificationPublisherPort;
 
-      vi.mocked(mockRepository.unsetFlag).mockResolvedValueOnce(
+      vi.mocked(mockRepository.setFlag).mockResolvedValueOnce(
         err({ code: "OPERATION_FAILED", message: "Failed" })
       );
 
@@ -2649,7 +2697,7 @@ describe("createJournalOverviewWindowDefinition", () => {
     });
 
     it("should handle non-Error exceptions", async () => {
-      vi.mocked(mockRepository.unsetFlag).mockImplementation(() => {
+      vi.mocked(mockRepository.setFlag).mockImplementation(() => {
         throw "String error";
       });
 
@@ -2773,9 +2821,19 @@ describe("createJournalOverviewWindowDefinition", () => {
       const result = await handler(context);
 
       expect(result.ok).toBe(true);
-      // Should toggle: journal-1 (false -> true) uses setFlag, journal-2 (true -> false) uses unsetFlag
-      expect(mockRepository.setFlag).toHaveBeenCalled();
-      expect(mockRepository.unsetFlag).toHaveBeenCalled();
+      // Should toggle: journal-1 (false -> true) uses setFlag(true), journal-2 (true -> false) uses setFlag(false)
+      expect(mockRepository.setFlag).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        true
+      );
+      expect(mockRepository.setFlag).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        false
+      );
     });
   });
 });
