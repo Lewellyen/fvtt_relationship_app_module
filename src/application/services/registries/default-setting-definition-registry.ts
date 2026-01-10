@@ -17,6 +17,10 @@ import { performanceSamplingSetting } from "@/application/settings/performance-s
 import { metricsPersistenceEnabledSetting } from "@/application/settings/metrics-persistence-enabled-setting";
 import { metricsPersistenceKeySetting } from "@/application/settings/metrics-persistence-key-setting";
 import { notificationQueueMaxSizeSetting } from "@/application/settings/notification-queue-max-size-setting";
+import { journalDirectoryButtonsPlayerSetting } from "@/application/settings/journal-directory-buttons-permissions-setting";
+import { journalDirectoryButtonsTrustedSetting } from "@/application/settings/journal-directory-buttons-permissions-setting";
+import { journalDirectoryButtonsAssistantSetting } from "@/application/settings/journal-directory-buttons-permissions-setting";
+import { journalDirectoryButtonsGamemasterSetting } from "@/application/settings/journal-directory-buttons-permissions-setting";
 
 /**
  * Default registry containing all module setting definitions.
@@ -36,6 +40,10 @@ export class DefaultSettingDefinitionRegistry implements SettingDefinitionRegist
       castSettingDefinitionToUnknown(metricsPersistenceEnabledSetting),
       castSettingDefinitionToUnknown(metricsPersistenceKeySetting),
       castSettingDefinitionToUnknown(notificationQueueMaxSizeSetting),
+      castSettingDefinitionToUnknown(journalDirectoryButtonsPlayerSetting),
+      castSettingDefinitionToUnknown(journalDirectoryButtonsTrustedSetting),
+      castSettingDefinitionToUnknown(journalDirectoryButtonsAssistantSetting),
+      castSettingDefinitionToUnknown(journalDirectoryButtonsGamemasterSetting),
     ];
   }
 }

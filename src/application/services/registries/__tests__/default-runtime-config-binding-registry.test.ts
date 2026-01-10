@@ -1,17 +1,18 @@
 import { describe, it, expect } from "vitest";
 import { DefaultRuntimeConfigBindingRegistry } from "../default-runtime-config-binding-registry";
-import { SETTING_KEYS } from "@/application/constants/app-constants";
+import { runtimeConfigBindings } from "@/application/config/runtime-config-bindings";
 
 describe("DefaultRuntimeConfigBindingRegistry", () => {
   it("should return all runtime config bindings", () => {
     const registry = new DefaultRuntimeConfigBindingRegistry();
     const bindings = registry.getAll();
 
-    // Should have bindings for all setting keys
+    // Should have bindings for all runtime config binding keys
     expect(bindings.size).toBeGreaterThan(0);
+    expect(bindings.size).toBe(Object.keys(runtimeConfigBindings).length);
 
-    // Check that all setting keys have bindings
-    Object.values(SETTING_KEYS).forEach((settingKey) => {
+    // Check that all runtime config binding keys have bindings
+    Object.keys(runtimeConfigBindings).forEach((settingKey) => {
       const binding = bindings.get(settingKey);
       expect(binding).toBeDefined();
       expect(binding?.runtimeKey).toBeDefined();
@@ -22,12 +23,12 @@ describe("DefaultRuntimeConfigBindingRegistry", () => {
 
   it("should skip bindings that do not exist (branch coverage)", () => {
     // This test verifies that the registry handles missing bindings gracefully
-    // In practice, all settings have bindings, but the implementation checks for existence
+    // In practice, all runtime config binding keys have bindings
     const registry = new DefaultRuntimeConfigBindingRegistry();
     const bindings = registry.getAll();
 
-    // All setting keys should have bindings in the default implementation
-    Object.values(SETTING_KEYS).forEach((settingKey) => {
+    // All runtime config binding keys should have bindings in the default implementation
+    Object.keys(runtimeConfigBindings).forEach((settingKey) => {
       expect(bindings.has(settingKey)).toBe(true);
     });
   });

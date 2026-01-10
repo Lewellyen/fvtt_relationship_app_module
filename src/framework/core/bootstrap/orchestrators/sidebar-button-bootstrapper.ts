@@ -4,10 +4,13 @@ import type { PlatformContainerPort } from "@/domain/ports/platform-container-po
 import { showAllHiddenJournalsUseCaseToken } from "@/application/tokens/event.tokens";
 import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";
 import { windowFactoryToken } from "@/application/windows/tokens/window.tokens";
+import { platformSettingsRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { ShowAllHiddenJournalsUseCase } from "@/application/use-cases/show-all-hidden-journals.use-case";
 import type { FoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
 import type { IWindowFactory } from "@/domain/windows/ports/window-factory-port.interface";
+import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
+import { canUserSeeJournalDirectoryButtons } from "@/application/utils/journal-directory-button-permissions";
 
 /**
  * Orchestrator for registering sidebar button during bootstrap.
@@ -60,6 +63,24 @@ export class SidebarButtonBootstrapper {
       }
 
       const html = htmlArg;
+
+      // Permission check: Only show buttons if user has permission
+      // Resolve settings port for permission check
+      const settingsResult = container.resolveWithError(platformSettingsRegistrationPortToken);
+      if (!settingsResult.ok) {
+        // Settings port not available - don't show buttons
+        return;
+      }
+
+      const settings = castResolvedService<PlatformSettingsRegistrationPort>(settingsResult.value);
+
+      // Check permission using game.user (may be undefined in some contexts)
+      const user: { role?: number } | undefined =
+        typeof game !== "undefined" && game.user ? (game.user as { role?: number }) : undefined;
+      if (!canUserSeeJournalDirectoryButtons(settings, user)) {
+        // User doesn't have permission - don't show buttons
+        return;
+      }
 
       // Find container for buttons (reusable for both buttons)
       const actionButtons = html.querySelector(".header-actions.action-buttons");

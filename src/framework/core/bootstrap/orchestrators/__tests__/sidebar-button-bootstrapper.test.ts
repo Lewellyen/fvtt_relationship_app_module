@@ -1,21 +1,32 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SidebarButtonBootstrapper } from "../sidebar-button-bootstrapper";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { ShowAllHiddenJournalsUseCase } from "@/application/use-cases/show-all-hidden-journals.use-case";
 import type { FoundryHooksPort } from "@/infrastructure/adapters/foundry/services/FoundryHooksPort";
 import type { IWindowFactory } from "@/domain/windows/ports/window-factory-port.interface";
 import type { WindowHandle } from "@/domain/windows/types/window-handle.interface";
+import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import { showAllHiddenJournalsUseCaseToken } from "@/application/tokens/event.tokens";
 import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";
 import { windowFactoryToken } from "@/application/windows/tokens/window.tokens";
+import { platformSettingsRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
 import { ok, err } from "@/domain/utils/result";
 
 describe("SidebarButtonBootstrapper", () => {
   let mockContainer: PlatformContainerPort;
   let mockUseCase: ShowAllHiddenJournalsUseCase;
   let mockHooks: FoundryHooksPort;
+  let mockSettings: PlatformSettingsRegistrationPort;
 
   beforeEach(() => {
+    // Mock game.user for permission checks
+    vi.stubGlobal("game", {
+      user: {
+        id: "test-user",
+        role: 4, // GAMEMASTER
+      },
+    });
+
     mockUseCase = {
       execute: vi.fn().mockResolvedValue(ok(5)),
     } as unknown as ShowAllHiddenJournalsUseCase;
@@ -27,6 +38,12 @@ describe("SidebarButtonBootstrapper", () => {
       dispose: vi.fn(),
     } as unknown as FoundryHooksPort;
 
+    mockSettings = {
+      registerSetting: vi.fn().mockReturnValue(ok(undefined)),
+      getSettingValue: vi.fn().mockReturnValue(ok(true)), // Default: allow buttons
+      setSettingValue: vi.fn().mockResolvedValue(ok(undefined)),
+    } as unknown as PlatformSettingsRegistrationPort;
+
     mockContainer = {
       resolveWithError: vi.fn().mockImplementation((token) => {
         if (token === showAllHiddenJournalsUseCaseToken) {
@@ -35,12 +52,19 @@ describe("SidebarButtonBootstrapper", () => {
         if (token === foundryHooksToken) {
           return ok(mockHooks);
         }
+        if (token === platformSettingsRegistrationPortToken) {
+          return ok(mockSettings);
+        }
         return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
       }),
       resolve: vi.fn(),
       getValidationState: vi.fn(),
       isRegistered: vi.fn(),
     } as unknown as PlatformContainerPort;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe("registerSidebarButton", () => {
@@ -64,6 +88,9 @@ describe("SidebarButtonBootstrapper", () => {
         }
         if (token === foundryHooksToken) {
           return err({ code: "SERVICE_NOT_FOUND", message: "Hooks not found" });
+        }
+        if (token === platformSettingsRegistrationPortToken) {
+          return ok(mockSettings);
         }
         return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
       });
@@ -299,6 +326,9 @@ describe("SidebarButtonBootstrapper", () => {
         if (token === foundryHooksToken) {
           return ok(mockHooks);
         }
+        if (token === platformSettingsRegistrationPortToken) {
+          return ok(mockSettings);
+        }
         if (token === windowFactoryToken) {
           return ok(mockWindowFactory);
         }
@@ -350,6 +380,9 @@ describe("SidebarButtonBootstrapper", () => {
         }
         if (token === foundryHooksToken) {
           return ok(mockHooks);
+        }
+        if (token === platformSettingsRegistrationPortToken) {
+          return ok(mockSettings);
         }
         if (token === windowFactoryToken) {
           return ok(mockWindowFactory);
@@ -407,6 +440,9 @@ describe("SidebarButtonBootstrapper", () => {
         if (token === foundryHooksToken) {
           return ok(mockHooks);
         }
+        if (token === platformSettingsRegistrationPortToken) {
+          return ok(mockSettings);
+        }
         if (token === windowFactoryToken) {
           return ok(mockWindowFactory);
         }
@@ -451,6 +487,9 @@ describe("SidebarButtonBootstrapper", () => {
         }
         if (token === foundryHooksToken) {
           return ok(mockHooks);
+        }
+        if (token === platformSettingsRegistrationPortToken) {
+          return ok(mockSettings);
         }
         if (token === windowFactoryToken) {
           return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
@@ -511,6 +550,9 @@ describe("SidebarButtonBootstrapper", () => {
         if (token === foundryHooksToken) {
           return ok(mockHooks);
         }
+        if (token === platformSettingsRegistrationPortToken) {
+          return ok(mockSettings);
+        }
         if (token === windowFactoryToken) {
           return ok(mockWindowFactory);
         }
@@ -561,6 +603,9 @@ describe("SidebarButtonBootstrapper", () => {
         if (token === foundryHooksToken) {
           return ok(mockHooks);
         }
+        if (token === platformSettingsRegistrationPortToken) {
+          return ok(mockSettings);
+        }
         if (token === windowFactoryToken) {
           return ok(mockWindowFactory);
         }
@@ -585,6 +630,97 @@ describe("SidebarButtonBootstrapper", () => {
       expect(mockHtml.firstChild).toBe(overviewButton);
     });
 
+    it("should not show buttons if settings port is not available", () => {
+      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
+        if (token === showAllHiddenJournalsUseCaseToken) {
+          return ok(mockUseCase);
+        }
+        if (token === foundryHooksToken) {
+          return ok(mockHooks);
+        }
+        if (token === platformSettingsRegistrationPortToken) {
+          return err({ code: "SERVICE_NOT_FOUND", message: "Settings port not found" });
+        }
+        return err({ code: "SERVICE_NOT_FOUND", message: "Service not found" });
+      });
+
+      SidebarButtonBootstrapper.registerSidebarButton(mockContainer);
+
+      const hookCallback = vi.mocked(mockHooks.on).mock.calls[0]![1] as (
+        ...args: unknown[]
+      ) => void;
+
+      const mockHtml = document.createElement("div");
+      const mockDirectoryHeader = document.createElement("div");
+      mockDirectoryHeader.className = "directory-header";
+      const mockActionButtons = document.createElement("div");
+      mockActionButtons.className = "header-actions action-buttons";
+      mockDirectoryHeader.appendChild(mockActionButtons);
+      mockHtml.appendChild(mockDirectoryHeader);
+
+      hookCallback({}, mockHtml);
+
+      // Should not add any buttons
+      const showAllButton = mockHtml.querySelector(".show-all-hidden-journals-button");
+      const overviewButton = mockHtml.querySelector(".journal-overview-button");
+      expect(showAllButton).toBeNull();
+      expect(overviewButton).toBeNull();
+    });
+
+    it("should not show buttons if user does not have permission", () => {
+      // Mock settings to return false for permission
+      vi.mocked(mockSettings.getSettingValue).mockReturnValue(ok(false));
+
+      SidebarButtonBootstrapper.registerSidebarButton(mockContainer);
+
+      const hookCallback = vi.mocked(mockHooks.on).mock.calls[0]![1] as (
+        ...args: unknown[]
+      ) => void;
+
+      const mockHtml = document.createElement("div");
+      const mockDirectoryHeader = document.createElement("div");
+      mockDirectoryHeader.className = "directory-header";
+      const mockActionButtons = document.createElement("div");
+      mockActionButtons.className = "header-actions action-buttons";
+      mockDirectoryHeader.appendChild(mockActionButtons);
+      mockHtml.appendChild(mockDirectoryHeader);
+
+      hookCallback({}, mockHtml);
+
+      // Should not add any buttons
+      const showAllButton = mockHtml.querySelector(".show-all-hidden-journals-button");
+      const overviewButton = mockHtml.querySelector(".journal-overview-button");
+      expect(showAllButton).toBeNull();
+      expect(overviewButton).toBeNull();
+    });
+
+    it("should not show buttons if game is undefined", () => {
+      // Remove game global for this test
+      vi.stubGlobal("game", undefined);
+
+      SidebarButtonBootstrapper.registerSidebarButton(mockContainer);
+
+      const hookCallback = vi.mocked(mockHooks.on).mock.calls[0]![1] as (
+        ...args: unknown[]
+      ) => void;
+
+      const mockHtml = document.createElement("div");
+      const mockDirectoryHeader = document.createElement("div");
+      mockDirectoryHeader.className = "directory-header";
+      const mockActionButtons = document.createElement("div");
+      mockActionButtons.className = "header-actions action-buttons";
+      mockDirectoryHeader.appendChild(mockActionButtons);
+      mockHtml.appendChild(mockDirectoryHeader);
+
+      hookCallback({}, mockHtml);
+
+      // Should not add any buttons because game is undefined
+      const showAllButton = mockHtml.querySelector(".show-all-hidden-journals-button");
+      const overviewButton = mockHtml.querySelector(".journal-overview-button");
+      expect(showAllButton).toBeNull();
+      expect(overviewButton).toBeNull();
+    });
+
     it("should handle window creation error gracefully", async () => {
       const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -603,6 +739,9 @@ describe("SidebarButtonBootstrapper", () => {
         }
         if (token === foundryHooksToken) {
           return ok(mockHooks);
+        }
+        if (token === platformSettingsRegistrationPortToken) {
+          return ok(mockSettings);
         }
         if (token === windowFactoryToken) {
           return ok(mockWindowFactory);

@@ -12,6 +12,26 @@
 
 ### Upgrade-Hinweise
 
+## [0.55.0] - 2026-01-10
+### Hinzugefügt
+- **Journal Directory Buttons Permissions Setting**: Neue Einstellung für Berechtigungen von Journal-Directory-Buttons ([Details](src/application/settings/journal-directory-buttons-permissions-setting.ts))
+- Unterstützung für rollenspezifische Berechtigungen (Player, Trusted Player, Assistant GM, Gamemaster)
+- Neue Utility-Funktionen für Berechtigungsprüfung ([Details](src/application/utils/journal-directory-button-permissions.ts))
+- Integration in Sidebar-Button-Bootstrapper für bedingte Anzeige von Buttons
+- Übersetzungen für neue Setting-Keys (de/en)
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.54.0] - 2026-01-09
 ### Hinzugefügt
 - **Journal Overview Window - Filter- und Sortierfunktionen**: Vollständige Filter- und Sortierfunktionalität hinzugefügt ([Details](src/application/windows/definitions/journal-overview-window.definition.ts))

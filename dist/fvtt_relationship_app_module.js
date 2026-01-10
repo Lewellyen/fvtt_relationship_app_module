@@ -27,7 +27,11 @@ const SETTING_KEYS = {
   PERFORMANCE_SAMPLING_RATE: "performanceSamplingRate",
   METRICS_PERSISTENCE_ENABLED: "metricsPersistenceEnabled",
   METRICS_PERSISTENCE_KEY: "metricsPersistenceKey",
-  NOTIFICATION_QUEUE_MAX_SIZE: "notificationQueueMaxSize"
+  NOTIFICATION_QUEUE_MAX_SIZE: "notificationQueueMaxSize",
+  JOURNAL_DIRECTORY_BUTTONS_PLAYER: "journalDirectoryButtonsPlayer",
+  JOURNAL_DIRECTORY_BUTTONS_TRUSTED: "journalDirectoryButtonsTrusted",
+  JOURNAL_DIRECTORY_BUTTONS_ASSISTANT: "journalDirectoryButtonsAssistant",
+  JOURNAL_DIRECTORY_BUTTONS_GAMEMASTER: "journalDirectoryButtonsGamemaster"
 };
 const APP_DEFAULTS = {
   UNKNOWN_NAME: "Unknown",
@@ -13992,6 +13996,33 @@ const _ContextMenuInitPhase = class _ContextMenuInitPhase {
 };
 __name(_ContextMenuInitPhase, "ContextMenuInitPhase");
 let ContextMenuInitPhase = _ContextMenuInitPhase;
+function isBoolean(value2) {
+  return typeof value2 === "boolean";
+}
+__name(isBoolean, "isBoolean");
+function canUserSeeJournalDirectoryButtons(settings, user) {
+  if (!user || user.role === void 0) {
+    return false;
+  }
+  let settingKey;
+  if (user.role === 1) {
+    settingKey = SETTING_KEYS.JOURNAL_DIRECTORY_BUTTONS_PLAYER;
+  } else if (user.role === 2) {
+    settingKey = SETTING_KEYS.JOURNAL_DIRECTORY_BUTTONS_TRUSTED;
+  } else if (user.role === 3) {
+    settingKey = SETTING_KEYS.JOURNAL_DIRECTORY_BUTTONS_ASSISTANT;
+  } else if (user.role === 4) {
+    settingKey = SETTING_KEYS.JOURNAL_DIRECTORY_BUTTONS_GAMEMASTER;
+  } else {
+    return false;
+  }
+  const settingResult = settings.getSettingValue(MODULE_METADATA.ID, settingKey, isBoolean);
+  if (!settingResult.ok) {
+    return false;
+  }
+  return settingResult.value;
+}
+__name(canUserSeeJournalDirectoryButtons, "canUserSeeJournalDirectoryButtons");
 const _SidebarButtonBootstrapper = class _SidebarButtonBootstrapper {
   /**
    * Registers sidebar button for journal tab.
@@ -14021,6 +14052,15 @@ const _SidebarButtonBootstrapper = class _SidebarButtonBootstrapper {
         return;
       }
       const html2 = htmlArg;
+      const settingsResult = container.resolveWithError(platformSettingsRegistrationPortToken);
+      if (!settingsResult.ok) {
+        return;
+      }
+      const settings = castResolvedService$1(settingsResult.value);
+      const user = typeof game !== "undefined" && game.user ? game.user : void 0;
+      if (!canUserSeeJournalDirectoryButtons(settings, user)) {
+        return;
+      }
       const actionButtons = html2.querySelector(".header-actions.action-buttons");
       const directoryHeader = html2.querySelector(".directory-header");
       const existingButton = html2.querySelector(".show-all-hidden-journals-button");
@@ -18175,6 +18215,85 @@ const notificationQueueMaxSizeSetting = {
     };
   }
 };
+const journalDirectoryButtonsPlayerSetting = {
+  key: SETTING_KEYS.JOURNAL_DIRECTORY_BUTTONS_PLAYER,
+  createConfig(i18n, _logger, _validator) {
+    return {
+      name: unwrapOr(i18n.translate("USER.RolePlayer", "Player"), "Player"),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.journalDirectoryButtonsPlayer.hint",
+          "Allow Players to see the journal directory buttons (Show All Hidden Journals and Overview)."
+        ),
+        "Allow Players to see the journal directory buttons (Show All Hidden Journals and Overview)."
+      ),
+      scope: "world",
+      config: true,
+      type: Boolean,
+      default: false
+    };
+  }
+};
+const journalDirectoryButtonsTrustedSetting = {
+  key: SETTING_KEYS.JOURNAL_DIRECTORY_BUTTONS_TRUSTED,
+  createConfig(i18n, _logger, _validator) {
+    return {
+      name: unwrapOr(i18n.translate("USER.RoleTrustedPlayer", "Trusted Player"), "Trusted Player"),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.journalDirectoryButtonsTrusted.hint",
+          "Allow Trusted Players to see the journal directory buttons (Show All Hidden Journals and Overview)."
+        ),
+        "Allow Trusted Players to see the journal directory buttons (Show All Hidden Journals and Overview)."
+      ),
+      scope: "world",
+      config: true,
+      type: Boolean,
+      default: false
+    };
+  }
+};
+const journalDirectoryButtonsAssistantSetting = {
+  key: SETTING_KEYS.JOURNAL_DIRECTORY_BUTTONS_ASSISTANT,
+  createConfig(i18n, _logger, _validator) {
+    return {
+      name: unwrapOr(
+        i18n.translate("USER.RoleAssistantGM", "Assistant Game Master"),
+        "Assistant Game Master"
+      ),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.journalDirectoryButtonsAssistant.hint",
+          "Allow Assistant Game Masters to see the journal directory buttons (Show All Hidden Journals and Overview)."
+        ),
+        "Allow Assistant Game Masters to see the journal directory buttons (Show All Hidden Journals and Overview)."
+      ),
+      scope: "world",
+      config: true,
+      type: Boolean,
+      default: false
+    };
+  }
+};
+const journalDirectoryButtonsGamemasterSetting = {
+  key: SETTING_KEYS.JOURNAL_DIRECTORY_BUTTONS_GAMEMASTER,
+  createConfig(i18n, _logger, _validator) {
+    return {
+      name: unwrapOr(i18n.translate("USER.RoleGamemaster", "Game Master"), "Game Master"),
+      hint: unwrapOr(
+        i18n.translate(
+          "MODULE.SETTINGS.journalDirectoryButtonsGamemaster.hint",
+          "Allow Game Masters to see the journal directory buttons (Show All Hidden Journals and Overview)."
+        ),
+        "Allow Game Masters to see the journal directory buttons (Show All Hidden Journals and Overview)."
+      ),
+      scope: "world",
+      config: true,
+      type: Boolean,
+      default: true
+    };
+  }
+};
 const _DefaultSettingDefinitionRegistry = class _DefaultSettingDefinitionRegistry {
   getAll() {
     return [
@@ -18186,7 +18305,11 @@ const _DefaultSettingDefinitionRegistry = class _DefaultSettingDefinitionRegistr
       castSettingDefinitionToUnknown(performanceSamplingSetting),
       castSettingDefinitionToUnknown(metricsPersistenceEnabledSetting),
       castSettingDefinitionToUnknown(metricsPersistenceKeySetting),
-      castSettingDefinitionToUnknown(notificationQueueMaxSizeSetting)
+      castSettingDefinitionToUnknown(notificationQueueMaxSizeSetting),
+      castSettingDefinitionToUnknown(journalDirectoryButtonsPlayerSetting),
+      castSettingDefinitionToUnknown(journalDirectoryButtonsTrustedSetting),
+      castSettingDefinitionToUnknown(journalDirectoryButtonsAssistantSetting),
+      castSettingDefinitionToUnknown(journalDirectoryButtonsGamemasterSetting)
     ];
   }
 };

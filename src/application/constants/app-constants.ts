@@ -31,6 +31,10 @@ export const SETTING_KEYS = {
   METRICS_PERSISTENCE_ENABLED: "metricsPersistenceEnabled",
   METRICS_PERSISTENCE_KEY: "metricsPersistenceKey",
   NOTIFICATION_QUEUE_MAX_SIZE: "notificationQueueMaxSize",
+  JOURNAL_DIRECTORY_BUTTONS_PLAYER: "journalDirectoryButtonsPlayer",
+  JOURNAL_DIRECTORY_BUTTONS_TRUSTED: "journalDirectoryButtonsTrusted",
+  JOURNAL_DIRECTORY_BUTTONS_ASSISTANT: "journalDirectoryButtonsAssistant",
+  JOURNAL_DIRECTORY_BUTTONS_GAMEMASTER: "journalDirectoryButtonsGamemaster",
 } as const;
 
 /**
