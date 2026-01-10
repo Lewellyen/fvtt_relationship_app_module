@@ -12,6 +12,28 @@
 
 ### Upgrade-Hinweise
 
+## [0.55.3] - 2026-01-10
+### Hinzugefügt
+- **Journal Overview Window - Berechtigungsfilterung**: Journal-Übersicht filtert jetzt Journals basierend auf Benutzerberechtigungen ([Details](src/application/services/JournalOverviewService.ts))
+- `PlatformJournalPermissionPort` Interface für plattformunabhängige Berechtigungsprüfung ([Details](src/domain/ports/repositories/platform-journal-permission-port.interface.ts))
+- `FoundryJournalPermissionAdapter` Implementation für Foundry-spezifische Berechtigungsprüfung ([Details](src/infrastructure/adapters/foundry/repository-adapters/foundry-journal-permission-adapter.ts))
+- Nur Journals mit mindestens `OBSERVER`-Berechtigung werden im Journal Overview Window angezeigt
+- `platformJournalPermissionPortToken` für Dependency Injection ([Details](src/application/tokens/domain-ports.tokens.ts))
+- DI-Registrierung für `FoundryJournalPermissionAdapter` ([Details](src/framework/config/modules/entity-ports.config.ts))
+
+### Geändert
+- **JournalOverviewService**: Integriert Berechtigungsprüfung vor Sichtbarkeitsfilterung ([Details](src/application/services/JournalOverviewService.ts))
+- Journal Overview Window zeigt nur Journals an, auf die der aktuelle Benutzer mindestens `OBSERVER`-Zugriff hat
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.55.2] - 2026-01-10
 ### Hinzugefügt
 - Keine Einträge

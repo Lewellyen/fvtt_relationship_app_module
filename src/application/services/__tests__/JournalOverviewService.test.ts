@@ -5,6 +5,7 @@ import {
   DIJournalOverviewService,
 } from "@/application/services/JournalOverviewService";
 import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
+import type { PlatformJournalPermissionPort } from "@/domain/ports/repositories/platform-journal-permission-port.interface";
 import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
 import type { JournalEntry } from "@/domain/entities/journal-entry";
@@ -28,6 +29,12 @@ function createMockJournalVisibilityService(): JournalVisibilityService {
   } as unknown as JournalVisibilityService;
 }
 
+function createMockJournalPermissionPort(): PlatformJournalPermissionPort {
+  return {
+    canUserViewJournal: vi.fn().mockReturnValue(ok(true)),
+  } as unknown as PlatformJournalPermissionPort;
+}
+
 function createMockNotificationPort(): NotificationPublisherPort {
   return {
     debug: vi.fn(),
@@ -41,13 +48,20 @@ describe("JournalOverviewService", () => {
   let service: JournalOverviewService;
   let mockCollection: PlatformJournalCollectionPort;
   let mockVisibility: JournalVisibilityService;
+  let mockPermission: PlatformJournalPermissionPort;
   let mockNotifications: NotificationPublisherPort;
 
   beforeEach(() => {
     mockCollection = createMockJournalCollectionPort();
     mockVisibility = createMockJournalVisibilityService();
+    mockPermission = createMockJournalPermissionPort();
     mockNotifications = createMockNotificationPort();
-    service = new JournalOverviewService(mockCollection, mockVisibility, mockNotifications);
+    service = new JournalOverviewService(
+      mockCollection,
+      mockVisibility,
+      mockPermission,
+      mockNotifications
+    );
   });
 
   describe("getAllJournalsWithVisibilityStatus", () => {
@@ -62,6 +76,7 @@ describe("JournalOverviewService", () => {
 
       (mockCollection.getAll as Mock).mockReturnValue(ok(journals));
       (mockVisibility.getHiddenJournalEntries as Mock).mockReturnValue(ok(hiddenJournals));
+      (mockPermission.canUserViewJournal as Mock).mockReturnValue(ok(true));
 
       const result = service.getAllJournalsWithVisibilityStatus();
 
@@ -89,6 +104,7 @@ describe("JournalOverviewService", () => {
     it("should handle empty journal list", () => {
       (mockCollection.getAll as Mock).mockReturnValue(ok([]));
       (mockVisibility.getHiddenJournalEntries as Mock).mockReturnValue(ok([]));
+      (mockPermission.canUserViewJournal as Mock).mockReturnValue(ok(true));
 
       const result = service.getAllJournalsWithVisibilityStatus();
 
@@ -106,6 +122,7 @@ describe("JournalOverviewService", () => {
 
       (mockCollection.getAll as Mock).mockReturnValue(ok(journals));
       (mockVisibility.getHiddenJournalEntries as Mock).mockReturnValue(ok([]));
+      (mockPermission.canUserViewJournal as Mock).mockReturnValue(ok(true));
 
       const result = service.getAllJournalsWithVisibilityStatus();
 
@@ -143,6 +160,7 @@ describe("JournalOverviewService", () => {
       (mockVisibility.getHiddenJournalEntries as Mock).mockReturnValue(
         err({ code: "PLATFORM_ERROR", message: "Visibility error" })
       );
+      (mockPermission.canUserViewJournal as Mock).mockReturnValue(ok(true));
 
       const result = service.getAllJournalsWithVisibilityStatus();
 
@@ -172,6 +190,7 @@ describe("JournalOverviewService", () => {
 
       (mockCollection.getAll as Mock).mockReturnValue(ok(journals));
       (mockVisibility.getHiddenJournalEntries as Mock).mockReturnValue(ok(hiddenJournals));
+      (mockPermission.canUserViewJournal as Mock).mockReturnValue(ok(true));
 
       service.getAllJournalsWithVisibilityStatus();
 
@@ -185,18 +204,108 @@ describe("JournalOverviewService", () => {
         expect.any(Object)
       );
     });
+
+    it("should filter out journals without permission", () => {
+      const journals: JournalEntry[] = [
+        { id: "journal-1", name: "Journal 1" },
+        { id: "journal-2", name: "Journal 2" },
+        { id: "journal-3", name: "Journal 3" },
+      ];
+
+      (mockCollection.getAll as Mock).mockReturnValue(ok(journals));
+      (mockVisibility.getHiddenJournalEntries as Mock).mockReturnValue(ok([]));
+      (mockPermission.canUserViewJournal as Mock).mockImplementation((id: string) => {
+        // journal-2 has no permission
+        if (id === "journal-2") {
+          return ok(false);
+        }
+        return ok(true);
+      });
+
+      const result = service.getAllJournalsWithVisibilityStatus();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toHaveLength(2);
+        expect(result.value[0]?.id).toBe("journal-1");
+        expect(result.value[1]?.id).toBe("journal-3");
+        // journal-2 should be filtered out
+        expect(result.value.find((j) => j.id === "journal-2")).toBeUndefined();
+      }
+    });
+
+    it("should show journal if permission check fails (fail-open)", () => {
+      const journals: JournalEntry[] = [
+        { id: "journal-1", name: "Journal 1" },
+        { id: "journal-2", name: "Journal 2" },
+      ];
+
+      (mockCollection.getAll as Mock).mockReturnValue(ok(journals));
+      (mockVisibility.getHiddenJournalEntries as Mock).mockReturnValue(ok([]));
+      (mockPermission.canUserViewJournal as Mock).mockReturnValue(
+        err({ code: "PLATFORM_ERROR", message: "Permission check failed" })
+      );
+
+      const result = service.getAllJournalsWithVisibilityStatus();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Fail-open: journal should be shown even if permission check fails
+        expect(result.value).toHaveLength(2);
+        expect(mockNotifications.warn).toHaveBeenCalledWith(
+          expect.stringContaining("Failed to check permission"),
+          expect.objectContaining({
+            errorCode: "PLATFORM_ERROR",
+            errorMessage: "Permission check failed",
+            journalId: "journal-1",
+          }),
+          expect.any(Object)
+        );
+      }
+    });
+
+    it("should show journal with null name if permission check fails (fail-open)", () => {
+      const journals: JournalEntry[] = [
+        { id: "journal-1", name: null }, // Test null name branch (journal.name ?? journal.id)
+        { id: "journal-2", name: "Journal 2" },
+      ];
+
+      (mockCollection.getAll as Mock).mockReturnValue(ok(journals));
+      (mockVisibility.getHiddenJournalEntries as Mock).mockReturnValue(ok([]));
+      (mockPermission.canUserViewJournal as Mock).mockReturnValue(
+        err({ code: "PLATFORM_ERROR", message: "Permission check failed" })
+      );
+
+      const result = service.getAllJournalsWithVisibilityStatus();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Fail-open: journal should be shown even if permission check fails
+        expect(result.value).toHaveLength(2);
+        expect(mockNotifications.warn).toHaveBeenCalledWith(
+          expect.stringContaining("Failed to check permission"),
+          expect.objectContaining({
+            errorCode: "PLATFORM_ERROR",
+            errorMessage: "Permission check failed",
+            journalId: "journal-1",
+          }),
+          expect.any(Object)
+        );
+      }
+    });
   });
 
   describe("DIJournalOverviewService", () => {
     it("should have correct dependencies", () => {
       expect(DIJournalOverviewService.dependencies).toBeDefined();
-      expect(DIJournalOverviewService.dependencies.length).toBe(3);
+      expect(DIJournalOverviewService.dependencies.length).toBe(4);
     });
 
     it("should extend JournalOverviewService", () => {
       const diService = new DIJournalOverviewService(
         mockCollection,
         mockVisibility,
+        mockPermission,
         mockNotifications
       );
       expect(diService).toBeInstanceOf(JournalOverviewService);

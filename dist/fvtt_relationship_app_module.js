@@ -2619,6 +2619,7 @@ const platformJournalCollectionPortToken = createInjectionToken("PlatformJournal
 const platformJournalRepositoryToken = createInjectionToken(
   "PlatformJournalRepository"
 );
+const platformJournalPermissionPortToken = createInjectionToken("PlatformJournalPermissionPort");
 const platformContextMenuRegistrationPortToken = createInjectionToken("PlatformContextMenuRegistrationPort");
 const platformValidationPortToken = createInjectionToken("PlatformValidationPort");
 const platformLoggingPortToken = createInjectionToken("PlatformLoggingPort");
@@ -19344,9 +19345,10 @@ _DIShowAllHiddenJournalsUseCase.dependencies = [
 ];
 let DIShowAllHiddenJournalsUseCase = _DIShowAllHiddenJournalsUseCase;
 const _JournalOverviewService = class _JournalOverviewService {
-  constructor(journalCollection, journalVisibility, notifications) {
+  constructor(journalCollection, journalVisibility, journalPermission, notifications) {
     this.journalCollection = journalCollection;
     this.journalVisibility = journalVisibility;
+    this.journalPermission = journalPermission;
     this.notifications = notifications;
   }
   /**
@@ -19362,7 +19364,26 @@ const _JournalOverviewService = class _JournalOverviewService {
         error: new Error(`Failed to get all journals: ${allJournalsResult.error.message}`)
       };
     }
-    const allJournals = allJournalsResult.value;
+    let allJournals = allJournalsResult.value;
+    const accessibleJournals = [];
+    for (const journal of allJournals) {
+      const permissionResult = this.journalPermission.canUserViewJournal(journal.id);
+      if (!permissionResult.ok) {
+        this.notifications.warn(
+          `Failed to check permission for journal "${journal.name ?? journal.id}", showing it anyway`,
+          {
+            errorCode: permissionResult.error.code,
+            errorMessage: permissionResult.error.message,
+            journalId: journal.id
+          },
+          { channels: ["ConsoleChannel"] }
+        );
+        accessibleJournals.push(journal);
+      } else if (permissionResult.value) {
+        accessibleJournals.push(journal);
+      }
+    }
+    allJournals = accessibleJournals;
     const hiddenJournalsResult = this.journalVisibility.getHiddenJournalEntries();
     if (!hiddenJournalsResult.ok) {
       this.notifications.warn(
@@ -19399,14 +19420,15 @@ const _JournalOverviewService = class _JournalOverviewService {
 __name(_JournalOverviewService, "JournalOverviewService");
 let JournalOverviewService = _JournalOverviewService;
 const _DIJournalOverviewService = class _DIJournalOverviewService extends JournalOverviewService {
-  constructor(journalCollection, journalVisibility, notifications) {
-    super(journalCollection, journalVisibility, notifications);
+  constructor(journalCollection, journalVisibility, journalPermission, notifications) {
+    super(journalCollection, journalVisibility, journalPermission, notifications);
   }
 };
 __name(_DIJournalOverviewService, "DIJournalOverviewService");
 _DIJournalOverviewService.dependencies = [
   platformJournalCollectionPortToken,
   journalVisibilityServiceToken,
+  platformJournalPermissionPortToken,
   notificationPublisherPortToken
 ];
 let DIJournalOverviewService = _DIJournalOverviewService;
@@ -20742,6 +20764,57 @@ const _DIFoundryJournalRepositoryAdapter = class _DIFoundryJournalRepositoryAdap
 __name(_DIFoundryJournalRepositoryAdapter, "DIFoundryJournalRepositoryAdapter");
 _DIFoundryJournalRepositoryAdapter.dependencies = [foundryGameToken, foundryDocumentToken];
 let DIFoundryJournalRepositoryAdapter = _DIFoundryJournalRepositoryAdapter;
+const _FoundryJournalPermissionAdapter = class _FoundryJournalPermissionAdapter {
+  /**
+   * Checks if the current user has permission to view a journal entry.
+   *
+   * Uses Foundry's journal.testUserPermission(game.user, "OBSERVER") API.
+   *
+   * @param journalId - The ID of the journal entry to check
+   * @returns Result indicating whether the user can view the journal
+   */
+  canUserViewJournal(journalId) {
+    if (typeof game === "undefined" || !game?.journal) {
+      return ok(true);
+    }
+    if (!game.user) {
+      return ok(true);
+    }
+    const journalResult = tryCatch(
+      () => game.journal.get(journalId),
+      (error) => createFoundryError(
+        "OPERATION_FAILED",
+        `Failed to get journal entry for permission check: ${error instanceof Error ? error.message : String(error)}`,
+        { journalId },
+        error
+      )
+    );
+    if (!journalResult.ok) {
+      return ok(false);
+    }
+    const journal = journalResult.value;
+    if (!journal) {
+      return ok(false);
+    }
+    const permissionResult = tryCatch(
+      () => {
+        return journal.testUserPermission(game.user, "OBSERVER");
+      },
+      (error) => createFoundryError(
+        "OPERATION_FAILED",
+        `Failed to check journal permission: ${error instanceof Error ? error.message : String(error)}`,
+        { journalId },
+        error
+      )
+    );
+    if (!permissionResult.ok) {
+      return ok(true);
+    }
+    return ok(permissionResult.value);
+  }
+};
+__name(_FoundryJournalPermissionAdapter, "FoundryJournalPermissionAdapter");
+let FoundryJournalPermissionAdapter = _FoundryJournalPermissionAdapter;
 function registerEntityPorts(container) {
   const collectionResult = container.registerClass(
     platformJournalCollectionPortToken,
@@ -20760,6 +20833,16 @@ function registerEntityPorts(container) {
   );
   if (isErr(repositoryResult)) {
     return err(`Failed to register PlatformJournalRepository: ${repositoryResult.error.message}`);
+  }
+  const permissionResult = container.registerClass(
+    platformJournalPermissionPortToken,
+    FoundryJournalPermissionAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(permissionResult)) {
+    return err(
+      `Failed to register PlatformJournalPermissionPort: ${permissionResult.error.message}`
+    );
   }
   return ok(void 0);
 }

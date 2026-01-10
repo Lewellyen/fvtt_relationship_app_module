@@ -22,6 +22,7 @@ import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-jo
 import type { PlatformJournalUiEventPort } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
 import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
 import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
+import type { PlatformJournalPermissionPort } from "@/domain/ports/repositories/platform-journal-permission-port.interface";
 import type { PlatformContextMenuRegistrationPort } from "@/domain/ports/platform-context-menu-registration-port.interface";
 import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
@@ -189,6 +190,15 @@ export const platformJournalCollectionPortToken =
 export const platformJournalRepositoryToken = createInjectionToken<PlatformJournalRepository>(
   "PlatformJournalRepository"
 );
+
+/**
+ * DI Token for PlatformJournalPermissionPort.
+ *
+ * Platform-agnostic port for checking journal permission access.
+ * Use this to check if the current user has permission to view a journal entry.
+ */
+export const platformJournalPermissionPortToken =
+  createInjectionToken<PlatformJournalPermissionPort>("PlatformJournalPermissionPort");
 
 /**
  * DI Token for PlatformContextMenuRegistrationPort.

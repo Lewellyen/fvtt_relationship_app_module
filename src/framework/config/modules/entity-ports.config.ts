@@ -5,9 +5,11 @@ import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycl
 import {
   platformJournalCollectionPortToken,
   platformJournalRepositoryToken,
+  platformJournalPermissionPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { DIFoundryJournalCollectionAdapter } from "@/infrastructure/adapters/foundry/collection-adapters/foundry-journal-collection-adapter";
 import { DIFoundryJournalRepositoryAdapter } from "@/infrastructure/adapters/foundry/repository-adapters/foundry-journal-repository-adapter";
+import { FoundryJournalPermissionAdapter } from "@/infrastructure/adapters/foundry/repository-adapters/foundry-journal-permission-adapter";
 
 /**
  * Registers entity collection and repository ports.
@@ -15,6 +17,7 @@ import { DIFoundryJournalRepositoryAdapter } from "@/infrastructure/adapters/fou
  * Services registered:
  * - PlatformJournalCollectionPort (singleton) - Read-only access to journal collections
  * - PlatformJournalRepository (singleton) - Full CRUD access to journal entries
+ * - PlatformJournalPermissionPort (singleton) - Permission checking for journal entries
  *
  * @param container - The service container to register services in
  * @returns Result indicating success or error with details
@@ -40,6 +43,18 @@ export function registerEntityPorts(container: ServiceContainer): Result<void, s
   );
   if (isErr(repositoryResult)) {
     return err(`Failed to register PlatformJournalRepository: ${repositoryResult.error.message}`);
+  }
+
+  // Register PlatformJournalPermissionPort
+  const permissionResult = container.registerClass(
+    platformJournalPermissionPortToken,
+    FoundryJournalPermissionAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(permissionResult)) {
+    return err(
+      `Failed to register PlatformJournalPermissionPort: ${permissionResult.error.message}`
+    );
   }
 
   return ok(undefined);
