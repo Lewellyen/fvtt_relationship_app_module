@@ -20,6 +20,20 @@
 export type FoundryJournalEntry = JournalEntry.Stored;
 
 /**
+ * Foundry Journal Entry Page document from the database.
+ *
+ * Uses official fvtt-types for full type safety while maintaining
+ * version independence through Foundry's type system.
+ *
+ * JournalEntryPage.Stored represents a journal entry page that has been persisted
+ * to the database and retrieved, providing access to all document properties
+ * including id, type, system, flags, and methods like getFlag().
+ *
+ * @see {@link https://github.com/League-of-Foundry-Developers/foundry-vtt-types}
+ */
+export type FoundryJournalEntryPage = JournalEntryPage.Stored;
+
+/**
  * Hook callback type for Foundry hooks.
  */
 export type FoundryHookCallback = (...args: unknown[]) => void | Promise<void>;

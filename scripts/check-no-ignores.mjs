@@ -165,6 +165,16 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['type-coverage:ignore-next-line', 'v8 ignore'],
     reason: 'Type narrowing: pop() is guaranteed to return a value because length > 0 was checked above. Defensive checks: Sparse array handling für errors.find() - sollte nie auftreten, aber TypeScript kann es nicht beweisen.',
   },
+  {
+    file: 'src/infrastructure/adapters/foundry/collection-adapters/foundry-relationship-page-collection-adapter.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Foundry Runtime-Casts: Runtime cast required for Foundry EmbeddedCollection pages property (journal.pages can be array or EmbeddedCollection)',
+  },
+  {
+    file: 'src/infrastructure/adapters/foundry/repository-adapters/foundry-relationship-page-repository-adapter.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Foundry Runtime-Casts: Runtime casts required for Foundry EmbeddedCollection, page system data access, and document update operations',
+  },
 
   // Domain Types: Naming Conventions & Proxy Pattern Type Casts
   {

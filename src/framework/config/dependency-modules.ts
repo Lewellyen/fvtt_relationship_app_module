@@ -33,3 +33,4 @@ import "./modules/settings-ports.config";
 import "./modules/journal-visibility.config";
 import "./modules/window-services.config";
 import "./modules/journal-overview-window.config";
+import "./modules/relationship-page-services.config";

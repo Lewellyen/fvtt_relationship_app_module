@@ -9456,6 +9456,15 @@ function isInitializable(obj) {
   return hasMethod(obj, "initialize");
 }
 __name(isInitializable, "isInitializable");
+const RELATIONSHIP_FLAGS_MODULE_ID = "fvtt_relationship_app_module";
+const JOURNAL_ENTRY_FLAGS = {
+  HAS_RELATIONSHIP_NODE: `${RELATIONSHIP_FLAGS_MODULE_ID}.hasRelationshipNode`,
+  HAS_RELATIONSHIP_GRAPH: `${RELATIONSHIP_FLAGS_MODULE_ID}.hasRelationshipGraph`
+};
+const JOURNAL_ENTRY_PAGE_FLAGS = {
+  IS_RELATIONSHIP_NODE: `${RELATIONSHIP_FLAGS_MODULE_ID}.isRelationshipNode`,
+  IS_RELATIONSHIP_GRAPH: `${RELATIONSHIP_FLAGS_MODULE_ID}.isRelationshipGraph`
+};
 function castFoundrySettingsApi(settings) {
   if (!isObjectWithMethods(settings, ["register", "get", "set"])) {
     return err(
@@ -9608,6 +9617,82 @@ function castFoundryDocumentCollection(collections, documentType) {
   return ok(collection);
 }
 __name(castFoundryDocumentCollection, "castFoundryDocumentCollection");
+function isRelationshipGraphPage(page) {
+  if (!page || typeof page !== "object") {
+    return false;
+  }
+  const pageObj = page;
+  if ("type" in pageObj && typeof pageObj.type === "string") {
+    if (pageObj.type === JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_GRAPH) {
+      return true;
+    }
+  }
+  if ("getFlag" in pageObj && typeof pageObj.getFlag === "function") {
+    try {
+      const fullFlagPath = JOURNAL_ENTRY_PAGE_FLAGS.IS_RELATIONSHIP_GRAPH;
+      const flagKey = fullFlagPath.includes(".") ? fullFlagPath.split(".").pop() ?? "" : fullFlagPath;
+      const flagValue = pageObj.getFlag(
+        RELATIONSHIP_FLAGS_MODULE_ID,
+        flagKey
+      );
+      return flagValue === true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+__name(isRelationshipGraphPage, "isRelationshipGraphPage");
+function isRelationshipNodePage(page) {
+  if (!page || typeof page !== "object") {
+    return false;
+  }
+  const pageObj = page;
+  if ("type" in pageObj && typeof pageObj.type === "string") {
+    if (pageObj.type === JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_NODE) {
+      return true;
+    }
+  }
+  if ("getFlag" in pageObj && typeof pageObj.getFlag === "function") {
+    try {
+      const fullFlagPath = JOURNAL_ENTRY_PAGE_FLAGS.IS_RELATIONSHIP_NODE;
+      const flagKey = fullFlagPath.includes(".") ? fullFlagPath.split(".").pop() ?? "" : fullFlagPath;
+      const flagValue = pageObj.getFlag(
+        RELATIONSHIP_FLAGS_MODULE_ID,
+        flagKey
+      );
+      return flagValue === true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+__name(isRelationshipNodePage, "isRelationshipNodePage");
+function castRelationshipGraphPage(page) {
+  if (isRelationshipGraphPage(page)) {
+    return ok(page);
+  }
+  return err(
+    createFoundryError("VALIDATION_FAILED", "Page is not a relationship graph page", {
+      pageId: typeof page?.id === "string" ? page.id : "unknown",
+      pageType: typeof page?.type === "string" ? page.type : "unknown"
+    })
+  );
+}
+__name(castRelationshipGraphPage, "castRelationshipGraphPage");
+function castRelationshipNodePage(page) {
+  if (isRelationshipNodePage(page)) {
+    return ok(page);
+  }
+  return err(
+    createFoundryError("VALIDATION_FAILED", "Page is not a relationship node page", {
+      pageId: typeof page?.id === "string" ? page.id : "unknown",
+      pageType: typeof page?.type === "string" ? page.type : "unknown"
+    })
+  );
+}
+__name(castRelationshipNodePage, "castRelationshipNodePage");
 const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
   constructor() {
     __privateAdd(this, _disposed3, false);
@@ -34718,6 +34803,472 @@ dependencyRegistry.register({
   priority: 180,
   // After validation (170), same as Loop Prevention Init
   execute: registerJournalOverviewWindow
+});
+const relationshipPageRepositoryAdapterToken = createInjectionToken("RelationshipPageRepositoryAdapter");
+const relationshipPageCollectionAdapterToken = createInjectionToken("RelationshipPageCollectionAdapter");
+function findPageById(journal, pageId) {
+  const pages = (
+    // type-coverage:ignore-next-line - Runtime cast required for Foundry EmbeddedCollection
+    journal.pages
+  );
+  if (!pages) {
+    return null;
+  }
+  if (typeof pages.get === "function") {
+    const page = pages.get(pageId);
+    return page ?? null;
+  }
+  if (Array.isArray(pages)) {
+    return (
+      // type-coverage:ignore-next-line - Runtime cast required for Foundry page array find
+      pages.find((p) => p?.id === pageId) ?? null
+    );
+  }
+  return null;
+}
+__name(findPageById, "findPageById");
+function extractFlagKey(fullFlagPath) {
+  if (fullFlagPath.includes(".")) {
+    const parts = fullFlagPath.split(".");
+    const lastPart = parts.pop();
+    if (lastPart === void 0) {
+      return "";
+    }
+    return lastPart;
+  }
+  return fullFlagPath;
+}
+__name(extractFlagKey, "extractFlagKey");
+const _FoundryRelationshipPageRepositoryAdapter = class _FoundryRelationshipPageRepositoryAdapter {
+  constructor(foundryGame, foundryDocument) {
+    this.foundryGame = foundryGame;
+    this.foundryDocument = foundryDocument;
+  }
+  async getNodePageContent(pageId) {
+    const pageResult = await this.findPageById(pageId);
+    if (!pageResult.ok) {
+      let errorCode;
+      if (pageResult.error.code === "ENTITY_NOT_FOUND") {
+        errorCode = "ENTITY_NOT_FOUND";
+      } else {
+        errorCode = "OPERATION_FAILED";
+      }
+      return err({
+        code: errorCode,
+        message: `Failed to find page ${pageId}: ${pageResult.error.message}`,
+        details: pageResult.error
+      });
+    }
+    const page = pageResult.value;
+    const castResult = castRelationshipNodePage(page);
+    if (!castResult.ok) {
+      return err({
+        code: "VALIDATION_FAILED",
+        message: `Page ${pageId} is not a relationship node page: ${castResult.error.message}`,
+        details: castResult.error
+      });
+    }
+    const pageWithSystem = page;
+    const systemData = pageWithSystem.system;
+    if (!systemData) {
+      return err({
+        code: "INVALID_ENTITY_DATA",
+        message: `Page ${pageId} has no system data`
+      });
+    }
+    return ok(systemData);
+  }
+  async updateNodePageContent(pageId, data) {
+    const pageResult = await this.findPageById(pageId);
+    if (!pageResult.ok) {
+      let errorCode;
+      if (pageResult.error.code === "ENTITY_NOT_FOUND") {
+        errorCode = "ENTITY_NOT_FOUND";
+      } else {
+        errorCode = "OPERATION_FAILED";
+      }
+      return err({
+        code: errorCode,
+        message: `Failed to find page ${pageId}: ${pageResult.error.message}`,
+        details: pageResult.error
+      });
+    }
+    const page = pageResult.value;
+    const castResult = castRelationshipNodePage(page);
+    if (!castResult.ok) {
+      return err({
+        code: "VALIDATION_FAILED",
+        message: `Page ${pageId} is not a relationship node page: ${castResult.error.message}`,
+        details: castResult.error
+      });
+    }
+    const pageForUpdate = (
+      // type-coverage:ignore-next-line - Runtime cast required for Foundry document update
+      page
+    );
+    const updateResult = await this.foundryDocument.update(pageForUpdate, {
+      system: data
+    });
+    if (!updateResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to update page ${pageId}: ${updateResult.error.message}`,
+        details: updateResult.error
+      });
+    }
+    return ok(void 0);
+  }
+  async getGraphPageContent(pageId) {
+    const pageResult = await this.findPageById(pageId);
+    if (!pageResult.ok) {
+      let errorCode;
+      if (pageResult.error.code === "ENTITY_NOT_FOUND") {
+        errorCode = "ENTITY_NOT_FOUND";
+      } else {
+        errorCode = "OPERATION_FAILED";
+      }
+      return err({
+        code: errorCode,
+        message: `Failed to find page ${pageId}: ${pageResult.error.message}`,
+        details: pageResult.error
+      });
+    }
+    const page = pageResult.value;
+    const castResult = castRelationshipGraphPage(page);
+    if (!castResult.ok) {
+      return err({
+        code: "VALIDATION_FAILED",
+        message: `Page ${pageId} is not a relationship graph page: ${castResult.error.message}`,
+        details: castResult.error
+      });
+    }
+    const pageWithSystem = page;
+    const systemData = pageWithSystem.system;
+    if (!systemData) {
+      return err({
+        code: "INVALID_ENTITY_DATA",
+        message: `Page ${pageId} has no system data`
+      });
+    }
+    return ok(systemData);
+  }
+  async updateGraphPageContent(pageId, data) {
+    const pageResult = await this.findPageById(pageId);
+    if (!pageResult.ok) {
+      let errorCode;
+      if (pageResult.error.code === "ENTITY_NOT_FOUND") {
+        errorCode = "ENTITY_NOT_FOUND";
+      } else {
+        errorCode = "OPERATION_FAILED";
+      }
+      return err({
+        code: errorCode,
+        message: `Failed to find page ${pageId}: ${pageResult.error.message}`,
+        details: pageResult.error
+      });
+    }
+    const page = pageResult.value;
+    const castResult = castRelationshipGraphPage(page);
+    if (!castResult.ok) {
+      return err({
+        code: "VALIDATION_FAILED",
+        message: `Page ${pageId} is not a relationship graph page: ${castResult.error.message}`,
+        details: castResult.error
+      });
+    }
+    const pageForUpdate = (
+      // type-coverage:ignore-next-line - Runtime cast required for Foundry document update
+      page
+    );
+    const updateResult = await this.foundryDocument.update(pageForUpdate, {
+      system: data
+    });
+    if (!updateResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to update page ${pageId}: ${updateResult.error.message}`,
+        details: updateResult.error
+      });
+    }
+    return ok(void 0);
+  }
+  async setNodeMarker(pageId, hasNode) {
+    return this.setPageFlag(
+      pageId,
+      extractFlagKey(JOURNAL_ENTRY_PAGE_FLAGS.IS_RELATIONSHIP_NODE),
+      hasNode
+    );
+  }
+  async setGraphMarker(pageId, hasGraph) {
+    return this.setPageFlag(
+      pageId,
+      extractFlagKey(JOURNAL_ENTRY_PAGE_FLAGS.IS_RELATIONSHIP_GRAPH),
+      hasGraph
+    );
+  }
+  async getNodeMarker(pageId) {
+    return this.getPageFlag(pageId, extractFlagKey(JOURNAL_ENTRY_PAGE_FLAGS.IS_RELATIONSHIP_NODE));
+  }
+  async getGraphMarker(pageId) {
+    return this.getPageFlag(pageId, extractFlagKey(JOURNAL_ENTRY_PAGE_FLAGS.IS_RELATIONSHIP_GRAPH));
+  }
+  /**
+   * Helper method to find a page by ID across all journal entries.
+   *
+   * @param pageId - The page ID to find
+   * @returns Result with the page or error
+   */
+  async findPageById(pageId) {
+    const journalsResult = this.foundryGame.getJournalEntries();
+    if (!journalsResult.ok) {
+      return err({
+        code: "PLATFORM_ERROR",
+        message: `Failed to get journal entries: ${journalsResult.error.message}`,
+        details: journalsResult.error
+      });
+    }
+    for (const journal of journalsResult.value) {
+      const page = findPageById(journal, pageId);
+      if (page) {
+        return ok(page);
+      }
+    }
+    return err({
+      code: "ENTITY_NOT_FOUND",
+      message: `Page ${pageId} not found in any journal entry`
+    });
+  }
+  /**
+   * Helper method to set a flag on a page.
+   *
+   * @param pageId - The page ID
+   * @param flagKey - The flag key (without scope)
+   * @param value - The flag value
+   * @returns Result indicating success or error
+   */
+  async setPageFlag(pageId, flagKey, value2) {
+    const pageResult = await this.findPageById(pageId);
+    if (!pageResult.ok) {
+      return err({
+        code: "ENTITY_NOT_FOUND",
+        message: `Page ${pageId} not found: ${pageResult.error.message}`,
+        details: pageResult.error
+      });
+    }
+    const page = pageResult.value;
+    const documentResult = castFoundryDocumentForFlag(page);
+    if (!documentResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Page does not support flags: ${documentResult.error.message}`,
+        details: documentResult.error
+      });
+    }
+    const flagResult = await this.foundryDocument.setFlag(
+      documentResult.value,
+      RELATIONSHIP_FLAGS_MODULE_ID,
+      flagKey,
+      value2
+    );
+    if (!flagResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to set flag ${RELATIONSHIP_FLAGS_MODULE_ID}.${flagKey}: ${flagResult.error.message}`,
+        details: flagResult.error
+      });
+    }
+    return ok(void 0);
+  }
+  /**
+   * Helper method to get a flag from a page.
+   *
+   * @param pageId - The page ID
+   * @param flagKey - The flag key (without scope)
+   * @returns Result with flag value or error
+   */
+  async getPageFlag(pageId, flagKey) {
+    const pageResult = await this.findPageById(pageId);
+    if (!pageResult.ok) {
+      return err({
+        code: "ENTITY_NOT_FOUND",
+        message: `Page ${pageId} not found: ${pageResult.error.message}`,
+        details: pageResult.error
+      });
+    }
+    const page = pageResult.value;
+    const documentResult = castFoundryDocumentForFlag(page);
+    if (!documentResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Page does not support flags: ${documentResult.error.message}`,
+        details: documentResult.error
+      });
+    }
+    const flagResult = this.foundryDocument.getFlag(
+      documentResult.value,
+      RELATIONSHIP_FLAGS_MODULE_ID,
+      flagKey,
+      /* @__PURE__ */ boolean()
+    );
+    if (!flagResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to get flag ${RELATIONSHIP_FLAGS_MODULE_ID}.${flagKey}: ${flagResult.error.message}`,
+        details: flagResult.error
+      });
+    }
+    return ok(flagResult.value ?? false);
+  }
+};
+__name(_FoundryRelationshipPageRepositoryAdapter, "FoundryRelationshipPageRepositoryAdapter");
+let FoundryRelationshipPageRepositoryAdapter = _FoundryRelationshipPageRepositoryAdapter;
+const _DIRelationshipPageRepositoryAdapter = class _DIRelationshipPageRepositoryAdapter extends FoundryRelationshipPageRepositoryAdapter {
+  constructor(foundryGame, foundryDocument) {
+    super(foundryGame, foundryDocument);
+  }
+};
+__name(_DIRelationshipPageRepositoryAdapter, "DIRelationshipPageRepositoryAdapter");
+_DIRelationshipPageRepositoryAdapter.dependencies = [foundryGameToken, foundryDocumentToken];
+let DIRelationshipPageRepositoryAdapter = _DIRelationshipPageRepositoryAdapter;
+function extractPagesFromJournal(journal) {
+  const journalWithPages = journal;
+  const pages = journalWithPages.pages;
+  if (!pages) {
+    return [];
+  }
+  if (Array.isArray(pages)) {
+    return pages;
+  }
+  if (typeof pages === "object" && "contents" in pages && Array.isArray(pages.contents)) {
+    return pages.contents;
+  }
+  return [];
+}
+__name(extractPagesFromJournal, "extractPagesFromJournal");
+const _FoundryRelationshipPageCollectionAdapter = class _FoundryRelationshipPageCollectionAdapter {
+  constructor(foundryGame) {
+    this.foundryGame = foundryGame;
+  }
+  async findPagesByType(type) {
+    if (type === "node") {
+      return this.findNodePages();
+    }
+    return this.findGraphPages();
+  }
+  async findNodePages() {
+    const journalsResult = this.foundryGame.getJournalEntries();
+    if (!journalsResult.ok) {
+      return err({
+        code: "COLLECTION_NOT_AVAILABLE",
+        message: `Failed to get journal entries: ${journalsResult.error.message}`,
+        details: journalsResult.error
+      });
+    }
+    const nodePages = [];
+    for (const journal of journalsResult.value) {
+      const pages = extractPagesFromJournal(journal);
+      for (const page of pages) {
+        if (isRelationshipNodePage(page)) {
+          nodePages.push(page);
+        }
+      }
+    }
+    return ok(nodePages);
+  }
+  async findGraphPages() {
+    const journalsResult = this.foundryGame.getJournalEntries();
+    if (!journalsResult.ok) {
+      return err({
+        code: "COLLECTION_NOT_AVAILABLE",
+        message: `Failed to get journal entries: ${journalsResult.error.message}`,
+        details: journalsResult.error
+      });
+    }
+    const graphPages = [];
+    for (const journal of journalsResult.value) {
+      const pages = extractPagesFromJournal(journal);
+      for (const page of pages) {
+        if (isRelationshipGraphPage(page)) {
+          graphPages.push(page);
+        }
+      }
+    }
+    return ok(graphPages);
+  }
+  async findPagesByJournalEntry(journalId) {
+    const journalResult = this.foundryGame.getJournalEntryById(journalId);
+    if (!journalResult.ok) {
+      return err({
+        code: "COLLECTION_NOT_AVAILABLE",
+        message: `Failed to get journal entry ${journalId}: ${journalResult.error.message}`,
+        details: journalResult.error
+      });
+    }
+    if (!journalResult.value) {
+      return err({
+        code: "ENTITY_NOT_FOUND",
+        message: `Journal entry ${journalId} not found`
+      });
+    }
+    const pages = extractPagesFromJournal(journalResult.value);
+    return ok(pages);
+  }
+  async findNodePagesByJournalEntry(journalId) {
+    const pagesResult = await this.findPagesByJournalEntry(journalId);
+    if (!pagesResult.ok) {
+      return pagesResult;
+    }
+    const nodePages = pagesResult.value.filter((page) => isRelationshipNodePage(page));
+    return ok(nodePages);
+  }
+  async findGraphPagesByJournalEntry(journalId) {
+    const pagesResult = await this.findPagesByJournalEntry(journalId);
+    if (!pagesResult.ok) {
+      return pagesResult;
+    }
+    const graphPages = pagesResult.value.filter((page) => isRelationshipGraphPage(page));
+    return ok(graphPages);
+  }
+};
+__name(_FoundryRelationshipPageCollectionAdapter, "FoundryRelationshipPageCollectionAdapter");
+let FoundryRelationshipPageCollectionAdapter = _FoundryRelationshipPageCollectionAdapter;
+const _DIRelationshipPageCollectionAdapter = class _DIRelationshipPageCollectionAdapter extends FoundryRelationshipPageCollectionAdapter {
+  constructor(foundryGame) {
+    super(foundryGame);
+  }
+};
+__name(_DIRelationshipPageCollectionAdapter, "DIRelationshipPageCollectionAdapter");
+_DIRelationshipPageCollectionAdapter.dependencies = [foundryGameToken];
+let DIRelationshipPageCollectionAdapter = _DIRelationshipPageCollectionAdapter;
+function registerRelationshipPageServices(container) {
+  const repositoryResult = container.registerClass(
+    relationshipPageRepositoryAdapterToken,
+    DIRelationshipPageRepositoryAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(repositoryResult)) {
+    return err(
+      `Failed to register RelationshipPageRepositoryAdapter: ${repositoryResult.error.message}`
+    );
+  }
+  const collectionResult = container.registerClass(
+    relationshipPageCollectionAdapterToken,
+    DIRelationshipPageCollectionAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(collectionResult)) {
+    return err(
+      `Failed to register RelationshipPageCollectionAdapter: ${collectionResult.error.message}`
+    );
+  }
+  return ok(void 0);
+}
+__name(registerRelationshipPageServices, "registerRelationshipPageServices");
+registerDependencyStep({
+  name: "RelationshipPageServices",
+  priority: 85,
+  // After FoundryServices (80) since we depend on FoundryGame/FoundryDocument
+  execute: registerRelationshipPageServices
 });
 let internalStepsRegistered = false;
 function createDependencyRegistrationRegistry() {

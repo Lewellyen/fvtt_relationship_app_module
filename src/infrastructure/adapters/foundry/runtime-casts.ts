@@ -19,6 +19,11 @@ import type { Disposable } from "@/infrastructure/di/interfaces";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import { isObjectWithMethods, hasMethod } from "@/infrastructure/shared/utils/type-guards";
+import { JOURNAL_PAGE_SHEET_TYPE } from "@/application/constants/app-constants";
+import {
+  JOURNAL_ENTRY_PAGE_FLAGS,
+  RELATIONSHIP_FLAGS_MODULE_ID,
+} from "@/domain/constants/relationship-flags";
 
 /**
  * Type-safe interface for Foundry Settings with dynamic namespaces.
@@ -441,4 +446,173 @@ export function castFoundryDocumentCollection<TDocument extends { id: string } =
   }
 
   return ok(collection as FoundryDocumentCollection<TDocument>);
+}
+
+/**
+ * Type definition for JournalEntryPage with type property.
+ */
+type JournalEntryPageWithType = {
+  type: string;
+  id: string;
+  getFlag?: (scope: string, key: string) => unknown;
+};
+
+/**
+ * Type guard that checks if a page is a relationship graph page.
+ *
+ * Checks the page type against JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_GRAPH.
+ * Optionally falls back to marker flags if type is not available.
+ *
+ * @param page - The page to check (unknown type for runtime validation)
+ * @returns True if the page is a relationship graph page, false otherwise
+ */
+export function isRelationshipGraphPage(page: unknown): page is JournalEntryPageWithType {
+  if (!page || typeof page !== "object") {
+    return false;
+  }
+
+  const pageObj = page as Record<string, unknown>;
+
+  // Primary check: page.type
+  if ("type" in pageObj && typeof pageObj.type === "string") {
+    if (pageObj.type === JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_GRAPH) {
+      return true;
+    }
+  }
+
+  // Fallback: Check marker flag (optional)
+  if ("getFlag" in pageObj && typeof pageObj.getFlag === "function") {
+    try {
+      // Extract key part from full flag path (e.g., "isRelationshipGraph" from "fvtt_relationship_app_module.isRelationshipGraph")
+      const fullFlagPath = JOURNAL_ENTRY_PAGE_FLAGS.IS_RELATIONSHIP_GRAPH;
+      const flagKey = fullFlagPath.includes(".")
+        ? (fullFlagPath.split(".").pop() ?? "")
+        : fullFlagPath;
+      const flagValue = (pageObj.getFlag as (scope: string, key: string) => unknown)(
+        RELATIONSHIP_FLAGS_MODULE_ID,
+        flagKey
+      );
+      return flagValue === true;
+    } catch {
+      // If flag check fails, return false
+      return false;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Type guard that checks if a page is a relationship node page.
+ *
+ * Checks the page type against JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_NODE.
+ * Optionally falls back to marker flags if type is not available.
+ *
+ * @param page - The page to check (unknown type for runtime validation)
+ * @returns True if the page is a relationship node page, false otherwise
+ */
+export function isRelationshipNodePage(page: unknown): page is JournalEntryPageWithType {
+  if (!page || typeof page !== "object") {
+    return false;
+  }
+
+  const pageObj = page as Record<string, unknown>;
+
+  // Primary check: page.type
+  if ("type" in pageObj && typeof pageObj.type === "string") {
+    if (pageObj.type === JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_NODE) {
+      return true;
+    }
+  }
+
+  // Fallback: Check marker flag (optional)
+  if ("getFlag" in pageObj && typeof pageObj.getFlag === "function") {
+    try {
+      // Extract key part from full flag path (e.g., "isRelationshipNode" from "fvtt_relationship_app_module.isRelationshipNode")
+      const fullFlagPath = JOURNAL_ENTRY_PAGE_FLAGS.IS_RELATIONSHIP_NODE;
+      const flagKey = fullFlagPath.includes(".")
+        ? (fullFlagPath.split(".").pop() ?? "")
+        : fullFlagPath;
+      const flagValue = (pageObj.getFlag as (scope: string, key: string) => unknown)(
+        RELATIONSHIP_FLAGS_MODULE_ID,
+        flagKey
+      );
+      return flagValue === true;
+    } catch {
+      // If flag check fails, return false
+      return false;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Kapselt den Cast für Relationship Graph Pages mit Runtime-Validierung.
+ *
+ * Diese Funktion prüft zur Laufzeit, ob eine Page ein Relationship Graph Page ist.
+ * Bei Fehlern wird ein FoundryError zurückgegeben statt einen Error zu werfen,
+ * um konsistent mit dem Result-Pattern zu bleiben.
+ *
+ * @param page - Die Page (unknown, da Typen variieren)
+ * @returns Result mit der Page als JournalEntryPage oder FoundryError
+ *
+ * @remarks
+ * Die Validierung prüft zur Laufzeit, ob die Page den erwarteten Type hat.
+ * Dies stellt sicher, dass die Page die erwartete Struktur für Graph-Operationen hat.
+ */
+export function castRelationshipGraphPage(
+  page: unknown
+): Result<JournalEntryPageWithType, FoundryError> {
+  if (isRelationshipGraphPage(page)) {
+    return ok(page);
+  }
+
+  return err(
+    createFoundryError("VALIDATION_FAILED", "Page is not a relationship graph page", {
+      pageId:
+        typeof (page as { id?: unknown })?.id === "string"
+          ? (page as { id: string }).id
+          : "unknown",
+      pageType:
+        typeof (page as { type?: unknown })?.type === "string"
+          ? (page as { type: string }).type
+          : "unknown",
+    })
+  );
+}
+
+/**
+ * Kapselt den Cast für Relationship Node Pages mit Runtime-Validierung.
+ *
+ * Diese Funktion prüft zur Laufzeit, ob eine Page ein Relationship Node Page ist.
+ * Bei Fehlern wird ein FoundryError zurückgegeben statt einen Error zu werfen,
+ * um konsistent mit dem Result-Pattern zu bleiben.
+ *
+ * @param page - Die Page (unknown, da Typen variieren)
+ * @returns Result mit der Page als JournalEntryPage oder FoundryError
+ *
+ * @remarks
+ * Die Validierung prüft zur Laufzeit, ob die Page den erwarteten Type hat.
+ * Dies stellt sicher, dass die Page die erwartete Struktur für Node-Operationen hat.
+ */
+export function castRelationshipNodePage(
+  page: unknown
+): Result<JournalEntryPageWithType, FoundryError> {
+  if (isRelationshipNodePage(page)) {
+    return ok(page);
+  }
+
+  return err(
+    createFoundryError("VALIDATION_FAILED", "Page is not a relationship node page", {
+      pageId:
+        typeof (page as { id?: unknown })?.id === "string"
+          ? (page as { id: string }).id
+          : "unknown",
+      pageType:
+        typeof (page as { type?: unknown })?.type === "string"
+          ? (page as { type: string }).type
+          : "unknown",
+    })
+  );
 }
