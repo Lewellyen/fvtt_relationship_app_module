@@ -3,6 +3,8 @@
   "RELATIONSHIP_APP.RELATIONSHIP_GRAPH_TYPE": "Beziehungsgraph",
   "TYPES.JournalEntryPage.relationship_app_graph": "Beziehungsgraph",
   "TYPES.JournalEntryPage.fvtt_relationship_app_module.relationship_app_graph": "Beziehungsgraph",
+  "TYPES.JournalEntryPage.relationship_app_node": "Beziehungsknoten",
+  "TYPES.JournalEntryPage.fvtt_relationship_app_module.relationship_app_node": "Beziehungsknoten",
   "MODULE.SETTINGS.logLevel.name": "Log-Level",
   "MODULE.SETTINGS.logLevel.hint": "Mindest-Log-Level für Modul-Ausgaben. DEBUG zeigt alle Logs, ERROR nur kritische Fehler.",
   "MODULE.SETTINGS.logLevel.choices.debug": "DEBUG (Alle Logs - für Debugging)",

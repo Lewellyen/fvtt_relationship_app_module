@@ -1,4 +1,6 @@
 var __defProp = Object.defineProperty;
+var __getProtoOf = Object.getPrototypeOf;
+var __reflectGet = Reflect.get;
 var __typeError = (msg) => {
   throw TypeError(msg);
 };
@@ -10,6 +12,7 @@ var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read fr
 var __privateAdd = (obj, member, value2) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value2);
 var __privateSet = (obj, member, value2, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value2) : member.set(obj, value2), value2);
 var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
+var __superGet = (cls, obj, key2) => __reflectGet(__getProtoOf(cls), key2, obj);
 var _a, _disposed, _disposed2, _disposed3, _disposed4, _disposed5, _disposed6, _b, _commit_callbacks, _discard_callbacks, _pending, _blocking_pending, _deferred, _dirty_effects, _maybe_dirty_effects, _Batch_instances, traverse_effect_tree_fn, defer_effects_fn, clear_marked_fn, resolve_fn, commit_fn, _pending2, _anchor, _hydrate_open, _props, _children, _effect, _main_effect, _pending_effect, _failed_effect, _offscreen_fragment, _pending_anchor, _local_pending_count, _pending_count, _is_creating_fallback, _effect_pending, _effect_pending_subscriber, _Boundary_instances, hydrate_resolved_content_fn, hydrate_pending_content_fn, get_anchor_fn, run_fn, show_pending_snippet_fn, update_pending_count_fn, _batches, _onscreen, _offscreen, _outroing, _transition, _commit, _discard, _listeners, _observer, _options, _ResizeObserverSingleton_instances, getObserver_fn, _events, _instance, _c, _runeState, _actorsById, _itemsById, _itemsByActorId, _d;
 const MODULE_METADATA = {
   ID: "fvtt_relationship_app_module",
@@ -41,9 +44,14 @@ const APP_DEFAULTS = {
 };
 const PUBLIC_API_VERSION = "1.0.0";
 const LOG_PREFIX = "Relationship App |";
+const JOURNAL_PAGE_SHEET_TYPE = {
+  RELATIONSHIP_NODE: "fvtt_relationship_app_module.relationship_app_node",
+  RELATIONSHIP_GRAPH: "fvtt_relationship_app_module.relationship_app_graph"
+};
 Object.freeze(MODULE_METADATA);
 Object.freeze(SETTING_KEYS);
 Object.freeze(APP_DEFAULTS);
+Object.freeze(JOURNAL_PAGE_SHEET_TYPE);
 function ok(value2) {
   return { ok: true, value: value2 };
 }
@@ -13828,6 +13836,186 @@ const _SettingsInitPhase = class _SettingsInitPhase {
 };
 __name(_SettingsInitPhase, "SettingsInitPhase");
 let SettingsInitPhase = _SettingsInitPhase;
+const RELATIONSHIP_NODE_SCHEMA_VERSION = 1;
+const _RelationshipNodeDataModel = class _RelationshipNodeDataModel extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      schemaVersion: new fields.NumberField({
+        required: true,
+        integer: true,
+        initial: RELATIONSHIP_NODE_SCHEMA_VERSION
+      }),
+      nodeKey: new fields.StringField({ required: true, initial: "" }),
+      name: new fields.StringField({ required: true, initial: "" }),
+      kind: new fields.StringField({
+        required: true,
+        choices: ["person", "place", "object"],
+        initial: "person"
+      }),
+      factionId: new fields.StringField({ required: false }),
+      relation: new fields.StringField({
+        required: true,
+        choices: ["friend", "enemy", "neutral"],
+        initial: "neutral"
+      }),
+      icon: new fields.StringField({ required: false }),
+      descriptions: new fields.SchemaField({
+        public: new fields.StringField({ required: false, blank: true, initial: "" }),
+        hidden: new fields.StringField({ required: false, blank: true, initial: "" }),
+        gm: new fields.StringField({ required: false, blank: true, initial: "" })
+      }),
+      reveal: new fields.SchemaField({
+        public: new fields.BooleanField({ required: true, initial: false }),
+        hidden: new fields.BooleanField({ required: true, initial: false })
+      }),
+      effects: new fields.SchemaField({
+        friend: new fields.StringField({ required: false }),
+        enemy: new fields.StringField({ required: false }),
+        neutral: new fields.StringField({ required: false })
+      }),
+      linkedEntityUuid: new fields.StringField({ required: false })
+    };
+  }
+  /**
+   * Migration for future schema versions (Phase 3).
+   * Currently returns data as-is for schema version 1.
+   */
+  static migrateData(source2) {
+    return super.migrateData(source2);
+  }
+};
+__name(_RelationshipNodeDataModel, "RelationshipNodeDataModel");
+let RelationshipNodeDataModel = _RelationshipNodeDataModel;
+const RELATIONSHIP_GRAPH_SCHEMA_VERSION = 1;
+const _RelationshipGraphDataModel = class _RelationshipGraphDataModel extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    const edgeField = new fields.SchemaField({
+      id: new fields.StringField({ required: true }),
+      source: new fields.StringField({ required: true }),
+      target: new fields.StringField({ required: true }),
+      knowledge: new fields.StringField({
+        required: true,
+        choices: ["public", "hidden", "secret"],
+        initial: "public"
+      }),
+      label: new fields.StringField({ required: false })
+    });
+    const layoutField = new fields.SchemaField({
+      positions: new fields.ObjectField({ required: false }),
+      zoom: new fields.NumberField({ required: false }),
+      pan: new fields.SchemaField({
+        x: new fields.NumberField({ required: false }),
+        y: new fields.NumberField({ required: false })
+      })
+    });
+    const lastVersionField = new fields.SchemaField({
+      schemaVersion: new fields.NumberField({
+        required: true,
+        initial: RELATIONSHIP_GRAPH_SCHEMA_VERSION
+      })
+    });
+    const schema = {
+      schemaVersion: new fields.NumberField({
+        required: true,
+        integer: true,
+        initial: RELATIONSHIP_GRAPH_SCHEMA_VERSION
+      }),
+      graphKey: new fields.StringField({ required: true, initial: "" }),
+      nodeKeys: new fields.ArrayField(new fields.StringField({ required: true, initial: "" }), {
+        required: true
+      }),
+      edges: new fields.ArrayField(edgeField, { required: true }),
+      layout: layoutField,
+      lastVersion: lastVersionField
+    };
+    return schema;
+  }
+  static migrateData(source2) {
+    return super.migrateData(source2);
+  }
+};
+__name(_RelationshipGraphDataModel, "RelationshipGraphDataModel");
+let RelationshipGraphDataModel = _RelationshipGraphDataModel;
+const _RelationshipNodeSheet = class _RelationshipNodeSheet extends foundry.applications.sheets.journal.JournalEntryPageHandlebarsSheet {
+};
+__name(_RelationshipNodeSheet, "RelationshipNodeSheet");
+_RelationshipNodeSheet.DEFAULT_OPTIONS = {
+  ...__superGet(_RelationshipNodeSheet, _RelationshipNodeSheet, "DEFAULT_OPTIONS"),
+  id: "journal-entry-relationship-node",
+  classes: ["journal-entry-page", "relationship-node"],
+  width: 800,
+  height: 600,
+  resizable: true
+};
+let RelationshipNodeSheet = _RelationshipNodeSheet;
+const _RelationshipGraphSheet = class _RelationshipGraphSheet extends foundry.applications.sheets.journal.JournalEntryPageHandlebarsSheet {
+};
+__name(_RelationshipGraphSheet, "RelationshipGraphSheet");
+_RelationshipGraphSheet.DEFAULT_OPTIONS = {
+  ...__superGet(_RelationshipGraphSheet, _RelationshipGraphSheet, "DEFAULT_OPTIONS"),
+  id: "journal-entry-relationship-graph",
+  classes: ["journal-entry-page", "relationship-graph"],
+  width: 800,
+  height: 600,
+  resizable: true
+};
+let RelationshipGraphSheet = _RelationshipGraphSheet;
+const _JournalEntryPageSheetBootstrapper = class _JournalEntryPageSheetBootstrapper {
+  /**
+   * Registers all JournalEntryPage Sheets and DataModels.
+   *
+   * @returns Result indicating success (no errors expected, Foundry API handles errors internally)
+   */
+  static registerSheetsAndDataModels() {
+    Object.assign(CONFIG.JournalEntryPage.dataModels, {
+      [JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_NODE]: RelationshipNodeDataModel,
+      [JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_GRAPH]: RelationshipGraphDataModel
+    });
+    const DOCUMENT_SHEET_CONFIG = foundry.applications.apps.DocumentSheetConfig;
+    DOCUMENT_SHEET_CONFIG.registerSheet(
+      JournalEntryPage,
+      MODULE_METADATA.ID,
+      RelationshipNodeSheet,
+      {
+        types: [JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_NODE],
+        makeDefault: true,
+        label: /* @__PURE__ */ __name(() => {
+          return game?.i18n?.localize("TYPES.JournalEntryPage.relationship_app_node") || "Beziehungsknoten";
+        }, "label")
+      }
+    );
+    DOCUMENT_SHEET_CONFIG.registerSheet(
+      JournalEntryPage,
+      MODULE_METADATA.ID,
+      RelationshipGraphSheet,
+      {
+        types: [JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_GRAPH],
+        makeDefault: true,
+        label: /* @__PURE__ */ __name(() => {
+          return game?.i18n?.localize("TYPES.JournalEntryPage.relationship_app_graph") || "Beziehungsgraph";
+        }, "label")
+      }
+    );
+    return ok(void 0);
+  }
+};
+__name(_JournalEntryPageSheetBootstrapper, "JournalEntryPageSheetBootstrapper");
+let JournalEntryPageSheetBootstrapper = _JournalEntryPageSheetBootstrapper;
+const _JournalEntryPageSheetInitPhase = class _JournalEntryPageSheetInitPhase {
+  constructor() {
+    this.id = "journal-entry-page-sheet-registration";
+    this.priority = 5;
+    this.criticality = InitPhaseCriticality.WARN_AND_CONTINUE;
+  }
+  // Sheets can fail without breaking the module
+  execute(_ctx) {
+    return JournalEntryPageSheetBootstrapper.registerSheetsAndDataModels();
+  }
+};
+__name(_JournalEntryPageSheetInitPhase, "JournalEntryPageSheetInitPhase");
+let JournalEntryPageSheetInitPhase = _JournalEntryPageSheetInitPhase;
 const _LoggingBootstrapper = class _LoggingBootstrapper {
   /**
    * Configures logger with current setting value.
@@ -14153,6 +14341,7 @@ function createDefaultInitPhaseRegistry() {
     new NotificationInitPhase(),
     new ApiInitPhase(),
     new SettingsInitPhase(),
+    new JournalEntryPageSheetInitPhase(),
     new LoggingInitPhase(),
     new EventsInitPhase(),
     new ContextMenuInitPhase(),

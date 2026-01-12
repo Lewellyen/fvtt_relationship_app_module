@@ -62,7 +62,17 @@ export const PUBLIC_API_VERSION = "1.0.0";
  */
 export const LOG_PREFIX = "Relationship App |";
 
+/**
+ * JournalEntryPageSheet-Type-Konstanten.
+ * Diese Keys müssen mit module.json "documentTypes.JournalEntryPage" übereinstimmen.
+ */
+export const JOURNAL_PAGE_SHEET_TYPE = {
+  RELATIONSHIP_NODE: "fvtt_relationship_app_module.relationship_app_node",
+  RELATIONSHIP_GRAPH: "fvtt_relationship_app_module.relationship_app_graph",
+} as const;
+
 // Deep freeze für Runtime-Immutability
 Object.freeze(MODULE_METADATA);
 Object.freeze(SETTING_KEYS);
 Object.freeze(APP_DEFAULTS);
+Object.freeze(JOURNAL_PAGE_SHEET_TYPE);

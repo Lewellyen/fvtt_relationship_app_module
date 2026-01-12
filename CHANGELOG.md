@@ -12,6 +12,33 @@
 
 ### Upgrade-Hinweise
 
+## [0.56.0] - 2026-01-12
+### Hinzugefügt
+- **Phase 1 – Foundation: JournalEntryPage Document Types & Schemas**: Grundlegende Infrastruktur für Relationship Node und Graph Pages implementiert ([Details](docs/roadmaps/phasesv2/phase-1-foundation.md))
+- `relationship_app_node` Document Type in `module.json` registriert ([Details](module.json))
+- Domain Types `RelationshipNodeData` und `RelationshipGraphData` mit TypeScript Interfaces ([Details](src/domain/types/relationship-node-data.interface.ts), [Details](src/domain/types/relationship-graph-data.interface.ts))
+- Valibot Schemas für Schema-Validierung mit Schema-Versioning (Version 1) ([Details](src/domain/schemas/node-data.schema.ts), [Details](src/domain/schemas/graph-data.schema.ts))
+- JSON Parser/Serializer Utilities mit Result-Pattern für robuste Fehlerbehandlung ([Details](src/domain/utils/json-parser.ts))
+- Marker Flags Constants für schnelle Identifikation von Relationship-Pages ([Details](src/domain/constants/relationship-flags.ts))
+- Foundry DataModel Stubs (`RelationshipNodeDataModel`, `RelationshipGraphDataModel`) für Phase 1 ([Details](src/infrastructure/adapters/foundry/data-models/relationship-node-data-model.ts), [Details](src/infrastructure/adapters/foundry/data-models/relationship-graph-data-model.ts))
+- Foundry Sheet Stubs (`RelationshipNodeSheet`, `RelationshipGraphSheet`) für Phase 1 ([Details](src/infrastructure/adapters/foundry/sheets/relationship-node-sheet.ts), [Details](src/infrastructure/adapters/foundry/sheets/relationship-graph-sheet.ts))
+- Bootstrap-Integration: `JournalEntryPageSheetInitPhase` und `JournalEntryPageSheetBootstrapper` für automatische Registrierung ([Details](src/framework/core/bootstrap/phases/journal-entry-page-sheet-init-phase.ts), [Details](src/framework/core/bootstrap/orchestrators/journal-entry-page-sheet-bootstrapper.ts))
+- i18n Labels für beide Page Types (de/en) ([Details](lang/de.json), [Details](lang/en.json))
+- Unit Tests für Domain Schemas und JSON Parser Utilities ([Details](src/domain/schemas/__tests__/), [Details](src/domain/utils/__tests__/))
+- Test-Setup erweitert: Foundry Global Mocks für DataModel/Sheet-Klassen ([Details](src/framework/test/setup.ts))
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.55.3] - 2026-01-10
 ### Hinzugefügt
 - **Journal Overview Window - Berechtigungsfilterung**: Journal-Übersicht filtert jetzt Journals basierend auf Benutzerberechtigungen ([Details](src/application/services/JournalOverviewService.ts))

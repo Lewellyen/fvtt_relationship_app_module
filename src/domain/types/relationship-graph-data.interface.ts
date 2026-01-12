@@ -1,0 +1,112 @@
+/**
+ * Domain type for relationship graph data.
+ * Represents a graph containing nodes, edges, and layout information.
+ *
+ * This type is platform-agnostic and represents the domain model.
+ * Data is stored in JournalEntryPage.system for persistence.
+ */
+
+/**
+ * Schema version for relationship graph data.
+ * Used for migration support in future phases.
+ */
+export const RELATIONSHIP_GRAPH_SCHEMA_VERSION = 1;
+
+/**
+ * Knowledge visibility levels for edges.
+ */
+export type EdgeKnowledge = "public" | "hidden" | "secret";
+
+/**
+ * Edge in the relationship graph.
+ */
+export interface RelationshipEdge {
+  id: string;
+  source: string; // nodeKey
+  target: string; // nodeKey
+  knowledge: EdgeKnowledge;
+  label?: string;
+}
+
+/**
+ * Position coordinates for layout.
+ */
+export interface Position {
+  x: number;
+  y: number;
+}
+
+/**
+ * Pan coordinates for layout.
+ */
+export interface Pan {
+  x: number;
+  y: number;
+}
+
+/**
+ * Layout information for graph visualization.
+ */
+export interface GraphLayout {
+  positions?: Record<string, Position>;
+  zoom?: number;
+  pan?: Pan;
+}
+
+/**
+ * Backup structure for migration.
+ * Contains the previous version's data before migration.
+ */
+export interface GraphDataLastVersion {
+  schemaVersion: number;
+  // Previous version's data structure (will be defined in Phase 3)
+  [key: string]: unknown;
+}
+
+/**
+ * Relationship graph data structure.
+ * Schema version 1 (MVP).
+ */
+export interface RelationshipGraphData {
+  schemaVersion: typeof RELATIONSHIP_GRAPH_SCHEMA_VERSION;
+  graphKey: string; // Foundry Page.uuid
+  nodeKeys: string[];
+  edges: RelationshipEdge[];
+  layout?: GraphLayout;
+  // Backup f〉 Migration (wird in Phase 3 verwendet)
+  lastVersion?: GraphDataLastVersion;
+}
+
+type GraphEdgeField = foundry.data.fields.SchemaField<{
+  id: foundry.data.fields.StringField;
+  source: foundry.data.fields.StringField;
+  target: foundry.data.fields.StringField;
+  knowledge: foundry.data.fields.StringField;
+  label: foundry.data.fields.StringField;
+}>;
+
+type GraphLayoutField = foundry.data.fields.SchemaField<{
+  positions: foundry.data.fields.ObjectField;
+  zoom: foundry.data.fields.NumberField;
+  pan: foundry.data.fields.SchemaField<{
+    x: foundry.data.fields.NumberField;
+    y: foundry.data.fields.NumberField;
+  }>;
+}>;
+
+type GraphLastVersionField = foundry.data.fields.SchemaField<{
+  schemaVersion: foundry.data.fields.NumberField;
+}>;
+
+/**
+ * Foundry DataSchema interface for RelationshipGraphDataModel.
+ * Extends foundry.data.fields.DataSchema to provide type-safe schema definition.
+ */
+export interface RelationshipGraphDataSchema extends foundry.data.fields.DataSchema {
+  schemaVersion: foundry.data.fields.NumberField;
+  graphKey: foundry.data.fields.StringField;
+  nodeKeys: foundry.data.fields.ArrayField<foundry.data.fields.StringField>;
+  edges: foundry.data.fields.ArrayField<GraphEdgeField>;
+  layout: GraphLayoutField;
+  lastVersion: GraphLastVersionField;
+}

@@ -8,6 +8,33 @@ describe("index.ts", () => {
       on: vi.fn(),
       off: vi.fn(),
     });
+    // Mock foundry global for DataModel/Sheet classes
+    vi.stubGlobal("foundry", {
+      abstract: {
+        TypeDataModel: class {},
+      },
+      applications: {
+        apps: {
+          DocumentSheetConfig: {
+            registerSheet: vi.fn(),
+          },
+        },
+        sheets: {
+          journal: {
+            JournalEntryPageHandlebarsSheet: class {},
+          },
+        },
+      },
+      data: {
+        fields: {},
+      },
+    });
+    vi.stubGlobal("CONFIG", {
+      JournalEntryPage: {
+        dataModels: {},
+      },
+    });
+    vi.stubGlobal("JournalEntryPage", class {});
   });
 
   afterEach(() => {

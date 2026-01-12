@@ -22,3 +22,43 @@ if (typeof globalThis.$state === "undefined") {
     return initial;
   };
 }
+
+// Mock foundry global for DataModel/Sheet classes
+// DataModels extend foundry.abstract.TypeDataModel which is evaluated at import time
+// This mock allows DataModel classes to be imported in tests
+if (typeof (globalThis as { foundry?: unknown }).foundry === "undefined") {
+  (globalThis as Record<string, unknown>).foundry = {
+    abstract: {
+      TypeDataModel: class {},
+    },
+    applications: {
+      apps: {
+        DocumentSheetConfig: {
+          registerSheet: () => {},
+        },
+      },
+      sheets: {
+        journal: {
+          JournalEntryPageHandlebarsSheet: class {},
+        },
+      },
+    },
+    data: {
+      fields: {},
+    },
+  };
+}
+
+// Mock CONFIG global for DataModel registration
+if (typeof (globalThis as { CONFIG?: unknown }).CONFIG === "undefined") {
+  (globalThis as Record<string, unknown>).CONFIG = {
+    JournalEntryPage: {
+      dataModels: {},
+    },
+  };
+}
+
+// Mock JournalEntryPage global for Sheet registration
+if (typeof (globalThis as { JournalEntryPage?: unknown }).JournalEntryPage === "undefined") {
+  (globalThis as Record<string, unknown>).JournalEntryPage = class {};
+}

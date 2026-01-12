@@ -3,6 +3,7 @@ import { MetricsInitPhase } from "./phases/metrics-init-phase";
 import { NotificationInitPhase } from "./phases/notification-init-phase";
 import { ApiInitPhase } from "./phases/api-init-phase";
 import { SettingsInitPhase } from "./phases/settings-init-phase";
+import { JournalEntryPageSheetInitPhase } from "./phases/journal-entry-page-sheet-init-phase";
 import { LoggingInitPhase } from "./phases/logging-init-phase";
 import { EventsInitPhase } from "./phases/events-init-phase";
 import { ContextMenuInitPhase } from "./phases/context-menu-init-phase";
@@ -23,6 +24,7 @@ export function createDefaultInitPhaseRegistry(): InitPhaseRegistry {
     new NotificationInitPhase(),
     new ApiInitPhase(),
     new SettingsInitPhase(),
+    new JournalEntryPageSheetInitPhase(),
     new LoggingInitPhase(),
     new EventsInitPhase(),
     new ContextMenuInitPhase(),

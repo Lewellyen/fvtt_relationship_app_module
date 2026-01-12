@@ -10,6 +10,7 @@ import { SettingsBootstrapper } from "../orchestrators/settings-bootstrapper";
 import { EventsBootstrapper } from "../orchestrators/events-bootstrapper";
 import { ContextMenuBootstrapper } from "../orchestrators/context-menu-bootstrapper";
 import { SidebarButtonBootstrapper } from "../orchestrators/sidebar-button-bootstrapper";
+import { JournalEntryPageSheetBootstrapper } from "../orchestrators/journal-entry-page-sheet-bootstrapper";
 import { err, ok } from "@/domain/utils/result";
 import { InitPhaseRegistry } from "../init-phase-registry";
 import type { InitPhase } from "../init-phase.interface";
@@ -23,6 +24,7 @@ vi.mock("../orchestrators/logging-bootstrapper");
 vi.mock("../orchestrators/events-bootstrapper");
 vi.mock("../orchestrators/context-menu-bootstrapper");
 vi.mock("../orchestrators/sidebar-button-bootstrapper");
+vi.mock("../orchestrators/journal-entry-page-sheet-bootstrapper");
 
 describe("InitOrchestrator", () => {
   let mockContainer: PlatformContainerPort;
@@ -52,6 +54,9 @@ describe("InitOrchestrator", () => {
       vi.mocked(NotificationBootstrapper.attachNotificationChannels).mockReturnValue(ok(undefined));
       vi.mocked(ApiBootstrapper.exposeApi).mockReturnValue(ok(undefined));
       vi.mocked(SettingsBootstrapper.registerSettings).mockReturnValue(ok(undefined));
+      vi.mocked(JournalEntryPageSheetBootstrapper.registerSheetsAndDataModels).mockReturnValue(
+        ok(undefined)
+      );
       vi.mocked(LoggingBootstrapper.configureLogging).mockReturnValue(ok(undefined));
       vi.mocked(EventsBootstrapper.registerEvents).mockReturnValue(ok(undefined));
       vi.mocked(ContextMenuBootstrapper.registerContextMenu).mockReturnValue(ok(undefined));
@@ -68,6 +73,9 @@ describe("InitOrchestrator", () => {
       vi.mocked(NotificationBootstrapper.attachNotificationChannels).mockReturnValue(ok(undefined));
       vi.mocked(ApiBootstrapper.exposeApi).mockReturnValue(ok(undefined));
       vi.mocked(SettingsBootstrapper.registerSettings).mockReturnValue(ok(undefined));
+      vi.mocked(JournalEntryPageSheetBootstrapper.registerSheetsAndDataModels).mockReturnValue(
+        ok(undefined)
+      );
       vi.mocked(LoggingBootstrapper.configureLogging).mockReturnValue(ok(undefined));
       vi.mocked(EventsBootstrapper.registerEvents).mockReturnValue(ok(undefined));
       vi.mocked(ContextMenuBootstrapper.registerContextMenu).mockReturnValue(ok(undefined));
@@ -86,6 +94,9 @@ describe("InitOrchestrator", () => {
       vi.mocked(NotificationBootstrapper.attachNotificationChannels).mockReturnValue(ok(undefined));
       vi.mocked(ApiBootstrapper.exposeApi).mockReturnValue(ok(undefined));
       vi.mocked(SettingsBootstrapper.registerSettings).mockReturnValue(ok(undefined));
+      vi.mocked(JournalEntryPageSheetBootstrapper.registerSheetsAndDataModels).mockReturnValue(
+        ok(undefined)
+      );
       vi.mocked(LoggingBootstrapper.configureLogging).mockReturnValue(err("Logging failed"));
       vi.mocked(EventsBootstrapper.registerEvents).mockReturnValue(ok(undefined));
       vi.mocked(ContextMenuBootstrapper.registerContextMenu).mockReturnValue(ok(undefined));
@@ -104,6 +115,9 @@ describe("InitOrchestrator", () => {
       vi.mocked(NotificationBootstrapper.attachNotificationChannels).mockReturnValue(ok(undefined));
       vi.mocked(ApiBootstrapper.exposeApi).mockReturnValue(err("API failed"));
       vi.mocked(SettingsBootstrapper.registerSettings).mockReturnValue(err("Settings failed"));
+      vi.mocked(JournalEntryPageSheetBootstrapper.registerSheetsAndDataModels).mockReturnValue(
+        ok(undefined)
+      );
       vi.mocked(LoggingBootstrapper.configureLogging).mockReturnValue(ok(undefined));
       vi.mocked(EventsBootstrapper.registerEvents).mockReturnValue(err("Events failed"));
       vi.mocked(ContextMenuBootstrapper.registerContextMenu).mockReturnValue(ok(undefined));

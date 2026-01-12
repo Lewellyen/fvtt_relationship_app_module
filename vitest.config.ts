@@ -95,6 +95,13 @@ export default defineConfig({
         "src/infrastructure/di/token-factory.ts",
         // Coverage artifact: Array.sort() comparison order makes some branches unreachable
         "src/application/windows/definitions/journal-sort-utils.ts",
+        // Phase 1 Stubs: DataModels and Sheets are stubs, full implementation in Phase 4
+        "src/infrastructure/adapters/foundry/data-models/relationship-node-data-model.ts",
+        "src/infrastructure/adapters/foundry/data-models/relationship-graph-data-model.ts",
+        // Phase 1 Constants: Pure constant definitions, no executable logic
+        "src/domain/constants/relationship-flags.ts",
+        // Phase 1 Bootstrapper: Integration-tested via init-orchestrator tests
+        "src/framework/core/bootstrap/orchestrators/journal-entry-page-sheet-bootstrapper.ts",
       ],
     },
   },

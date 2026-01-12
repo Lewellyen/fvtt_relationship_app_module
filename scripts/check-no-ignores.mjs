@@ -295,6 +295,34 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
     reason: 'Foundry API: Hooks.on() für "updateDocument" und "settingChange" benötigt Type-Casts, da diese Hooks nicht in fvtt-types definiert sind. eslint-disable und type-coverage:ignore für Type-Casts notwendig.',
   },
+  // Phase 1: Foundry DataModel Stubs
+  {
+    file: 'src/infrastructure/adapters/foundry/data-models/relationship-node-data-model.ts',
+    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
+    reason: 'Phase 1 Stub: TypeDataModel requires 2-4 type arguments, but for Phase 1 stubs we use type assertion (as any). Full type safety will be implemented in Phase 4.',
+  },
+  {
+    file: 'src/infrastructure/adapters/foundry/data-models/relationship-graph-data-model.ts',
+    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
+    reason: 'Phase 1 Stub: TypeDataModel requires 2-4 type arguments, but for Phase 1 stubs we use type assertion (as any). Full type safety will be implemented in Phase 4.',
+  },
+  // Phase 1: JSON Parser Utilities
+  {
+    file: 'src/domain/utils/json-parser.ts',
+    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
+    reason: 'Valibot Schema Types: Type assertions needed due to complex generic constraints in Valibot BaseSchema types. Valibot 1.x safeParse API requires any-type casts for generic schema validation.',
+  },
+  // Phase 1: Schema Parse Functions
+  {
+    file: 'src/domain/schemas/node-data.schema.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Valibot Parse Result: Type assertion for v.parse() return type. Valibot parse() returns validated data but TypeScript inference requires explicit type assertion.',
+  },
+  {
+    file: 'src/domain/schemas/graph-data.schema.ts',
+    allowed: ['type-coverage:ignore-next-line'],
+    reason: 'Valibot Parse Result: Type assertion for v.parse() return type. Valibot parse() returns validated data but TypeScript inference requires explicit type assertion.',
+  },
 
 ];
 

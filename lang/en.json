@@ -26,6 +26,8 @@
   "journalOverview.title": "Journal Overview",
   "journalOverview.buttonTooltip": "Show journal overview",
   "journalOverview.status.visible": "Visible",
-  "journalOverview.status.hidden": "Hidden"
+  "journalOverview.status.hidden": "Hidden",
+  "TYPES.JournalEntryPage.relationship_app_node": "Relationship Node",
+  "TYPES.JournalEntryPage.fvtt_relationship_app_module.relationship_app_node": "Relationship Node"
 }
 
