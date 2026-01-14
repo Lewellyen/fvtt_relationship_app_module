@@ -6,10 +6,12 @@
  * for JournalEntryPage.system data when the page type is relationship_app_node.
  */
 
-import type { RelationshipNodeData } from "@/domain/types/relationship-node-data.interface";
+import type {
+  RelationshipNodeData,
+  RelationshipNodeDataSchema,
+} from "@/domain/types/relationship-node-data.interface";
 import { RELATIONSHIP_NODE_SCHEMA_VERSION } from "@/domain/types/relationship-node-data.interface";
 
-type RelationshipNodeDataSchema = foundry.data.fields.DataSchema;
 type RelationshipNodeBaseData = RelationshipNodeData & Record<string, unknown>;
 
 /**
@@ -24,7 +26,15 @@ export class RelationshipNodeDataModel extends foundry.abstract.TypeDataModel<
 > {
   static override defineSchema(): RelationshipNodeDataSchema {
     const fields = foundry.data.fields;
-    return {
+
+    const lastVersionField = new fields.SchemaField({
+      schemaVersion: new fields.NumberField({
+        required: true,
+        initial: RELATIONSHIP_NODE_SCHEMA_VERSION,
+      }),
+    });
+
+    const schema = {
       schemaVersion: new fields.NumberField({
         required: true,
         integer: true,
@@ -59,7 +69,11 @@ export class RelationshipNodeDataModel extends foundry.abstract.TypeDataModel<
         neutral: new fields.StringField({ required: false }),
       }),
       linkedEntityUuid: new fields.StringField({ required: false }),
+      lastVersion: lastVersionField,
     };
+
+    /* type-coverage:ignore-next-line -- Foundry schema structure: Schema object matches RelationshipNodeDataSchema interface structurally, but TypeScript cannot infer the exact type compatibility between runtime field instances and the interface definition */
+    return schema as unknown as RelationshipNodeDataSchema;
   }
 
   /**

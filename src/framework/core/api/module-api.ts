@@ -13,6 +13,8 @@ import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/fac
 import type { Result } from "@/domain/types/result";
 import type { ContainerError } from "@/infrastructure/di/interfaces";
 import type { HealthStatus } from "@/domain/types/health-status";
+import type { IGraphDataService } from "@/application/services/GraphDataService";
+import type { INodeDataService } from "@/application/services/NodeDataService";
 
 /**
  * Information about a registered service token.
@@ -61,6 +63,8 @@ export interface ModuleApiTokens {
   foundrySettingsToken: ApiSafeToken<FoundrySettings>;
   i18nFacadeToken: ApiSafeToken<I18nFacadeService>;
   foundryJournalFacadeToken: ApiSafeToken<FoundryJournalFacade>;
+  graphDataServiceToken: ApiSafeToken<IGraphDataService>;
+  nodeDataServiceToken: ApiSafeToken<INodeDataService>;
 }
 
 /**

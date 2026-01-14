@@ -10,10 +10,14 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import { relationshipPageRepositoryAdapterToken } from "@/infrastructure/shared/tokens/foundry/relationship-page-repository-adapter.token";
+import {
+  platformRelationshipPageRepositoryPortToken,
+  platformPageCreationPortToken,
+} from "@/application/tokens/domain-ports.tokens";
 import { relationshipPageCollectionAdapterToken } from "@/infrastructure/shared/tokens/foundry/relationship-page-collection-adapter.token";
 import { DIRelationshipPageRepositoryAdapter } from "@/infrastructure/adapters/foundry/repository-adapters/foundry-relationship-page-repository-adapter";
 import { DIRelationshipPageCollectionAdapter } from "@/infrastructure/adapters/foundry/collection-adapters/foundry-relationship-page-collection-adapter";
+import { DIFoundryPageCreationAdapter } from "@/infrastructure/adapters/foundry/repository-adapters/foundry-page-creation-adapter";
 
 /**
  * Registers relationship page adapter services.
@@ -32,7 +36,7 @@ export function registerRelationshipPageServices(
 ): Result<void, string> {
   // Register RelationshipPageRepositoryAdapter
   const repositoryResult = container.registerClass(
-    relationshipPageRepositoryAdapterToken,
+    platformRelationshipPageRepositoryPortToken,
     DIRelationshipPageRepositoryAdapter,
     ServiceLifecycle.SINGLETON
   );
@@ -51,6 +55,18 @@ export function registerRelationshipPageServices(
   if (isErr(collectionResult)) {
     return err(
       `Failed to register RelationshipPageCollectionAdapter: ${collectionResult.error.message}`
+    );
+  }
+
+  // Register FoundryPageCreationAdapter
+  const pageCreationResult = container.registerClass(
+    platformPageCreationPortToken,
+    DIFoundryPageCreationAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(pageCreationResult)) {
+    return err(
+      `Failed to register FoundryPageCreationAdapter: ${pageCreationResult.error.message}`
     );
   }
 

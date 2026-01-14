@@ -22,6 +22,8 @@ import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-jo
 import type { PlatformJournalUiEventPort } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
 import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
 import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
+import type { PlatformRelationshipPageRepositoryPort } from "@/domain/ports/repositories/platform-relationship-page-repository-port.interface";
+import type { PlatformPageCreationPort } from "@/domain/ports/repositories/platform-page-creation-port.interface";
 import type { PlatformJournalPermissionPort } from "@/domain/ports/repositories/platform-journal-permission-port.interface";
 import type { PlatformContextMenuRegistrationPort } from "@/domain/ports/platform-context-menu-registration-port.interface";
 import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
@@ -189,6 +191,27 @@ export const platformJournalCollectionPortToken =
  */
 export const platformJournalRepositoryToken = createInjectionToken<PlatformJournalRepository>(
   "PlatformJournalRepository"
+);
+
+/**
+ * DI Token for PlatformRelationshipPageRepositoryPort.
+ *
+ * Platform-agnostic port for relationship page repository operations.
+ * Provides operations for loading and saving relationship node and graph page content.
+ */
+export const platformRelationshipPageRepositoryPortToken =
+  createInjectionToken<PlatformRelationshipPageRepositoryPort>(
+    "PlatformRelationshipPageRepositoryPort"
+  );
+
+/**
+ * DI Token for PlatformPageCreationPort.
+ *
+ * Platform-agnostic port for creating relationship pages.
+ * Provides operations for creating new relationship node and graph pages within journal entries.
+ */
+export const platformPageCreationPortToken = createInjectionToken<PlatformPageCreationPort>(
+  "PlatformPageCreationPort"
 );
 
 /**

@@ -2627,6 +2627,12 @@ const platformJournalCollectionPortToken = createInjectionToken("PlatformJournal
 const platformJournalRepositoryToken = createInjectionToken(
   "PlatformJournalRepository"
 );
+const platformRelationshipPageRepositoryPortToken = createInjectionToken(
+  "PlatformRelationshipPageRepositoryPort"
+);
+const platformPageCreationPortToken = createInjectionToken(
+  "PlatformPageCreationPort"
+);
 const platformJournalPermissionPortToken = createInjectionToken("PlatformJournalPermissionPort");
 const platformContextMenuRegistrationPortToken = createInjectionToken("PlatformContextMenuRegistrationPort");
 const platformValidationPortToken = createInjectionToken("PlatformValidationPort");
@@ -9693,6 +9699,26 @@ function castRelationshipNodePage(page) {
   );
 }
 __name(castRelationshipNodePage, "castRelationshipNodePage");
+function createRelationshipNodePageData(name, nodeData) {
+  return {
+    name,
+    type: JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_NODE,
+    system: nodeData
+  };
+}
+__name(createRelationshipNodePageData, "createRelationshipNodePageData");
+function createRelationshipGraphPageData(name, graphData) {
+  return {
+    name,
+    type: JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_GRAPH,
+    system: graphData
+  };
+}
+__name(createRelationshipGraphPageData, "createRelationshipGraphPageData");
+function castPageDataForCreateEmbeddedDocuments(pageDataArray) {
+  return pageDataArray;
+}
+__name(castPageDataForCreateEmbeddedDocuments, "castPageDataForCreateEmbeddedDocuments");
 const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
   constructor() {
     __privateAdd(this, _disposed3, false);
@@ -13152,6 +13178,17 @@ const journalDirectoryRerenderSchedulerToken = createInjectionToken(
 );
 const eventRegistrarRegistryToken = createInjectionToken("EventRegistrarRegistry");
 const journalOverviewServiceToken = createInjectionToken("JournalOverviewService");
+const migrationServiceToken = createInjectionToken("MigrationService");
+const nodeDataServiceToken = createInjectionToken("NodeDataService");
+const graphDataServiceToken = createInjectionToken("GraphDataService");
+const createNodePageUseCaseToken = createInjectionToken("CreateNodePageUseCase");
+const createGraphPageUseCaseToken = createInjectionToken("CreateGraphPageUseCase");
+const addNodeToGraphUseCaseToken = createInjectionToken("AddNodeToGraphUseCase");
+const removeNodeFromGraphUseCaseToken = createInjectionToken(
+  "RemoveNodeFromGraphUseCase"
+);
+const upsertEdgeUseCaseToken = createInjectionToken("UpsertEdgeUseCase");
+const removeEdgeUseCaseToken = createInjectionToken("RemoveEdgeUseCase");
 const i18nFacadeToken = createInjectionToken("I18nFacadeService");
 const foundryGameToken = createInjectionToken("FoundryGame");
 const foundryHooksToken = createInjectionToken("FoundryHooks");
@@ -13169,7 +13206,9 @@ function createApiTokens() {
     foundryUIToken: markAsApiSafe(foundryUIToken),
     foundrySettingsToken: markAsApiSafe(foundrySettingsToken),
     i18nFacadeToken: markAsApiSafe(i18nFacadeToken),
-    foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken)
+    foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken),
+    graphDataServiceToken: markAsApiSafe(graphDataServiceToken),
+    nodeDataServiceToken: markAsApiSafe(nodeDataServiceToken)
   };
 }
 __name(createApiTokens, "createApiTokens");
@@ -13215,7 +13254,9 @@ const _ModuleApiBuilder = class _ModuleApiBuilder {
           ["foundrySettingsToken", foundrySettingsToken],
           ["i18nFacadeToken", i18nFacadeToken],
           ["foundryJournalFacadeToken", foundryJournalFacadeToken],
-          ["notificationCenterToken", notificationCenterToken]
+          ["notificationCenterToken", notificationCenterToken],
+          ["graphDataServiceToken", graphDataServiceToken],
+          ["nodeDataServiceToken", nodeDataServiceToken]
         ];
         for (const [, token] of tokenEntries) {
           const isRegisteredResult = container.isRegistered(token);
@@ -13925,7 +13966,13 @@ const RELATIONSHIP_NODE_SCHEMA_VERSION = 1;
 const _RelationshipNodeDataModel = class _RelationshipNodeDataModel extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
-    return {
+    const lastVersionField = new fields.SchemaField({
+      schemaVersion: new fields.NumberField({
+        required: true,
+        initial: RELATIONSHIP_NODE_SCHEMA_VERSION
+      })
+    });
+    const schema = {
       schemaVersion: new fields.NumberField({
         required: true,
         integer: true,
@@ -13959,8 +14006,10 @@ const _RelationshipNodeDataModel = class _RelationshipNodeDataModel extends foun
         enemy: new fields.StringField({ required: false }),
         neutral: new fields.StringField({ required: false })
       }),
-      linkedEntityUuid: new fields.StringField({ required: false })
+      linkedEntityUuid: new fields.StringField({ required: false }),
+      lastVersion: lastVersionField
     };
+    return schema;
   }
   /**
    * Migration for future schema versions (Phase 3).
@@ -34804,7 +34853,6 @@ dependencyRegistry.register({
   // After validation (170), same as Loop Prevention Init
   execute: registerJournalOverviewWindow
 });
-const relationshipPageRepositoryAdapterToken = createInjectionToken("RelationshipPageRepositoryAdapter");
 const relationshipPageCollectionAdapterToken = createInjectionToken("RelationshipPageCollectionAdapter");
 function findPageById(journal, pageId) {
   const pages = (
@@ -35240,9 +35288,151 @@ const _DIRelationshipPageCollectionAdapter = class _DIRelationshipPageCollection
 __name(_DIRelationshipPageCollectionAdapter, "DIRelationshipPageCollectionAdapter");
 _DIRelationshipPageCollectionAdapter.dependencies = [foundryGameToken];
 let DIRelationshipPageCollectionAdapter = _DIRelationshipPageCollectionAdapter;
+const _FoundryPageCreationAdapter = class _FoundryPageCreationAdapter {
+  constructor(foundryGame) {
+    this.foundryGame = foundryGame;
+  }
+  /**
+   * Creates a new relationship node page in a journal entry.
+   */
+  async createNodePage(journalEntryId, initialData) {
+    const journalResult = this.foundryGame.getJournalEntryById(journalEntryId);
+    if (!journalResult.ok) {
+      return err({
+        code: "ENTITY_NOT_FOUND",
+        message: `Journal entry ${journalEntryId} not found: ${journalResult.error.message}`,
+        details: journalResult.error
+      });
+    }
+    if (!journalResult.value) {
+      return err({
+        code: "ENTITY_NOT_FOUND",
+        message: `Journal entry ${journalEntryId} not found`
+      });
+    }
+    const journalEntry = journalResult.value;
+    const pageData = createRelationshipNodePageData(initialData.name, initialData);
+    const createResult = await fromPromise(
+      journalEntry.createEmbeddedDocuments(
+        "JournalEntryPage",
+        castPageDataForCreateEmbeddedDocuments([pageData])
+      ),
+      (error) => {
+        if (error instanceof Error) {
+          return error;
+        }
+        return new Error(String(error));
+      }
+    );
+    if (createResult.ok === false) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to create node page: ${createResult.error.message}`,
+        details: createResult.error
+      });
+    }
+    const createdPages = createResult.value;
+    if (!createdPages || createdPages.length === 0) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: "createEmbeddedDocuments returned empty array"
+      });
+    }
+    const createdPage = createdPages[0];
+    if (!createdPage) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: "Created pages array is empty"
+      });
+    }
+    const pageId = createdPage.uuid ?? createdPage.id ?? createdPage._id;
+    if (!pageId) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: "Created page has no ID (uuid, id, or _id)",
+        details: { createdPage }
+      });
+    }
+    return ok(pageId);
+  }
+  /**
+   * Creates a new relationship graph page in a journal entry.
+   */
+  async createGraphPage(journalEntryId, initialData) {
+    const journalResult = this.foundryGame.getJournalEntryById(journalEntryId);
+    if (!journalResult.ok) {
+      return err({
+        code: "ENTITY_NOT_FOUND",
+        message: `Journal entry ${journalEntryId} not found: ${journalResult.error.message}`,
+        details: journalResult.error
+      });
+    }
+    if (!journalResult.value) {
+      return err({
+        code: "ENTITY_NOT_FOUND",
+        message: `Journal entry ${journalEntryId} not found`
+      });
+    }
+    const journalEntry = journalResult.value;
+    const pageName = initialData.graphKey || "Graph Page";
+    const pageData = createRelationshipGraphPageData(pageName, initialData);
+    const createResult = await fromPromise(
+      journalEntry.createEmbeddedDocuments(
+        "JournalEntryPage",
+        castPageDataForCreateEmbeddedDocuments([pageData])
+      ),
+      (error) => {
+        if (error instanceof Error) {
+          return error;
+        }
+        return new Error(String(error));
+      }
+    );
+    if (createResult.ok === false) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to create graph page: ${createResult.error.message}`,
+        details: createResult.error
+      });
+    }
+    const createdPages = createResult.value;
+    if (!createdPages || createdPages.length === 0) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: "createEmbeddedDocuments returned empty array"
+      });
+    }
+    const createdPage = createdPages[0];
+    if (!createdPage) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: "Created pages array is empty"
+      });
+    }
+    const pageId = createdPage.uuid ?? createdPage.id ?? createdPage._id;
+    if (!pageId) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: "Created page has no ID (uuid, id, or _id)",
+        details: { createdPage }
+      });
+    }
+    return ok(pageId);
+  }
+};
+__name(_FoundryPageCreationAdapter, "FoundryPageCreationAdapter");
+let FoundryPageCreationAdapter = _FoundryPageCreationAdapter;
+const _DIFoundryPageCreationAdapter = class _DIFoundryPageCreationAdapter extends FoundryPageCreationAdapter {
+  constructor(foundryGame) {
+    super(foundryGame);
+  }
+};
+__name(_DIFoundryPageCreationAdapter, "DIFoundryPageCreationAdapter");
+_DIFoundryPageCreationAdapter.dependencies = [foundryGameToken];
+let DIFoundryPageCreationAdapter = _DIFoundryPageCreationAdapter;
 function registerRelationshipPageServices(container) {
   const repositoryResult = container.registerClass(
-    relationshipPageRepositoryAdapterToken,
+    platformRelationshipPageRepositoryPortToken,
     DIRelationshipPageRepositoryAdapter,
     ServiceLifecycle.SINGLETON
   );
@@ -35261,6 +35451,16 @@ function registerRelationshipPageServices(container) {
       `Failed to register RelationshipPageCollectionAdapter: ${collectionResult.error.message}`
     );
   }
+  const pageCreationResult = container.registerClass(
+    platformPageCreationPortToken,
+    DIFoundryPageCreationAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(pageCreationResult)) {
+    return err(
+      `Failed to register FoundryPageCreationAdapter: ${pageCreationResult.error.message}`
+    );
+  }
   return ok(void 0);
 }
 __name(registerRelationshipPageServices, "registerRelationshipPageServices");
@@ -35269,6 +35469,945 @@ registerDependencyStep({
   priority: 85,
   // After FoundryServices (80) since we depend on FoundryGame/FoundryDocument
   execute: registerRelationshipPageServices
+});
+const nodeDataMigrations = [];
+const graphDataMigrations = [];
+const nodeRevealSchema = /* @__PURE__ */ object({
+  public: /* @__PURE__ */ boolean(),
+  hidden: /* @__PURE__ */ boolean()
+});
+const nodeDescriptionsSchema = /* @__PURE__ */ object({
+  public: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+  hidden: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+  gm: /* @__PURE__ */ optional(/* @__PURE__ */ string())
+});
+const nodeEffectsSchema = /* @__PURE__ */ optional(
+  /* @__PURE__ */ object({
+    friend: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+    enemy: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+    neutral: /* @__PURE__ */ optional(/* @__PURE__ */ string())
+  })
+);
+const nodeDataLastVersionSchema = /* @__PURE__ */ optional(
+  /* @__PURE__ */ object({
+    schemaVersion: /* @__PURE__ */ number()
+  })
+);
+const relationshipNodeDataSchema = /* @__PURE__ */ object({
+  schemaVersion: /* @__PURE__ */ literal(RELATIONSHIP_NODE_SCHEMA_VERSION),
+  nodeKey: /* @__PURE__ */ string(),
+  name: /* @__PURE__ */ string(),
+  kind: /* @__PURE__ */ picklist(["person", "place", "object"]),
+  factionId: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+  relation: /* @__PURE__ */ picklist(["friend", "enemy", "neutral"]),
+  icon: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+  descriptions: nodeDescriptionsSchema,
+  reveal: nodeRevealSchema,
+  effects: nodeEffectsSchema,
+  linkedEntityUuid: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+  lastVersion: nodeDataLastVersionSchema
+});
+function parseRelationshipNodeData(data) {
+  return parse(relationshipNodeDataSchema, data);
+}
+__name(parseRelationshipNodeData, "parseRelationshipNodeData");
+function safeParseRelationshipNodeData(data) {
+  return /* @__PURE__ */ safeParse(relationshipNodeDataSchema, data);
+}
+__name(safeParseRelationshipNodeData, "safeParseRelationshipNodeData");
+const positionSchema = /* @__PURE__ */ object({
+  x: /* @__PURE__ */ number(),
+  y: /* @__PURE__ */ number()
+});
+const panSchema = /* @__PURE__ */ object({
+  x: /* @__PURE__ */ number(),
+  y: /* @__PURE__ */ number()
+});
+const graphLayoutSchema = /* @__PURE__ */ optional(
+  /* @__PURE__ */ object({
+    positions: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), positionSchema)),
+    zoom: /* @__PURE__ */ optional(/* @__PURE__ */ number()),
+    pan: /* @__PURE__ */ optional(panSchema)
+  })
+);
+const relationshipEdgeSchema = /* @__PURE__ */ object({
+  id: /* @__PURE__ */ string(),
+  source: /* @__PURE__ */ string(),
+  target: /* @__PURE__ */ string(),
+  knowledge: /* @__PURE__ */ picklist(["public", "hidden", "secret"]),
+  label: /* @__PURE__ */ optional(/* @__PURE__ */ string())
+});
+const graphDataLastVersionSchema = /* @__PURE__ */ optional(
+  /* @__PURE__ */ object({
+    schemaVersion: /* @__PURE__ */ number()
+  })
+);
+const relationshipGraphDataSchema = /* @__PURE__ */ object({
+  schemaVersion: /* @__PURE__ */ literal(RELATIONSHIP_GRAPH_SCHEMA_VERSION),
+  graphKey: /* @__PURE__ */ string(),
+  nodeKeys: /* @__PURE__ */ array(/* @__PURE__ */ string()),
+  edges: /* @__PURE__ */ array(relationshipEdgeSchema),
+  layout: graphLayoutSchema,
+  lastVersion: graphDataLastVersionSchema
+});
+function parseRelationshipGraphData(data) {
+  return parse(relationshipGraphDataSchema, data);
+}
+__name(parseRelationshipGraphData, "parseRelationshipGraphData");
+function safeParseRelationshipGraphData(data) {
+  return /* @__PURE__ */ safeParse(relationshipGraphDataSchema, data);
+}
+__name(safeParseRelationshipGraphData, "safeParseRelationshipGraphData");
+function isRelationshipNodeData$1(data) {
+  const result = safeParseRelationshipNodeData(data);
+  return result.success;
+}
+__name(isRelationshipNodeData$1, "isRelationshipNodeData$1");
+function isRelationshipGraphData$1(data) {
+  const result = safeParseRelationshipGraphData(data);
+  return result.success;
+}
+__name(isRelationshipGraphData$1, "isRelationshipGraphData$1");
+const _MigrationService = class _MigrationService {
+  constructor(notifications) {
+    this.notifications = notifications;
+  }
+  /**
+   * Gets the current schema version from data.
+   */
+  getCurrentSchemaVersion(data) {
+    if (typeof data !== "object" || data === null) {
+      return 0;
+    }
+    const dataWithVersion = data;
+    const version = dataWithVersion.schemaVersion;
+    if (typeof version === "number" && version > 0) {
+      return version;
+    }
+    return 0;
+  }
+  /**
+   * Checks if data needs migration.
+   */
+  needsMigration(data, schemaType) {
+    const currentVersion = this.getCurrentSchemaVersion(data);
+    const latestVersion = schemaType === "node" ? RELATIONSHIP_NODE_SCHEMA_VERSION : RELATIONSHIP_GRAPH_SCHEMA_VERSION;
+    return currentVersion > 0 && currentVersion < latestVersion;
+  }
+  /**
+   * Migrates data to the latest schema version.
+   *
+   * Performs sequential migration: Version 1 → 2 → 3...
+   * Returns data as-is if already at latest version or no migrations available.
+   */
+  async migrateToLatest(data, schemaType) {
+    const currentVersion = this.getCurrentSchemaVersion(data);
+    const latestVersion = schemaType === "node" ? RELATIONSHIP_NODE_SCHEMA_VERSION : RELATIONSHIP_GRAPH_SCHEMA_VERSION;
+    if (currentVersion === latestVersion) {
+      if (schemaType === "node") {
+        if (!isRelationshipNodeData$1(data)) {
+          return err({
+            code: "MIGRATION_FAILED",
+            message: "Data at latest version does not match RelationshipNodeData schema",
+            details: { data, schemaType }
+          });
+        }
+        return ok(data);
+      } else {
+        if (!isRelationshipGraphData$1(data)) {
+          return err({
+            code: "MIGRATION_FAILED",
+            message: "Data at latest version does not match RelationshipGraphData schema",
+            details: { data, schemaType }
+          });
+        }
+        return ok(data);
+      }
+    }
+    if (currentVersion === 0) {
+      return err({
+        code: "MIGRATION_VERSION_UNSUPPORTED",
+        message: `Cannot migrate: data has no valid schema version`,
+        details: { data, schemaType }
+      });
+    }
+    if (currentVersion > latestVersion) {
+      this.notifications.warn(
+        `Data schema version (${currentVersion}) is higher than latest supported version (${latestVersion}). Using data as-is.`,
+        { data, schemaType, currentVersion, latestVersion },
+        { channels: ["ConsoleChannel"] }
+      );
+      if (schemaType === "node") {
+        if (!isRelationshipNodeData$1(data)) {
+          return err({
+            code: "MIGRATION_FAILED",
+            message: "Data with higher version does not match RelationshipNodeData schema",
+            details: { data, schemaType, currentVersion, latestVersion }
+          });
+        }
+        return ok(data);
+      } else {
+        if (!isRelationshipGraphData$1(data)) {
+          return err({
+            code: "MIGRATION_FAILED",
+            message: "Data with higher version does not match RelationshipGraphData schema",
+            details: { data, schemaType, currentVersion, latestVersion }
+          });
+        }
+        return ok(data);
+      }
+    }
+    const migrations = schemaType === "node" ? nodeDataMigrations : graphDataMigrations;
+    const applicableMigrations = migrations.filter(
+      (migration) => migration.fromVersion >= currentVersion && migration.toVersion <= latestVersion
+    );
+    applicableMigrations.sort((a, b) => a.fromVersion - b.fromVersion);
+    let migratedData = data;
+    let lastVersion = currentVersion;
+    for (const migration of applicableMigrations) {
+      if (lastVersion !== migration.fromVersion) {
+        return err({
+          code: "MIGRATION_FAILED",
+          message: `Migration chain broken: expected version ${migration.fromVersion}, but data is at version ${lastVersion}`,
+          details: {
+            data: migratedData,
+            schemaType,
+            lastVersion,
+            expectedVersion: migration.fromVersion
+          }
+        });
+      }
+      try {
+        migratedData = await migration.migrate(migratedData);
+        lastVersion = migration.toVersion;
+      } catch (error) {
+        return err({
+          code: "MIGRATION_FAILED",
+          message: `Migration from version ${migration.fromVersion} to ${migration.toVersion} failed: ${error instanceof Error ? error.message : String(error)}`,
+          details: { data: migratedData, schemaType, migration },
+          originalError: error
+        });
+      }
+    }
+    const finalVersion = this.getCurrentSchemaVersion(migratedData);
+    if (finalVersion !== latestVersion) {
+      return err({
+        code: "MIGRATION_FAILED",
+        message: `Migration completed but final version (${finalVersion}) does not match expected version (${latestVersion})`,
+        details: { data: migratedData, schemaType, finalVersion, expectedVersion: latestVersion }
+      });
+    }
+    if (schemaType === "node") {
+      if (!isRelationshipNodeData$1(migratedData)) {
+        return err({
+          code: "MIGRATION_FAILED",
+          message: "Migrated data does not match RelationshipNodeData schema",
+          details: { data: migratedData, schemaType, finalVersion }
+        });
+      }
+      return ok(migratedData);
+    } else {
+      if (!isRelationshipGraphData$1(migratedData)) {
+        return err({
+          code: "MIGRATION_FAILED",
+          message: "Migrated data does not match RelationshipGraphData schema",
+          details: { data: migratedData, schemaType, finalVersion }
+        });
+      }
+      return ok(migratedData);
+    }
+  }
+};
+__name(_MigrationService, "MigrationService");
+let MigrationService = _MigrationService;
+const _DIMigrationService = class _DIMigrationService extends MigrationService {
+  constructor(notifications) {
+    super(notifications);
+  }
+};
+__name(_DIMigrationService, "DIMigrationService");
+_DIMigrationService.dependencies = [notificationPublisherPortToken];
+let DIMigrationService = _DIMigrationService;
+function isRelationshipNodeData(data) {
+  const result = safeParseRelationshipNodeData(data);
+  return result.success;
+}
+__name(isRelationshipNodeData, "isRelationshipNodeData");
+const _NodeDataService = class _NodeDataService {
+  constructor(repository, migrationService, notifications) {
+    this.repository = repository;
+    this.migrationService = migrationService;
+    this.notifications = notifications;
+  }
+  /**
+   * Validates node data against the schema.
+   */
+  validateNodeData(data) {
+    const validationResult = safeParseRelationshipNodeData(data);
+    if (!validationResult.success) {
+      return err({
+        code: "VALIDATION_FAILED",
+        message: `Node data validation failed: ${validationResult.issues.map((i) => i.message).join(", ")}`,
+        details: validationResult.issues
+      });
+    }
+    return ok(void 0);
+  }
+  /**
+   * Loads node data from a page.
+   *
+   * Performs migration if needed before returning data.
+   */
+  async loadNodeData(pageId) {
+    const loadResult = await this.repository.getNodePageContent(pageId);
+    if (!loadResult.ok) {
+      return this.mapRepositoryError(loadResult.error);
+    }
+    const rawData = loadResult.value;
+    if (this.migrationService.needsMigration(rawData, "node")) {
+      this.notifications.debug(
+        `Node data at page ${pageId} needs migration`,
+        { pageId, currentVersion: this.migrationService.getCurrentSchemaVersion(rawData) },
+        { channels: ["ConsoleChannel"] }
+      );
+      const backup = {
+        ...rawData
+      };
+      const migrationResult = await this.migrationService.migrateToLatest(rawData, "node");
+      if (!migrationResult.ok) {
+        this.notifications.error(
+          `Failed to migrate node data at page ${pageId}`,
+          migrationResult.error,
+          { channels: ["ConsoleChannel"] }
+        );
+        return migrationResult;
+      }
+      if (!isRelationshipNodeData(migrationResult.value)) {
+        return err({
+          code: "VALIDATION_FAILED",
+          message: "Migrated node data does not match RelationshipNodeData schema",
+          details: { pageId, migratedData: migrationResult.value }
+        });
+      }
+      const migratedNodeData = {
+        ...migrationResult.value,
+        lastVersion: backup
+      };
+      const saveResult = await this.saveNodeData(pageId, migratedNodeData);
+      if (!saveResult.ok) {
+        this.notifications.error(
+          `Node data migrated but failed to save at page ${pageId}`,
+          saveResult.error,
+          { channels: ["ConsoleChannel"] }
+        );
+        return saveResult;
+      }
+      return ok(migratedNodeData);
+    }
+    const validationResult = this.validateNodeData(rawData);
+    if (!validationResult.ok) {
+      return validationResult;
+    }
+    return ok(rawData);
+  }
+  /**
+   * Saves node data to a page.
+   *
+   * Validates data before saving.
+   */
+  async saveNodeData(pageId, data) {
+    const validationResult = this.validateNodeData(data);
+    if (!validationResult.ok) {
+      return validationResult;
+    }
+    const saveResult = await this.repository.updateNodePageContent(pageId, data);
+    if (!saveResult.ok) {
+      return this.mapRepositoryError(saveResult.error);
+    }
+    return ok(void 0);
+  }
+  /**
+   * Maps repository errors to service errors.
+   */
+  mapRepositoryError(error) {
+    return err({
+      code: "REPOSITORY_ERROR",
+      message: error.message,
+      details: error
+    });
+  }
+};
+__name(_NodeDataService, "NodeDataService");
+let NodeDataService = _NodeDataService;
+const _DINodeDataService = class _DINodeDataService extends NodeDataService {
+  constructor(repository, migrationService, notifications) {
+    super(repository, migrationService, notifications);
+  }
+};
+__name(_DINodeDataService, "DINodeDataService");
+_DINodeDataService.dependencies = [
+  platformRelationshipPageRepositoryPortToken,
+  migrationServiceToken,
+  notificationPublisherPortToken
+];
+let DINodeDataService = _DINodeDataService;
+function isRelationshipGraphData(data) {
+  const result = safeParseRelationshipGraphData(data);
+  return result.success;
+}
+__name(isRelationshipGraphData, "isRelationshipGraphData");
+const _GraphDataService = class _GraphDataService {
+  constructor(repository, migrationService, notifications) {
+    this.repository = repository;
+    this.migrationService = migrationService;
+    this.notifications = notifications;
+  }
+  /**
+   * Validates graph data against the schema.
+   */
+  validateGraphData(data) {
+    const validationResult = safeParseRelationshipGraphData(data);
+    if (!validationResult.success) {
+      return err({
+        code: "VALIDATION_FAILED",
+        message: `Graph data validation failed: ${validationResult.issues.map((i) => i.message).join(", ")}`,
+        details: validationResult.issues
+      });
+    }
+    return ok(void 0);
+  }
+  /**
+   * Loads graph data from a page.
+   *
+   * Performs migration if needed before returning data.
+   */
+  async loadGraphData(pageId) {
+    const loadResult = await this.repository.getGraphPageContent(pageId);
+    if (!loadResult.ok) {
+      return this.mapRepositoryError(loadResult.error);
+    }
+    const rawData = loadResult.value;
+    if (this.migrationService.needsMigration(rawData, "graph")) {
+      this.notifications.debug(
+        `Graph data at page ${pageId} needs migration`,
+        { pageId, currentVersion: this.migrationService.getCurrentSchemaVersion(rawData) },
+        { channels: ["ConsoleChannel"] }
+      );
+      const backup = {
+        ...rawData
+      };
+      const migrationResult = await this.migrationService.migrateToLatest(rawData, "graph");
+      if (!migrationResult.ok) {
+        this.notifications.error(
+          `Failed to migrate graph data at page ${pageId}`,
+          migrationResult.error,
+          { channels: ["ConsoleChannel"] }
+        );
+        return migrationResult;
+      }
+      if (!isRelationshipGraphData(migrationResult.value)) {
+        return err({
+          code: "VALIDATION_FAILED",
+          message: "Migrated graph data does not match RelationshipGraphData schema",
+          details: { pageId, migratedData: migrationResult.value }
+        });
+      }
+      const migratedGraphData = {
+        ...migrationResult.value,
+        lastVersion: backup
+      };
+      const saveResult = await this.saveGraphData(pageId, migratedGraphData);
+      if (!saveResult.ok) {
+        this.notifications.error(
+          `Graph data migrated but failed to save at page ${pageId}`,
+          saveResult.error,
+          { channels: ["ConsoleChannel"] }
+        );
+        return saveResult;
+      }
+      return ok(migratedGraphData);
+    }
+    const validationResult = this.validateGraphData(rawData);
+    if (!validationResult.ok) {
+      return validationResult;
+    }
+    return ok(rawData);
+  }
+  /**
+   * Saves graph data to a page.
+   *
+   * Validates data before saving.
+   * Implements MVP Conflict Policy: Last-write-wins + Warning Banner.
+   */
+  async saveGraphData(pageId, data) {
+    const validationResult = this.validateGraphData(data);
+    if (!validationResult.ok) {
+      return validationResult;
+    }
+    const currentDataResult = await this.repository.getGraphPageContent(pageId);
+    if (currentDataResult.ok && currentDataResult.value.lastVersion) {
+      this.notifications.warn(
+        `Graph data at page ${pageId} has been modified since last load. Using last-write-wins strategy.`,
+        { pageId },
+        { channels: ["ConsoleChannel"] }
+      );
+    }
+    const saveResult = await this.repository.updateGraphPageContent(pageId, data);
+    if (!saveResult.ok) {
+      return this.mapRepositoryError(saveResult.error);
+    }
+    return ok(void 0);
+  }
+  /**
+   * Maps repository errors to service errors.
+   */
+  mapRepositoryError(error) {
+    return err({
+      code: "REPOSITORY_ERROR",
+      message: error.message,
+      details: error
+    });
+  }
+};
+__name(_GraphDataService, "GraphDataService");
+let GraphDataService = _GraphDataService;
+const _DIGraphDataService = class _DIGraphDataService extends GraphDataService {
+  constructor(repository, migrationService, notifications) {
+    super(repository, migrationService, notifications);
+  }
+};
+__name(_DIGraphDataService, "DIGraphDataService");
+_DIGraphDataService.dependencies = [
+  platformRelationshipPageRepositoryPortToken,
+  migrationServiceToken,
+  notificationPublisherPortToken
+];
+let DIGraphDataService = _DIGraphDataService;
+const _CreateNodePageUseCase = class _CreateNodePageUseCase {
+  constructor(journalRepository, nodeDataService, pageRepository, pageCreationPort, notifications) {
+    this.journalRepository = journalRepository;
+    this.nodeDataService = nodeDataService;
+    this.pageRepository = pageRepository;
+    this.pageCreationPort = pageCreationPort;
+    this.notifications = notifications;
+  }
+  /**
+   * Creates a new node page.
+   *
+   * Steps:
+   * 1. Validate journal entry exists
+   * 2. Validate node data
+   * 3. Create page (via Foundry API - requires infrastructure access)
+   * 4. Save node data to page
+   * 5. Set marker flag
+   * 6. Return created page
+   */
+  async execute(input) {
+    const journalResult = await this.journalRepository.getById(input.journalEntryId);
+    if (!journalResult.ok) {
+      return err({
+        code: "JOURNAL_NOT_FOUND",
+        message: `Journal entry ${input.journalEntryId} not found: ${journalResult.error.message}`,
+        details: journalResult.error
+      });
+    }
+    const validationResult = this.nodeDataService.validateNodeData(input.nodeData);
+    if (!validationResult.ok) {
+      return validationResult;
+    }
+    const pageCreationResult = await this.pageCreationPort.createNodePage(
+      input.journalEntryId,
+      input.nodeData
+    );
+    if (!pageCreationResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to create node page: ${pageCreationResult.error.message}`,
+        details: pageCreationResult.error
+      });
+    }
+    const pageId = pageCreationResult.value;
+    const saveResult = await this.nodeDataService.saveNodeData(pageId, input.nodeData);
+    if (!saveResult.ok) {
+      this.notifications.error(`Failed to save node data to page ${pageId}`, saveResult.error, {
+        channels: ["ConsoleChannel"]
+      });
+      return saveResult;
+    }
+    const flagResult = await this.pageRepository.setNodeMarker(pageId, true);
+    if (!flagResult.ok) {
+      this.notifications.warn(
+        `Failed to set node marker flag for page ${pageId}`,
+        flagResult.error,
+        { channels: ["ConsoleChannel"] }
+      );
+    }
+    return ok(pageId);
+  }
+};
+__name(_CreateNodePageUseCase, "CreateNodePageUseCase");
+let CreateNodePageUseCase = _CreateNodePageUseCase;
+const _DICreateNodePageUseCase = class _DICreateNodePageUseCase extends CreateNodePageUseCase {
+  constructor(journalRepository, nodeDataService, pageRepository, pageCreationPort, notifications) {
+    super(journalRepository, nodeDataService, pageRepository, pageCreationPort, notifications);
+  }
+};
+__name(_DICreateNodePageUseCase, "DICreateNodePageUseCase");
+_DICreateNodePageUseCase.dependencies = [
+  platformJournalRepositoryToken,
+  nodeDataServiceToken,
+  platformRelationshipPageRepositoryPortToken,
+  platformPageCreationPortToken,
+  notificationPublisherPortToken
+];
+let DICreateNodePageUseCase = _DICreateNodePageUseCase;
+const _CreateGraphPageUseCase = class _CreateGraphPageUseCase {
+  constructor(journalRepository, graphDataService, pageRepository, pageCreationPort, notifications) {
+    this.journalRepository = journalRepository;
+    this.graphDataService = graphDataService;
+    this.pageRepository = pageRepository;
+    this.pageCreationPort = pageCreationPort;
+    this.notifications = notifications;
+  }
+  /**
+   * Creates a new graph page.
+   *
+   * Steps:
+   * 1. Validate journal entry exists
+   * 2. Validate graph data
+   * 3. Create page (via Foundry API - requires infrastructure access)
+   * 4. Save graph data to page (lastVersion initial empty)
+   * 5. Set marker flag
+   * 6. Return created page
+   */
+  async execute(input) {
+    const journalResult = await this.journalRepository.getById(input.journalEntryId);
+    if (!journalResult.ok) {
+      return err({
+        code: "JOURNAL_NOT_FOUND",
+        message: `Journal entry ${input.journalEntryId} not found: ${journalResult.error.message}`,
+        details: journalResult.error
+      });
+    }
+    const validationResult = this.graphDataService.validateGraphData(input.graphData);
+    if (!validationResult.ok) {
+      return validationResult;
+    }
+    const pageCreationResult = await this.pageCreationPort.createGraphPage(
+      input.journalEntryId,
+      input.graphData
+    );
+    if (!pageCreationResult.ok) {
+      return err({
+        code: "OPERATION_FAILED",
+        message: `Failed to create graph page: ${pageCreationResult.error.message}`,
+        details: pageCreationResult.error
+      });
+    }
+    const pageId = pageCreationResult.value;
+    const saveResult = await this.graphDataService.saveGraphData(pageId, input.graphData);
+    if (!saveResult.ok) {
+      this.notifications.error(`Failed to save graph data to page ${pageId}`, saveResult.error, {
+        channels: ["ConsoleChannel"]
+      });
+      return saveResult;
+    }
+    const flagResult = await this.pageRepository.setGraphMarker(pageId, true);
+    if (!flagResult.ok) {
+      this.notifications.warn(
+        `Failed to set graph marker flag for page ${pageId}`,
+        flagResult.error,
+        { channels: ["ConsoleChannel"] }
+      );
+    }
+    return ok(pageId);
+  }
+};
+__name(_CreateGraphPageUseCase, "CreateGraphPageUseCase");
+let CreateGraphPageUseCase = _CreateGraphPageUseCase;
+const _DICreateGraphPageUseCase = class _DICreateGraphPageUseCase extends CreateGraphPageUseCase {
+  constructor(journalRepository, graphDataService, pageRepository, pageCreationPort, notifications) {
+    super(journalRepository, graphDataService, pageRepository, pageCreationPort, notifications);
+  }
+};
+__name(_DICreateGraphPageUseCase, "DICreateGraphPageUseCase");
+_DICreateGraphPageUseCase.dependencies = [
+  platformJournalRepositoryToken,
+  graphDataServiceToken,
+  platformRelationshipPageRepositoryPortToken,
+  platformPageCreationPortToken,
+  notificationPublisherPortToken
+];
+let DICreateGraphPageUseCase = _DICreateGraphPageUseCase;
+const _AddNodeToGraphUseCase = class _AddNodeToGraphUseCase {
+  constructor(graphDataService, nodeDataService, pageRepository, notifications) {
+    this.graphDataService = graphDataService;
+    this.nodeDataService = nodeDataService;
+    this.pageRepository = pageRepository;
+    this.notifications = notifications;
+  }
+  /**
+   * Adds a node to a graph.
+   *
+   * Steps:
+   * 1. Load graph data (with migration if needed)
+   * 2. Validate node page exists and is a node type
+   * 3. Add nodeKey to nodeKeys array (if not already present)
+   * 4. Save graph data
+   */
+  async execute(input) {
+    const graphDataResult = await this.graphDataService.loadGraphData(input.graphPageId);
+    if (!graphDataResult.ok) {
+      return graphDataResult;
+    }
+    const graphData = graphDataResult.value;
+    const nodeDataResult = await this.nodeDataService.loadNodeData(input.nodePageId);
+    if (!nodeDataResult.ok) {
+      return err({
+        code: "NODE_NOT_FOUND",
+        message: `Node page ${input.nodePageId} not found or invalid: ${nodeDataResult.error.message}`,
+        details: nodeDataResult.error
+      });
+    }
+    const nodeKey = input.nodePageId;
+    if (graphData.nodeKeys.includes(nodeKey)) {
+      return ok(void 0);
+    }
+    graphData.nodeKeys.push(nodeKey);
+    const saveResult = await this.graphDataService.saveGraphData(input.graphPageId, graphData);
+    if (!saveResult.ok) {
+      return saveResult;
+    }
+    return ok(void 0);
+  }
+};
+__name(_AddNodeToGraphUseCase, "AddNodeToGraphUseCase");
+let AddNodeToGraphUseCase = _AddNodeToGraphUseCase;
+const _DIAddNodeToGraphUseCase = class _DIAddNodeToGraphUseCase extends AddNodeToGraphUseCase {
+  constructor(graphDataService, nodeDataService, pageRepository, notifications) {
+    super(graphDataService, nodeDataService, pageRepository, notifications);
+  }
+};
+__name(_DIAddNodeToGraphUseCase, "DIAddNodeToGraphUseCase");
+_DIAddNodeToGraphUseCase.dependencies = [
+  graphDataServiceToken,
+  nodeDataServiceToken,
+  platformRelationshipPageRepositoryPortToken,
+  notificationPublisherPortToken
+];
+let DIAddNodeToGraphUseCase = _DIAddNodeToGraphUseCase;
+const _RemoveNodeFromGraphUseCase = class _RemoveNodeFromGraphUseCase {
+  constructor(graphDataService, notifications) {
+    this.graphDataService = graphDataService;
+    this.notifications = notifications;
+  }
+  /**
+   * Removes a node from a graph.
+   *
+   * Steps:
+   * 1. Load graph data (with migration if needed)
+   * 2. Remove nodeKey from nodeKeys array
+   * 3. Remove all edges involving this nodeKey (cleanup)
+   * 4. Save graph data
+   */
+  async execute(input) {
+    const graphDataResult = await this.graphDataService.loadGraphData(input.graphPageId);
+    if (!graphDataResult.ok) {
+      return graphDataResult;
+    }
+    const graphData = graphDataResult.value;
+    const nodeKey = input.nodePageId;
+    const nodeKeyIndex = graphData.nodeKeys.indexOf(nodeKey);
+    if (nodeKeyIndex === -1) {
+      return ok(void 0);
+    }
+    graphData.nodeKeys.splice(nodeKeyIndex, 1);
+    graphData.edges = graphData.edges.filter(
+      (edge) => edge.source !== nodeKey && edge.target !== nodeKey
+    );
+    const saveResult = await this.graphDataService.saveGraphData(input.graphPageId, graphData);
+    if (!saveResult.ok) {
+      return saveResult;
+    }
+    return ok(void 0);
+  }
+};
+__name(_RemoveNodeFromGraphUseCase, "RemoveNodeFromGraphUseCase");
+let RemoveNodeFromGraphUseCase = _RemoveNodeFromGraphUseCase;
+const _DIRemoveNodeFromGraphUseCase = class _DIRemoveNodeFromGraphUseCase extends RemoveNodeFromGraphUseCase {
+  constructor(graphDataService, notifications) {
+    super(graphDataService, notifications);
+  }
+};
+__name(_DIRemoveNodeFromGraphUseCase, "DIRemoveNodeFromGraphUseCase");
+_DIRemoveNodeFromGraphUseCase.dependencies = [graphDataServiceToken, notificationPublisherPortToken];
+let DIRemoveNodeFromGraphUseCase = _DIRemoveNodeFromGraphUseCase;
+const _UpsertEdgeUseCase = class _UpsertEdgeUseCase {
+  constructor(graphDataService, notifications) {
+    this.graphDataService = graphDataService;
+    this.notifications = notifications;
+  }
+  /**
+   * Upserts an edge in a graph.
+   *
+   * Steps:
+   * 1. Load graph data (with migration if needed)
+   * 2. Find existing edge by ID, update or insert
+   * 3. Save graph data
+   */
+  async execute(input) {
+    const graphDataResult = await this.graphDataService.loadGraphData(input.graphPageId);
+    if (!graphDataResult.ok) {
+      return graphDataResult;
+    }
+    const graphData = graphDataResult.value;
+    const existingEdgeIndex = graphData.edges.findIndex((edge) => edge.id === input.edge.id);
+    if (existingEdgeIndex !== -1) {
+      graphData.edges[existingEdgeIndex] = input.edge;
+    } else {
+      graphData.edges.push(input.edge);
+    }
+    const saveResult = await this.graphDataService.saveGraphData(input.graphPageId, graphData);
+    if (!saveResult.ok) {
+      return saveResult;
+    }
+    return ok(void 0);
+  }
+};
+__name(_UpsertEdgeUseCase, "UpsertEdgeUseCase");
+let UpsertEdgeUseCase = _UpsertEdgeUseCase;
+const _DIUpsertEdgeUseCase = class _DIUpsertEdgeUseCase extends UpsertEdgeUseCase {
+  constructor(graphDataService, notifications) {
+    super(graphDataService, notifications);
+  }
+};
+__name(_DIUpsertEdgeUseCase, "DIUpsertEdgeUseCase");
+_DIUpsertEdgeUseCase.dependencies = [graphDataServiceToken, notificationPublisherPortToken];
+let DIUpsertEdgeUseCase = _DIUpsertEdgeUseCase;
+const _RemoveEdgeUseCase = class _RemoveEdgeUseCase {
+  constructor(graphDataService, notifications) {
+    this.graphDataService = graphDataService;
+    this.notifications = notifications;
+  }
+  /**
+   * Removes an edge from a graph.
+   *
+   * Steps:
+   * 1. Load graph data (with migration if needed)
+   * 2. Remove edge from edges array
+   * 3. Save graph data
+   */
+  async execute(input) {
+    const graphDataResult = await this.graphDataService.loadGraphData(input.graphPageId);
+    if (!graphDataResult.ok) {
+      return graphDataResult;
+    }
+    const graphData = graphDataResult.value;
+    const edgeIndex = graphData.edges.findIndex((edge) => edge.id === input.edgeId);
+    if (edgeIndex === -1) {
+      return ok(void 0);
+    }
+    graphData.edges.splice(edgeIndex, 1);
+    const saveResult = await this.graphDataService.saveGraphData(input.graphPageId, graphData);
+    if (!saveResult.ok) {
+      return saveResult;
+    }
+    return ok(void 0);
+  }
+};
+__name(_RemoveEdgeUseCase, "RemoveEdgeUseCase");
+let RemoveEdgeUseCase = _RemoveEdgeUseCase;
+const _DIRemoveEdgeUseCase = class _DIRemoveEdgeUseCase extends RemoveEdgeUseCase {
+  constructor(graphDataService, notifications) {
+    super(graphDataService, notifications);
+  }
+};
+__name(_DIRemoveEdgeUseCase, "DIRemoveEdgeUseCase");
+_DIRemoveEdgeUseCase.dependencies = [graphDataServiceToken, notificationPublisherPortToken];
+let DIRemoveEdgeUseCase = _DIRemoveEdgeUseCase;
+function registerRelationshipAppServices(container) {
+  const migrationServiceResult = container.registerClass(
+    migrationServiceToken,
+    DIMigrationService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(migrationServiceResult)) {
+    return err(`Failed to register MigrationService: ${migrationServiceResult.error.message}`);
+  }
+  const nodeDataServiceResult = container.registerClass(
+    nodeDataServiceToken,
+    DINodeDataService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(nodeDataServiceResult)) {
+    return err(`Failed to register NodeDataService: ${nodeDataServiceResult.error.message}`);
+  }
+  const graphDataServiceResult = container.registerClass(
+    graphDataServiceToken,
+    DIGraphDataService,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(graphDataServiceResult)) {
+    return err(`Failed to register GraphDataService: ${graphDataServiceResult.error.message}`);
+  }
+  const createNodePageResult = container.registerClass(
+    createNodePageUseCaseToken,
+    DICreateNodePageUseCase,
+    ServiceLifecycle.TRANSIENT
+  );
+  if (isErr(createNodePageResult)) {
+    return err(`Failed to register CreateNodePageUseCase: ${createNodePageResult.error.message}`);
+  }
+  const createGraphPageResult = container.registerClass(
+    createGraphPageUseCaseToken,
+    DICreateGraphPageUseCase,
+    ServiceLifecycle.TRANSIENT
+  );
+  if (isErr(createGraphPageResult)) {
+    return err(`Failed to register CreateGraphPageUseCase: ${createGraphPageResult.error.message}`);
+  }
+  const addNodeToGraphResult = container.registerClass(
+    addNodeToGraphUseCaseToken,
+    DIAddNodeToGraphUseCase,
+    ServiceLifecycle.TRANSIENT
+  );
+  if (isErr(addNodeToGraphResult)) {
+    return err(`Failed to register AddNodeToGraphUseCase: ${addNodeToGraphResult.error.message}`);
+  }
+  const removeNodeFromGraphResult = container.registerClass(
+    removeNodeFromGraphUseCaseToken,
+    DIRemoveNodeFromGraphUseCase,
+    ServiceLifecycle.TRANSIENT
+  );
+  if (isErr(removeNodeFromGraphResult)) {
+    return err(
+      `Failed to register RemoveNodeFromGraphUseCase: ${removeNodeFromGraphResult.error.message}`
+    );
+  }
+  const upsertEdgeResult = container.registerClass(
+    upsertEdgeUseCaseToken,
+    DIUpsertEdgeUseCase,
+    ServiceLifecycle.TRANSIENT
+  );
+  if (isErr(upsertEdgeResult)) {
+    return err(`Failed to register UpsertEdgeUseCase: ${upsertEdgeResult.error.message}`);
+  }
+  const removeEdgeResult = container.registerClass(
+    removeEdgeUseCaseToken,
+    DIRemoveEdgeUseCase,
+    ServiceLifecycle.TRANSIENT
+  );
+  if (isErr(removeEdgeResult)) {
+    return err(`Failed to register RemoveEdgeUseCase: ${removeEdgeResult.error.message}`);
+  }
+  return ok(void 0);
+}
+__name(registerRelationshipAppServices, "registerRelationshipAppServices");
+registerDependencyStep({
+  name: "RelationshipAppServices",
+  priority: 90,
+  // After RelationshipPageServices (85) since we depend on RelationshipPageRepositoryAdapter
+  execute: registerRelationshipAppServices
 });
 let internalStepsRegistered = false;
 function createDependencyRegistrationRegistry() {

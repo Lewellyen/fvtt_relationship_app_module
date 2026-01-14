@@ -1,12 +1,12 @@
 /**
- * Interface for relationship page repository adapter.
+ * Platform-agnostic port for relationship page repository operations.
  *
  * Provides operations for loading and saving relationship node and graph page content,
  * as well as managing marker flags for quick identification.
  *
  * This interface is platform-agnostic and can be implemented for different platforms
  * (Foundry, Roll20, etc.). The Foundry-specific implementation is in
- * FoundryRelationshipPageRepositoryAdapter.
+ * FoundryPlatformRelationshipPageRepositoryPort.
  */
 
 import type { Result } from "@/domain/types/result";
@@ -15,14 +15,14 @@ import type { RelationshipNodeData } from "@/domain/types/relationship-node-data
 import type { RelationshipGraphData } from "@/domain/types/relationship-graph-data.interface";
 
 /**
- * Repository adapter for relationship page operations.
+ * Platform-agnostic port for relationship page repository operations.
  *
  * Handles:
  * - Loading and saving node page content
  * - Loading and saving graph page content
  * - Setting and getting marker flags for quick identification
  */
-export interface RelationshipPageRepositoryAdapter {
+export interface PlatformRelationshipPageRepositoryPort {
   /**
    * Gets the content of a relationship node page.
    *

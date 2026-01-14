@@ -171,3 +171,89 @@ export const eventRegistrarRegistryToken = createInjectionToken<any>("EventRegis
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
 export const journalOverviewServiceToken = createInjectionToken<any>("JournalOverviewService");
+
+/**
+ * Injection token for the MigrationService.
+ *
+ * Service for schema migration of relationship node and graph data.
+ * Handles sequential migration with backup and rollback support.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const migrationServiceToken = createInjectionToken<any>("MigrationService");
+
+/**
+ * Injection token for the NodeDataService.
+ *
+ * Service for loading, saving, and validating relationship node data.
+ * Includes schema validation and migration integration.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const nodeDataServiceToken = createInjectionToken<any>("NodeDataService");
+
+/**
+ * Injection token for the GraphDataService.
+ *
+ * Service for loading, saving, and validating relationship graph data.
+ * Includes schema validation and migration integration.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const graphDataServiceToken = createInjectionToken<any>("GraphDataService");
+
+/**
+ * Injection token for the CreateNodePageUseCase.
+ *
+ * Use case for creating new relationship node pages.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const createNodePageUseCaseToken = createInjectionToken<any>("CreateNodePageUseCase");
+
+/**
+ * Injection token for the CreateGraphPageUseCase.
+ *
+ * Use case for creating new relationship graph pages.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const createGraphPageUseCaseToken = createInjectionToken<any>("CreateGraphPageUseCase");
+
+/**
+ * Injection token for the AddNodeToGraphUseCase.
+ *
+ * Use case for adding a node to a graph.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const addNodeToGraphUseCaseToken = createInjectionToken<any>("AddNodeToGraphUseCase");
+
+/**
+ * Injection token for the RemoveNodeFromGraphUseCase.
+ *
+ * Use case for removing a node from a graph.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const removeNodeFromGraphUseCaseToken = createInjectionToken<any>(
+  "RemoveNodeFromGraphUseCase"
+);
+
+/**
+ * Injection token for the UpsertEdgeUseCase.
+ *
+ * Use case for upserting (insert or update) an edge in a graph.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const upsertEdgeUseCaseToken = createInjectionToken<any>("UpsertEdgeUseCase");
+
+/**
+ * Injection token for the RemoveEdgeUseCase.
+ *
+ * Use case for removing an edge from a graph.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const removeEdgeUseCaseToken = createInjectionToken<any>("RemoveEdgeUseCase");

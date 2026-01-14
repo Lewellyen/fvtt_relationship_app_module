@@ -49,6 +49,16 @@ export interface NodeEffects {
 }
 
 /**
+ * Backup structure for migration.
+ * Contains the previous version's data before migration.
+ */
+export interface NodeDataLastVersion {
+  schemaVersion: number;
+  // Previous version's data structure (will be defined in Phase 3)
+  [key: string]: unknown;
+}
+
+/**
  * Relationship node data structure.
  * Schema version 1 (MVP).
  */
@@ -64,6 +74,8 @@ export interface RelationshipNodeData {
   reveal: NodeReveal;
   effects?: NodeEffects;
   linkedEntityUuid?: string;
+  // Backup für Migration (wird in Phase 3 verwendet)
+  lastVersion?: NodeDataLastVersion;
 }
 
 type NodeDescriptionsField = foundry.data.fields.SchemaField<{
@@ -83,6 +95,10 @@ type NodeEffectsField = foundry.data.fields.SchemaField<{
   neutral: foundry.data.fields.StringField;
 }>;
 
+type NodeLastVersionField = foundry.data.fields.SchemaField<{
+  schemaVersion: foundry.data.fields.NumberField;
+}>;
+
 export interface RelationshipNodeDataSchema extends foundry.data.fields.DataSchema {
   schemaVersion: foundry.data.fields.NumberField;
   nodeKey: foundry.data.fields.StringField;
@@ -95,4 +111,5 @@ export interface RelationshipNodeDataSchema extends foundry.data.fields.DataSche
   reveal: NodeRevealField;
   effects: NodeEffectsField;
   linkedEntityUuid: foundry.data.fields.StringField;
+  lastVersion: NodeLastVersionField;
 }

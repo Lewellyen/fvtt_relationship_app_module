@@ -5,7 +5,7 @@
  * as well as managing marker flags for quick identification.
  */
 
-import type { RelationshipPageRepositoryAdapter } from "./relationship-page-repository-adapter.interface";
+import type { PlatformRelationshipPageRepositoryPort } from "@/domain/ports/repositories/platform-relationship-page-repository-port.interface";
 import type { EntityRepositoryError } from "@/domain/ports/repositories/platform-entity-repository.types";
 import type { RelationshipNodeData } from "@/domain/types/relationship-node-data.interface";
 import type { RelationshipGraphData } from "@/domain/types/relationship-graph-data.interface";
@@ -92,7 +92,7 @@ export function extractFlagKey(fullFlagPath: string): string {
 /**
  * Foundry-specific implementation of RelationshipPageRepositoryAdapter.
  */
-export class FoundryRelationshipPageRepositoryAdapter implements RelationshipPageRepositoryAdapter {
+export class FoundryRelationshipPageRepositoryAdapter implements PlatformRelationshipPageRepositoryPort {
   constructor(
     private readonly foundryGame: FoundryGame,
     private readonly foundryDocument: FoundryDocument

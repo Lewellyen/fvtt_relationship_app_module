@@ -91,6 +91,7 @@ export default defineConfig({
         "src/infrastructure/shared/utils/result.ts",
         "src/infrastructure/shared/tokens/collection-tokens.ts",
         "src/infrastructure/shared/tokens/repository-tokens.ts",
+        "src/infrastructure/shared/tokens/foundry/relationship-page-repository-adapter.token.ts",
         "src/application/utils/token-factory.ts",
         "src/infrastructure/di/token-factory.ts",
         // Coverage artifact: Array.sort() comparison order makes some branches unreachable
@@ -102,6 +103,8 @@ export default defineConfig({
         "src/domain/constants/relationship-flags.ts",
         // Phase 1 Bootstrapper: Integration-tested via init-orchestrator tests
         "src/framework/core/bootstrap/orchestrators/journal-entry-page-sheet-bootstrapper.ts",
+        // Migration Service: Migration code paths only testable with actual v2 migration
+        "src/application/services/MigrationService.ts",
       ],
     },
   },

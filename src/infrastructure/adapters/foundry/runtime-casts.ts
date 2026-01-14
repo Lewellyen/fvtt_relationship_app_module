@@ -616,3 +616,78 @@ export function castRelationshipNodePage(
     })
   );
 }
+
+/**
+ * Creates page data structure for creating a relationship node page.
+ *
+ * This helper function creates the data structure required by Foundry's
+ * createEmbeddedDocuments() API for JournalEntryPage creation.
+ *
+ * @param name - The page name (required by Foundry)
+ * @param nodeData - The relationship node data to store in system
+ * @returns Page data object with name, type, and system properties
+ */
+export function createRelationshipNodePageData(
+  name: string,
+  nodeData: import("@/domain/types/relationship-node-data.interface").RelationshipNodeData
+): {
+  name: string;
+  type: typeof JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_NODE;
+  system: import("@/domain/types/relationship-node-data.interface").RelationshipNodeData;
+} {
+  return {
+    name,
+    type: JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_NODE,
+    system: nodeData,
+  };
+}
+
+/**
+ * Creates page data structure for creating a relationship graph page.
+ *
+ * This helper function creates the data structure required by Foundry's
+ * createEmbeddedDocuments() API for JournalEntryPage creation.
+ *
+ * @param name - The page name (required by Foundry)
+ * @param graphData - The relationship graph data to store in system
+ * @returns Page data object with name, type, and system properties
+ */
+export function createRelationshipGraphPageData(
+  name: string,
+  graphData: import("@/domain/types/relationship-graph-data.interface").RelationshipGraphData
+): {
+  name: string;
+  type: typeof JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_GRAPH;
+  system: import("@/domain/types/relationship-graph-data.interface").RelationshipGraphData;
+} {
+  return {
+    name,
+    type: JOURNAL_PAGE_SHEET_TYPE.RELATIONSHIP_GRAPH,
+    system: graphData,
+  };
+}
+
+/**
+ * Type cast helper for createEmbeddedDocuments with custom page types.
+ *
+ * Foundry's type system doesn't know about custom module page types,
+ * so we need to cast the page data array to the expected type.
+ *
+ * This function wraps the cast in a way that type-coverage doesn't count it,
+ * since this file is excluded from type-coverage checks.
+ *
+ * @param pageDataArray - Array of page data to create
+ * @returns Cast page data array compatible with createEmbeddedDocuments
+ */
+export function castPageDataForCreateEmbeddedDocuments(
+  pageDataArray: Array<{
+    name: string;
+    type: string;
+    system: unknown;
+  }>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Runtime cast required: Foundry's CreateData type doesn't include custom module page types, but they are valid at runtime. This file is excluded from type-coverage.
+): any {
+  // type-coverage:ignore-next-line -- Runtime cast required: Foundry's CreateData type doesn't include custom module page types, but they are valid at runtime. This file is excluded from type-coverage.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Runtime cast required: Foundry's CreateData type doesn't include custom module page types, but they are valid at runtime. This file is excluded from type-coverage.
+  return pageDataArray as any;
+}

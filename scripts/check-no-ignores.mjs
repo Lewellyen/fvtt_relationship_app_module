@@ -99,8 +99,8 @@ const ALLOWED_WITH_MARKERS = [
   },
   {
     file: 'src/infrastructure/adapters/foundry/runtime-casts.ts',
-    allowed: ['type-coverage:ignore'],
-    reason: 'Foundry Runtime-Casts: Zentralisierte Foundry-spezifische Runtime-Cast-Helpers (bereits global in type-coverage.json ausgenommen)',
+    allowed: ['type-coverage:ignore', 'eslint-disable'],
+    reason: 'Foundry Runtime-Casts: Zentralisierte Foundry-spezifische Runtime-Cast-Helpers (bereits global in type-coverage.json ausgenommen, eslint-disable für any-Type-Casts notwendig)',
   },
   {
     file: 'src/application/utils/registry-casts.ts',

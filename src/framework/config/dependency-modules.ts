@@ -34,3 +34,4 @@ import "./modules/journal-visibility.config";
 import "./modules/window-services.config";
 import "./modules/journal-overview-window.config";
 import "./modules/relationship-page-services.config";
+import "./modules/relationship-app-services.config";

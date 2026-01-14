@@ -2,10 +2,10 @@
 
 This document catalogues all intentional code coverage exclusions marked with `/* c8 ignore */` comments. Each exclusion is justified, categorized, and analyzed for refactoring potential.
 
-**Last Updated:** 29. November 2025  
-**Coverage Status:** ✅ **100% Lines/Statements, 100% Branches, 100% Functions**  
-**Total Exclusions:** ~119 ignored lines across 29 files (101 c8 ignore markers) + File-Level Exclusions  
-**Refactoring Completed:** 88 markers eliminated (47.8% reduction from 184 → 96 functional markers, +5 reporting artifact markers = 101 total)  
+**Last Updated:** 29. November 2025
+**Coverage Status:** ✅ **100% Lines/Statements, 100% Branches, 100% Functions**
+**Total Exclusions:** ~119 ignored lines across 29 files (101 c8 ignore markers) + File-Level Exclusions
+**Refactoring Completed:** 88 markers eliminated (47.8% reduction from 184 → 96 functional markers, +5 reporting artifact markers = 101 total)
 **Recent Updates:** Type-only files and re-export files added to file-level exclusions (2025-11-29)
 
 **Note:** The difference between 184 markers and 201 lines is that a single `/* c8 ignore start */.../* c8 ignore stop */` block (2 markers) can span multiple lines.
@@ -213,7 +213,7 @@ dispose(): void {
 **Refactoring Analysis:**
 - **Effort:** LOW (2-3 hours)
 - **Benefit:** HIGH (~14 markers eliminable = 7%)
-- **Recommendation:** ✅ **REFACTOR** 
+- **Recommendation:** ✅ **REFACTOR**
   - Make `Disposable` interface optional (only implement when resources need cleanup)
   - Remove no-op `dispose()` methods
   - ⚠️ **Check Liskov Substitution Principle** - ensure polymorphism still works
@@ -586,6 +586,11 @@ In addition to inline `c8 ignore` markers, certain file types are excluded from 
 - `src/application/tokens/index.ts` - Re-export aggregation file
 
 **Justification:** These files contain no executable runtime code - they are pure type definitions or re-exports for backward compatibility. Excluding them from coverage is architecturally correct.
+
+### Migration Service (2025-11-29)
+- `src/application/services/MigrationService.ts` - Migration code paths only testable with actual v2 migration
+
+**Justification:** The migration service contains framework code for future schema migrations (v1 → v2). Migration code paths (migration loop, final version verification, post-migration type guards) are only testable when an actual schema version 2 migration exists. With current schema version 1 and no migrations, these code paths cannot be executed. Excluding this file from coverage is architecturally correct until schema version 2 is introduced.
 
 ---
 

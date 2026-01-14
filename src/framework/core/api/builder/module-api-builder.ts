@@ -5,8 +5,12 @@ import type { ModuleApi, TokenInfo, ModuleApiTokens } from "@/framework/core/api
 import type { IModuleApiBuilder } from "../interfaces/api-component-interfaces";
 import { createApiTokens } from "../api-token-config";
 import { getRegistrationStatus } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
-import { journalVisibilityServiceToken } from "@/application/tokens/application.tokens";
-import { journalDirectoryProcessorToken } from "@/application/tokens/application.tokens";
+import {
+  journalVisibilityServiceToken,
+  journalDirectoryProcessorToken,
+  graphDataServiceToken,
+  nodeDataServiceToken,
+} from "@/application/tokens/application.tokens";
 import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
 import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";
 import { foundryDocumentToken } from "@/infrastructure/shared/tokens/foundry/foundry-document.token";
@@ -74,6 +78,8 @@ export class ModuleApiBuilder implements IModuleApiBuilder {
           ["i18nFacadeToken", i18nFacadeToken],
           ["foundryJournalFacadeToken", foundryJournalFacadeToken],
           ["notificationCenterToken", notificationCenterToken],
+          ["graphDataServiceToken", graphDataServiceToken],
+          ["nodeDataServiceToken", nodeDataServiceToken],
         ];
 
         for (const [, token] of tokenEntries) {

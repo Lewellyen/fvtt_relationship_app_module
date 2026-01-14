@@ -3,6 +3,8 @@ import { notificationCenterToken } from "@/application/tokens/notifications/noti
 import {
   journalVisibilityServiceToken,
   journalDirectoryProcessorToken,
+  graphDataServiceToken,
+  nodeDataServiceToken,
 } from "@/application/tokens/application.tokens";
 import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n/i18n-facade.token";
 import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
@@ -33,5 +35,7 @@ export function createApiTokens(): ModuleApiTokens {
     foundrySettingsToken: markAsApiSafe(foundrySettingsToken),
     i18nFacadeToken: markAsApiSafe(i18nFacadeToken),
     foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken),
+    graphDataServiceToken: markAsApiSafe(graphDataServiceToken),
+    nodeDataServiceToken: markAsApiSafe(nodeDataServiceToken),
   };
 }

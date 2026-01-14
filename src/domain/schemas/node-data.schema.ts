@@ -38,6 +38,16 @@ const nodeEffectsSchema = v.optional(
 );
 
 /**
+ * Schema for backup structure (lastVersion).
+ * This is a flexible object that can contain any previous version's data.
+ */
+const nodeDataLastVersionSchema = v.optional(
+  v.object({
+    schemaVersion: v.number(),
+  })
+);
+
+/**
  * Valibot schema for RelationshipNodeData.
  */
 export const relationshipNodeDataSchema = v.object({
@@ -52,6 +62,7 @@ export const relationshipNodeDataSchema = v.object({
   reveal: nodeRevealSchema,
   effects: nodeEffectsSchema,
   linkedEntityUuid: v.optional(v.string()),
+  lastVersion: nodeDataLastVersionSchema,
 });
 
 /**
