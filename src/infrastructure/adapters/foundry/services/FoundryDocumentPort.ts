@@ -45,13 +45,14 @@ export class FoundryDocumentPort implements FoundryDocument, Disposable {
   }
 
   async update<TDocument extends { id: string }>(
-    document: { update: (changes: unknown) => Promise<TDocument> },
-    changes: unknown
+    document: { update: (changes: unknown, options?: { render?: boolean }) => Promise<TDocument> },
+    changes: unknown,
+    options?: { render?: boolean }
   ): Promise<Result<TDocument, FoundryError>> {
     return this.retryable.executeAsync(async () => {
       const portResult = this.portLoader.loadPort("FoundryDocument");
       if (!portResult.ok) return portResult;
-      return await portResult.value.update(document, changes);
+      return await portResult.value.update(document, changes, options);
     }, "FoundryDocument.update");
   }
 

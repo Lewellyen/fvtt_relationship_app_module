@@ -1,11 +1,38 @@
+diff --git a/node_modules/cytoscape/dist/cytoscape.esm.mjs b/node_modules/cytoscape/dist/cytoscape.esm.mjs
+index 9adca90..833db82 100644
+--- a/node_modules/cytoscape/dist/cytoscape.esm.mjs
++++ b/node_modules/cytoscape/dist/cytoscape.esm.mjs
+@@ -334,17 +334,17 @@ var descending = function descending(a, b) {
+   return -1 * ascending(a, b);
+ };
+
+-var extend = Object.assign != null ? Object.assign.bind(Object) : function (tgt) {
++// Safe-Extend: skip 'equals' property and swallow readonly errors
++var extend = function (tgt) {
+   var args = arguments;
+   for (var i = 1; i < args.length; i++) {
+     var obj = args[i];
+-    if (obj == null) {
+-      continue;
+-    }
++    if (obj == null) continue;
+     var keys = Object.keys(obj);
+     for (var j = 0; j < keys.length; j++) {
+       var k = keys[j];
+-      tgt[k] = obj[k];
++      if (k === 'equals') continue;
++      try { tgt[k] = obj[k]; } catch (e) { }
+     }
+   }
+   return tgt;
 diff --git a/node_modules/cytoscape/dist/cytoscape.umd.js b/node_modules/cytoscape/dist/cytoscape.umd.js
-index 390019b..1d0d164 100644
+index 1d0d164..390019b 100644
 --- a/node_modules/cytoscape/dist/cytoscape.umd.js
 +++ b/node_modules/cytoscape/dist/cytoscape.umd.js
 @@ -340,21 +340,21 @@
      return -1 * ascending(a, b);
    };
- 
+
 -  var extend = Object.assign != null ? Object.assign.bind(Object) : function (tgt) {
 -    var args = arguments;
 -    for (var i = 1; i < args.length; i++) {
@@ -36,6 +63,6 @@ index 390019b..1d0d164 100644
 +       }
 +       return tgt;
 +     };
- 
+
    // get [r, g, b] from #abc or #aabbcc
    var hex2tuple = function hex2tuple(hex) {

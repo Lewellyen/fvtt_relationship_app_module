@@ -343,7 +343,7 @@ describe("FoundryDocumentPort", () => {
       const result = await service.update(document, { name: "Updated" });
 
       expectResultOk(result);
-      expect(mockPort.update).toHaveBeenCalledWith(document, { name: "Updated" });
+      expect(mockPort.update).toHaveBeenCalledWith(document, { name: "Updated" }, undefined);
     });
 
     it("should handle async errors", async () => {

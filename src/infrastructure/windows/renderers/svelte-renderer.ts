@@ -33,19 +33,24 @@ export class SvelteRenderer implements IRenderEnginePort<SvelteComponentInstance
         });
       }
 
+      // Spread ViewModel properties as props (document, state, services, etc.)
+      // This allows components to directly access props like { document, nodeDataService, ... }
+      const props = {
+        ...descriptor.props,
+        ...viewModel, // Spread ViewModel properties as direct props
+        viewModel, // Also include viewModel for components that need it
+      };
+
       const mounted = mount(component, {
         target,
-        props: {
-          ...descriptor.props,
-          viewModel, // ViewModel als Prop
-        },
+        props,
       });
 
       return ok({
         id: `svelte-${Date.now()}-${Math.random()}`,
         type: "svelte",
         element: target,
-        props: { ...descriptor.props, viewModel },
+        props,
         instance: mounted, // Svelte-spezifisch: mount() Rückgabe
       });
     } catch (error) {

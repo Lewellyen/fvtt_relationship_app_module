@@ -182,11 +182,16 @@ export class FoundryRelationshipPageRepositoryAdapter implements PlatformRelatio
     const pageForUpdate =
       // type-coverage:ignore-next-line - Runtime cast required for Foundry document update
       page as unknown as {
-        update: (changes: unknown) => Promise<{ id: string }>;
+        update: (changes: unknown, options?: { render?: boolean }) => Promise<{ id: string }>;
       };
-    const updateResult = await this.foundryDocument.update(pageForUpdate, {
-      system: data,
-    });
+    // render: false verhindert Re-Render, da Svelte reaktiv ist und kein Re-Render nötig ist
+    const updateResult = await this.foundryDocument.update(
+      pageForUpdate,
+      {
+        system: data,
+      },
+      { render: false }
+    );
 
     if (!updateResult.ok) {
       return err({
@@ -283,11 +288,16 @@ export class FoundryRelationshipPageRepositoryAdapter implements PlatformRelatio
     const pageForUpdate =
       // type-coverage:ignore-next-line - Runtime cast required for Foundry document update
       page as unknown as {
-        update: (changes: unknown) => Promise<{ id: string }>;
+        update: (changes: unknown, options?: { render?: boolean }) => Promise<{ id: string }>;
       };
-    const updateResult = await this.foundryDocument.update(pageForUpdate, {
-      system: data,
-    });
+    // render: false verhindert Re-Render, da Svelte reaktiv ist und kein Re-Render nötig ist
+    const updateResult = await this.foundryDocument.update(
+      pageForUpdate,
+      {
+        system: data,
+      },
+      { render: false }
+    );
 
     if (!updateResult.ok) {
       return err({

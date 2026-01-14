@@ -12,6 +12,46 @@
 
 ### Upgrade-Hinweise
 
+## [0.59.0] - 2026-01-14
+### Hinzugefügt
+- **Phase 4 – UI: Graph & Node Sheets**: Vollständige Implementierung der Graph- und Node-Sheets ([Details](docs/roadmaps/phasesv2/phase-4-ui-sheets.md))
+- **WindowSystemBridgeMixin**: Bridge-Mixin für Sheet-Erweiterung mit Window-System + DI-Services ([Details](src/framework/ui/window-system/WindowSystemBridgeMixin.ts))
+- DI-Service-Zugriff über Public API (`game.modules.get(MODULE_ID).api`)
+- Window-System-Integration (Svelte-Rendering)
+- Scope-Management für DI-Services
+- Lifecycle-Integration (Foundry Sheet-Lifecycle: `_renderFrame()`, `close()`)
+- **Graph-Sheet**: Vollständige Implementierung mit Cytoscape-Integration ([Details](src/infrastructure/adapters/foundry/sheets/relationship-graph-sheet.ts))
+- Canvas-Renderer (Standard, LOD aktiv)
+- Graph-Elemente rendern (Nodes/Edges)
+- Interaktivität: Drag Nodes, Add/Remove Edges, Edit Edge, Zoom/Pan
+- Autosave-Funktionalität (Layout Save sofort, Structure Save debounced 500ms)
+- Dual Editor (UI Tab + JSON Tab mit Validierung)
+- Svelte-Komponenten: `GraphSheetView`, `CytoscapeGraph`, `GraphToolbar`, `GraphInspector`, `GraphJsonEditor`
+- **Node-Sheet**: Vollständige Implementierung mit Form-UI ([Details](src/infrastructure/adapters/foundry/sheets/relationship-node-sheet.ts))
+- Form-UI für Node-Daten bearbeiten (Name, Kind, Fraktion, Relation, Icon, Linked Entity UUID)
+- Descriptions (Public/Hidden/GM)
+- Reveal-Settings (Public/Hidden)
+- Effects (optional)
+- Form-Validation (Schema-Validierung)
+- Save-Button + Autosave (optional)
+- Svelte-Komponenten: `NodeSheetView`, `NodeForm`, `NodeDescriptionEditor`, `NodeRevealSettings`
+- **Performance-Ziele**: Initial Load < 1000ms (≤1000 Nodes), Interaktivitäts-FPS ≥20 FPS (≤1000 Nodes, mit LOD)
+- **Unit Tests**: Tests für WindowSystemBridgeMixin, Graph-Sheet, Node-Sheet ([Details](src/framework/ui/window-system/__tests__/), [Details](src/infrastructure/adapters/foundry/sheets/__tests__/))
+- **Integration Tests**: Tests für Sheet-Rendering und Window-System-Integration ([Details](src/framework/ui/window-system/__tests__/WindowSystemBridgeMixin.integration.test.ts))
+
+### Geändert
+- **RelationshipGraphSheet**: Von Stub zu vollständiger Implementierung mit WindowSystemBridgeMixin, Cytoscape-Integration und Dual Editor
+- **RelationshipNodeSheet**: Von Stub zu vollständiger Implementierung mit WindowSystemBridgeMixin und Form-UI
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.58.0] - 2026-01-14
 ### Hinzugefügt
 - **Phase 3 – Application: UseCases + Services + Schema-Migration**: Application-Layer-Logik mit UseCases, Services und Schema-Migration-Framework implementiert ([Details](docs/roadmaps/phasesv2/done-phase-3-application.md))

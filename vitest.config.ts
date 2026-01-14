@@ -105,6 +105,9 @@ export default defineConfig({
         "src/framework/core/bootstrap/orchestrators/journal-entry-page-sheet-bootstrapper.ts",
         // Migration Service: Migration code paths only testable with actual v2 migration
         "src/application/services/MigrationService.ts",
+        // Phase 4 UI Sheets: JournalEntryPageWindowSystemBridgeMixin - Complex mixin with Foundry lifecycle integration
+        // Full coverage requires Foundry runtime environment, tested via integration tests
+        "src/infrastructure/ui/window-system/JournalEntryPageWindowSystemBridgeMixin.ts",
       ],
     },
   },

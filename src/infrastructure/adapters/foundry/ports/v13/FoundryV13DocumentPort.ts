@@ -27,15 +27,21 @@ export class FoundryV13DocumentPort implements FoundryDocument {
   }
 
   async update<TDocument extends { id: string }>(
-    document: { update: (changes: unknown) => Promise<TDocument> },
-    changes: unknown
+    document: { update: (changes: unknown, options?: { render?: boolean }) => Promise<TDocument> },
+    changes: unknown,
+    options?: { render?: boolean }
   ): Promise<Result<TDocument, FoundryError>> {
     if (this.#disposed) {
       return err(createFoundryError("DISPOSED", "Cannot update document on disposed port"));
     }
 
-    return fromPromise<TDocument, FoundryError>(document.update(changes), (error) =>
-      createFoundryError("OPERATION_FAILED", "Failed to update document", { changes }, error)
+    return fromPromise<TDocument, FoundryError>(document.update(changes, options), (error) =>
+      createFoundryError(
+        "OPERATION_FAILED",
+        "Failed to update document",
+        { changes, options },
+        error
+      )
     );
   }
 

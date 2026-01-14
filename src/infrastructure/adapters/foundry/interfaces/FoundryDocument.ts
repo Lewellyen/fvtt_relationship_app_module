@@ -40,17 +40,20 @@ export interface FoundryDocument extends Disposable {
    *
    * @param document - The Foundry document instance
    * @param changes - The changes to apply (use `'property.-=': null` to delete properties)
+   * @param options - Optional update options (e.g., `{ render: false }` to prevent re-rendering)
    * @returns Result containing the updated document or a FoundryError
    *
    * @example
    * ```typescript
    * const result = await document.update(entry, { name: "Updated Name" });
    * // Delete property: { 'description.-=': null }
+   * // Prevent re-render: await document.update(entry, changes, { render: false });
    * ```
    */
   update<TDocument extends { id: string }>(
-    document: { update: (changes: unknown) => Promise<TDocument> },
-    changes: unknown
+    document: { update: (changes: unknown, options?: { render?: boolean }) => Promise<TDocument> },
+    changes: unknown,
+    options?: { render?: boolean }
   ): Promise<Result<TDocument, FoundryError>>;
 
   /**

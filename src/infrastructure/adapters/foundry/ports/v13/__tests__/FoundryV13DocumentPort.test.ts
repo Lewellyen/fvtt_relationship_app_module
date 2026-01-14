@@ -194,7 +194,7 @@ describe("FoundryV13DocumentPort", () => {
 
       expectResultOk(result);
       expect(result.value.name).toBe("Updated Name");
-      expect(document.update).toHaveBeenCalledWith({ name: "Updated Name" });
+      expect(document.update).toHaveBeenCalledWith({ name: "Updated Name" }, undefined);
     });
 
     it("should handle update errors", async () => {

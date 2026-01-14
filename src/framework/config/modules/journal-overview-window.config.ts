@@ -5,7 +5,7 @@ import { dependencyRegistry } from "@/framework/config/dependency-registry";
 import { windowRegistryToken } from "@/application/windows/tokens/window.tokens";
 import { createJournalOverviewWindowDefinition } from "@/application/windows/definitions/journal-overview-window.definition";
 import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
-import JournalOverviewWindow from "@/framework/ui/svelte/JournalOverviewWindow.svelte";
+import JournalOverviewWindow from "@/infrastructure/ui/svelte/JournalOverviewWindow.svelte";
 
 /**
  * Registers Journal Overview Window Definition.

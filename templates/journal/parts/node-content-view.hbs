@@ -1,0 +1,13 @@
+<div class="node-page h-full flex flex-col">
+  {{#if title.show}}
+  <header class="journal-page-header">
+    <h{{ title.level }}>{{ name }}</h{{ title.level }}>
+  </header>
+  {{/if}}
+
+  <section class="journal-page-content flex-1 min-h-0">
+    <section class="node-editor-shell h-full flex flex-col">
+      <div id="svelte-mount-point" class="flex-1 min-h-0"></div>
+    </section>
+  </section>
+</div>

@@ -333,6 +333,30 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['type-coverage:ignore-next-line'],
     reason: 'Valibot Parse Result: Type assertion for v.parse() return type. Valibot parse() returns validated data but TypeScript inference requires explicit type assertion.',
   },
+  // Phase 4: UI Sheets - WindowSystemBridgeMixin
+  {
+    file: 'src/infrastructure/ui/window-system/WindowSystemBridgeMixin.ts',
+    allowed: ['eslint-disable'],
+    reason: 'Mixin Pattern: TypeScript Mixin-Limitationen erfordern eslint-disable für Naming-Convention (Mixin-Funktion und Klasse) und no-explicit-any (Mixin-Konstruktor mit any[]). Mixin-Pattern ist notwendig für Foundry Sheet-Integration mit DI-Services.',
+  },
+  // Phase 4: UI Sheets - JournalEntryPageWindowSystemBridgeMixin
+  {
+    file: 'src/infrastructure/ui/window-system/JournalEntryPageWindowSystemBridgeMixin.ts',
+    allowed: ['eslint-disable', 'type-coverage:ignore-next-line', '@ts-expect-error'],
+    reason: 'Mixin Pattern: TypeScript Mixin-Limitationen erfordern eslint-disable für Naming-Convention (Mixin-Funktion und Klasse) und no-explicit-any (Mixin-Konstruktor mit any[]). Type-Casts für Service-Resolution und Foundry API-Zugriff sind notwendig. Mixin-Pattern ist notwendig für Foundry Sheet-Integration mit DI-Services.',
+  },
+  // Phase 4: UI Sheets - Relationship Graph Sheet
+  {
+    file: 'src/infrastructure/adapters/foundry/sheets/relationship-graph-sheet.ts',
+    allowed: ['eslint-disable-next-line'],
+    reason: 'Naming Convention: Base class name (GraphSheetBase) uses PascalCase convention, which is required for mixin pattern but conflicts with ESLint naming rules.',
+  },
+  // Phase 4: UI Sheets - Relationship Node Sheet
+  {
+    file: 'src/infrastructure/adapters/foundry/sheets/relationship-node-sheet.ts',
+    allowed: ['eslint-disable-next-line'],
+    reason: 'Naming Convention: Base class name (NodeSheetBase) uses PascalCase convention, which is required for mixin pattern but conflicts with ESLint naming rules.',
+  },
 
 ];
 

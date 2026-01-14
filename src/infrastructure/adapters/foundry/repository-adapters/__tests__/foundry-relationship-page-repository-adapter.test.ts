@@ -146,9 +146,13 @@ describe("FoundryRelationshipPageRepositoryAdapter", () => {
       const result = await adapter.updateNodePageContent("page-node-1", updatedData);
 
       expectResultOk(result);
-      expect(mockFoundryDocument.update).toHaveBeenCalledWith(expect.anything(), {
-        system: updatedData,
-      });
+      expect(mockFoundryDocument.update).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          system: updatedData,
+        },
+        { render: false }
+      );
     });
 
     it("should return error when page not found", async () => {
@@ -251,9 +255,13 @@ describe("FoundryRelationshipPageRepositoryAdapter", () => {
       const result = await adapter.updateGraphPageContent("page-graph-1", updatedData);
 
       expectResultOk(result);
-      expect(mockFoundryDocument.update).toHaveBeenCalledWith(expect.anything(), {
-        system: updatedData,
-      });
+      expect(mockFoundryDocument.update).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          system: updatedData,
+        },
+        { render: false }
+      );
     });
 
     it("should return error when page not found", async () => {

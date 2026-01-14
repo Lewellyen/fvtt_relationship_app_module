@@ -15,11 +15,16 @@ export default defineConfig(() => {
     // Simple alias mapping
     resolve: {
       alias: {
-        cytoscape: "cytoscape/dist/cytoscape.umd.js",
         "@": resolve(__dirname, "src"),
       },
       extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.svelte', '.svelte.ts'],
       dedupe: ['svelte']
+    },
+    optimizeDeps: {
+      include: ['cytoscape'],
+      esbuildOptions: {
+        target: 'es2020'
+      }
     },
     esbuild: {
       keepNames: true
