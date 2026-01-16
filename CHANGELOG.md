@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.59.5] - 2026-01-16
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **Security**: Ersetzt regex-basierte HTML-Sanitization in Test-Mocks durch DOMPurify - behebt CodeQL-Alerts für "Incomplete multi-character sanitization" durch Verwendung einer bewährten, robusten Library ([Details](src/infrastructure/adapters/foundry/services/__tests__/FoundryUtilsPort.test.ts))
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.59.4] - 2026-01-16
 ### Hinzugefügt
 - Keine Einträge

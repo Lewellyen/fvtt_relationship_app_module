@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import DOMPurify from "dompurify";
 import { FoundryUtilsPort, createFoundryUtilsPort, DIFoundryUtilsPort } from "../FoundryUtilsPort";
 import type { IFoundryUtilsAPI } from "../../api/foundry-api.interface";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
@@ -27,16 +28,9 @@ describe("FoundryUtilsPort", () => {
       flattenObject: vi.fn().mockReturnValue({ ["a.b"]: 1 }),
       expandObject: vi.fn().mockReturnValue({ a: { b: 1 } }),
       cleanHTML: vi.fn((html) => {
-        // Remove all script tags and their content, including variants with whitespace and attributes
-        // CodeQL requires explicit pattern matching for all variants
-        // Pattern 1: <script>...</script> (simple case)
-        // Pattern 2: <script ...>...</script> (with attributes)
-        // Pattern 3: <SCRIPT>...</SCRIPT> (uppercase)
-        // Pattern 4: </script > (with whitespace in closing tag)
-        let result = html;
-        // Match <script> with optional whitespace/attributes before >
-        result = result.replace(/<script\s*[^>]*>[\s\S]*?<\/script\s*[^>]*>/gi, "");
-        return result;
+        // Use DOMPurify for robust HTML sanitization - removes all dangerous tags including script
+        // This is more secure than regex-based solutions and satisfies CodeQL requirements
+        return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
       }),
       escapeHTML: vi.fn((str) =>
         str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -747,16 +741,9 @@ describe("FoundryUtilsPort", () => {
           flattenObject: vi.fn().mockReturnValue({ ["a.b"]: 1 }),
           expandObject: vi.fn().mockReturnValue({ a: { b: 1 } }),
           cleanHTML: vi.fn((html) => {
-            // Remove all script tags and their content, including variants with whitespace and attributes
-            // CodeQL requires explicit pattern matching for all variants
-            // Pattern 1: <script>...</script> (simple case)
-            // Pattern 2: <script ...>...</script> (with attributes)
-            // Pattern 3: <SCRIPT>...</SCRIPT> (uppercase)
-            // Pattern 4: </script > (with whitespace in closing tag)
-            let result = html;
-            // Match <script> with optional whitespace/attributes before >
-            result = result.replace(/<script\s*[^>]*>[\s\S]*?<\/script\s*[^>]*>/gi, "");
-            return result;
+            // Use DOMPurify for robust HTML sanitization - removes all dangerous tags including script
+            // This is more secure than regex-based solutions and satisfies CodeQL requirements
+            return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
           }),
           escapeHTML: vi.fn((str) => str.replace(/</g, "&lt;")),
           unescapeHTML: vi.fn((str) => str.replace(/&lt;/g, "<")),
