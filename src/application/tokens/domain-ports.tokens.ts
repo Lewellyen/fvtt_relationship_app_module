@@ -25,6 +25,7 @@ import type { PlatformJournalRepository } from "@/domain/ports/repositories/plat
 import type { PlatformRelationshipPageRepositoryPort } from "@/domain/ports/repositories/platform-relationship-page-repository-port.interface";
 import type { PlatformPageCreationPort } from "@/domain/ports/repositories/platform-page-creation-port.interface";
 import type { PlatformJournalPermissionPort } from "@/domain/ports/repositories/platform-journal-permission-port.interface";
+import type { PlatformRelationshipPageCollectionPort } from "@/domain/ports/repositories/platform-relationship-page-collection-port.interface";
 import type { PlatformContextMenuRegistrationPort } from "@/domain/ports/platform-context-menu-registration-port.interface";
 import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
 import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
@@ -222,6 +223,17 @@ export const platformPageCreationPortToken = createInjectionToken<PlatformPageCr
  */
 export const platformJournalPermissionPortToken =
   createInjectionToken<PlatformJournalPermissionPort>("PlatformJournalPermissionPort");
+
+/**
+ * DI Token for PlatformRelationshipPageCollectionPort.
+ *
+ * Platform-agnostic port for relationship page collection operations.
+ * Provides query operations for finding relationship pages by type or journal entry.
+ */
+export const platformRelationshipPageCollectionPortToken =
+  createInjectionToken<PlatformRelationshipPageCollectionPort>(
+    "PlatformRelationshipPageCollectionPort"
+  );
 
 /**
  * DI Token for PlatformContextMenuRegistrationPort.

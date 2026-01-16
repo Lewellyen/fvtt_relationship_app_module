@@ -21,7 +21,7 @@
         id: string;
         source: string;
         target: string;
-        knowledge?: number;
+        knowledge?: "public" | "hidden" | "secret";
         label?: string;
       }>;
       layout?: {
@@ -31,15 +31,26 @@
       };
     };
     readonly?: boolean;
+    nodeLabels?: Record<string, string>; // nodeKey -> label mapping
     onLayoutChange?: (layout: {
       positions: Record<string, { x: number; y: number }>;
       zoom: number;
       pan: { x: number; y: number };
     }) => void;
     onStructureChange?: (graphData: unknown) => void;
+    onSelectionChange?: (
+      element: { type: "node" | "edge"; id: string; data?: Record<string, unknown> } | undefined
+    ) => void;
   }
 
-  let { graphData, readonly = false, onLayoutChange, onStructureChange }: Props = $props();
+  let {
+    graphData,
+    readonly = false,
+    nodeLabels,
+    onLayoutChange,
+    onStructureChange,
+    onSelectionChange,
+  }: Props = $props();
 
   let containerElement: HTMLDivElement | null = null;
   let cyInstance = $state<cytoscape.Core | null>(null);
@@ -56,7 +67,7 @@
         // Cytoscape initialisieren (Canvas-Renderer ist Standard)
         cyInstance = cytoscape({
           container: containerElement,
-          elements: convertGraphDataToElements(graphData),
+          elements: convertGraphDataToElements(graphData, nodeLabels),
           style: getGraphStyle(),
           layout: {
             name: "preset",
@@ -90,7 +101,10 @@
     }
   });
 
-  function convertGraphDataToElements(graphData: Props["graphData"]) {
+  function convertGraphDataToElements(
+    graphData: Props["graphData"],
+    nodeLabels?: Props["nodeLabels"]
+  ) {
     if (!graphData) return [];
 
     const elements: Array<{ data: Record<string, unknown> }> = [];
@@ -101,7 +115,7 @@
         elements.push({
           data: {
             id: nodeKey,
-            label: nodeKey, // TODO: Load actual node data
+            label: nodeLabels?.[nodeKey] ?? nodeKey, // Verwende Label oder Fallback auf UUID
           },
         });
       }
@@ -188,6 +202,28 @@
         onStructureChange?.(graphData);
       }, 500);
     });
+
+    // Selection Events: Weitergeben an Parent
+    cyInstance.on("select", (event) => {
+      const element = event.target;
+      if (element.isNode()) {
+        onSelectionChange?.({
+          type: "node",
+          id: element.id(),
+          data: element.data(),
+        });
+      } else if (element.isEdge()) {
+        onSelectionChange?.({
+          type: "edge",
+          id: element.id(),
+          data: element.data(),
+        });
+      }
+    });
+
+    cyInstance.on("unselect", () => {
+      onSelectionChange?.(undefined);
+    });
   }
 
   function convertElementsToGraphData() {
@@ -198,7 +234,7 @@
       id: string;
       source: string;
       target: string;
-      knowledge?: number;
+      knowledge?: "public" | "hidden" | "secret";
       label?: string;
     }> = [];
 
@@ -207,13 +243,13 @@
     });
 
     cyInstance.edges().forEach((edge) => {
-      const knowledge = edge.data("knowledge") as number | undefined;
+      const knowledge = edge.data("knowledge") as "public" | "hidden" | "secret" | undefined;
       const label = edge.data("label") as string | undefined;
       const edgeData: {
         id: string;
         source: string;
         target: string;
-        knowledge?: number;
+        knowledge?: "public" | "hidden" | "secret";
         label?: string;
       } = {
         id: edge.id(),

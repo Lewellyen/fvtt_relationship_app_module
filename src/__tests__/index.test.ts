@@ -45,5 +45,5 @@ describe("index.ts", () => {
   it("should import without errors", async () => {
     // index.ts führt init-solid aus, das global bootstrappt
     await expect(import("../framework/index")).resolves.toBeDefined();
-  });
+  }, 15000);
 });

@@ -209,3 +209,72 @@ export interface IFoundryDocumentAPI {
    */
   querySelector(selector: string): HTMLElement | null;
 }
+
+/**
+ * Components of a parsed Foundry UUID
+ */
+export interface UuidComponents {
+  type: string;
+  documentName: string;
+  documentId: string;
+  pack?: string | undefined;
+}
+
+/**
+ * Interface for Foundry's utils API
+ *
+ * Wraps Foundry VTT's `foundry.utils.*` functions to enable:
+ * - Dependency injection for testability
+ * - Result-pattern instead of exceptions
+ * - Type-safe error handling
+ */
+/**
+ * Resolved UUID from Foundry's parseUuid function.
+ * Extracted to match actual Foundry API return type.
+ */
+export interface ResolvedUUID {
+  uuid: string;
+  collection: unknown;
+  documentId: string;
+  documentType: string;
+  doc: unknown | null;
+  embedded: string[];
+}
+
+export interface IFoundryUtilsAPI {
+  // UUID & Dokument-Handling
+  randomID(): string;
+  fromUuid(uuid: string): Promise<unknown | null>;
+  fromUuidSync(uuid: string): unknown | null;
+  parseUuid(uuid: string, options?: { relative?: unknown }): ResolvedUUID | null;
+  buildUuid(context: {
+    documentName?: string;
+    id: string;
+    pack?: null | string;
+    parent?: null | unknown;
+  }): string | null;
+
+  // Objekt-Manipulation
+  deepClone<T>(obj: T): T;
+  mergeObject<T>(original: T, updates: unknown, options?: unknown): T;
+  diffObject(original: object, updated: object): Record<string, unknown>;
+  flattenObject(obj: object): Record<string, unknown>;
+  expandObject(obj: Record<string, unknown>): unknown;
+
+  // HTML
+  cleanHTML(html: string): string;
+  escapeHTML(str: string): string;
+  unescapeHTML(str: string): string;
+
+  // Async/Timeout
+  fetchWithTimeout(
+    url: string,
+    data?: RequestInit,
+    options?: { onTimeout?: () => void; timeoutMs?: null | number }
+  ): Promise<Response>;
+  fetchJsonWithTimeout(
+    url: string,
+    data?: RequestInit,
+    options?: { onTimeout?: () => void; timeoutMs?: null | number }
+  ): Promise<unknown>;
+}

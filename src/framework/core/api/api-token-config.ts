@@ -13,6 +13,11 @@ import { foundryDocumentToken } from "@/infrastructure/shared/tokens/foundry/fou
 import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry/foundry-ui.token";
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
 import { foundryJournalFacadeToken } from "@/infrastructure/shared/tokens/foundry/foundry-journal-facade.token";
+import { foundryUtilsToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils.token";
+import { foundryUtilsUuidToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-uuid.token";
+import { foundryUtilsObjectToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-object.token";
+import { foundryUtilsHtmlToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-html.token";
+import { foundryUtilsAsyncToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-async.token";
 import type { ModuleApiTokens } from "@/framework/core/api/module-api";
 
 /**
@@ -37,5 +42,10 @@ export function createApiTokens(): ModuleApiTokens {
     foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken),
     graphDataServiceToken: markAsApiSafe(graphDataServiceToken),
     nodeDataServiceToken: markAsApiSafe(nodeDataServiceToken),
+    foundryUtilsToken: markAsApiSafe(foundryUtilsToken),
+    foundryUtilsUuidToken: markAsApiSafe(foundryUtilsUuidToken),
+    foundryUtilsObjectToken: markAsApiSafe(foundryUtilsObjectToken),
+    foundryUtilsHtmlToken: markAsApiSafe(foundryUtilsHtmlToken),
+    foundryUtilsAsyncToken: markAsApiSafe(foundryUtilsAsyncToken),
   };
 }

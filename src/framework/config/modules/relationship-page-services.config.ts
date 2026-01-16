@@ -13,11 +13,13 @@ import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycl
 import {
   platformRelationshipPageRepositoryPortToken,
   platformPageCreationPortToken,
+  platformRelationshipPageCollectionPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 import { relationshipPageCollectionAdapterToken } from "@/infrastructure/shared/tokens/foundry/relationship-page-collection-adapter.token";
 import { DIRelationshipPageRepositoryAdapter } from "@/infrastructure/adapters/foundry/repository-adapters/foundry-relationship-page-repository-adapter";
 import { DIRelationshipPageCollectionAdapter } from "@/infrastructure/adapters/foundry/collection-adapters/foundry-relationship-page-collection-adapter";
 import { DIFoundryPageCreationAdapter } from "@/infrastructure/adapters/foundry/repository-adapters/foundry-page-creation-adapter";
+import { DIFoundryPlatformRelationshipPageCollectionPortAdapter } from "@/infrastructure/adapters/foundry/collection-adapters/foundry-platform-relationship-page-collection-port-adapter";
 
 /**
  * Registers relationship page adapter services.
@@ -46,7 +48,7 @@ export function registerRelationshipPageServices(
     );
   }
 
-  // Register RelationshipPageCollectionAdapter
+  // Register RelationshipPageCollectionAdapter (infrastructure adapter)
   const collectionResult = container.registerClass(
     relationshipPageCollectionAdapterToken,
     DIRelationshipPageCollectionAdapter,
@@ -55,6 +57,18 @@ export function registerRelationshipPageServices(
   if (isErr(collectionResult)) {
     return err(
       `Failed to register RelationshipPageCollectionAdapter: ${collectionResult.error.message}`
+    );
+  }
+
+  // Register PlatformRelationshipPageCollectionPort (domain port adapter)
+  const domainPortResult = container.registerClass(
+    platformRelationshipPageCollectionPortToken,
+    DIFoundryPlatformRelationshipPageCollectionPortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(domainPortResult)) {
+    return err(
+      `Failed to register PlatformRelationshipPageCollectionPort: ${domainPortResult.error.message}`
     );
   }
 

@@ -259,6 +259,99 @@ describe("GraphDataService", () => {
       expect(mockRepository.updateGraphPageContent).toHaveBeenCalledWith(pageId, graphData);
     });
 
+    it("should clean layout data and keep valid entries", async () => {
+      const pageId = "page-123";
+      const graphData: RelationshipGraphData = {
+        ...createValidGraphData(),
+        layout: {
+          positions: {
+            node1: { x: 10, y: 20 },
+            node2: { x: "invalid" as unknown as number, y: 30 },
+          },
+          zoom: 1.25,
+          pan: { x: 5, y: 15 },
+        },
+      };
+
+      const notFoundError: EntityRepositoryError = {
+        code: "ENTITY_NOT_FOUND",
+        message: "Page not found",
+      };
+      vi.mocked(mockRepository.getGraphPageContent).mockResolvedValue(err(notFoundError));
+      vi.mocked(mockRepository.updateGraphPageContent).mockResolvedValue(ok(undefined));
+
+      const result = await service.saveGraphData(pageId, graphData);
+
+      expect(result.ok).toBe(true);
+      const savedData = vi.mocked(mockRepository.updateGraphPageContent).mock.calls[0]?.[1];
+      expect(savedData).toEqual({
+        ...graphData,
+        layout: {
+          positions: {
+            node1: { x: 10, y: 20 },
+          },
+          zoom: 1.25,
+          pan: { x: 5, y: 15 },
+        },
+      });
+    });
+
+    it("should remove layout when no valid entries remain", async () => {
+      const pageId = "page-123";
+      const graphData: RelationshipGraphData = {
+        ...createValidGraphData(),
+        layout: {
+          positions: {
+            node1: { x: "invalid" as unknown as number, y: 30 },
+          },
+          zoom: "invalid" as unknown as number,
+          pan: { x: "invalid" as unknown as number, y: 15 },
+        },
+      };
+
+      const notFoundError: EntityRepositoryError = {
+        code: "ENTITY_NOT_FOUND",
+        message: "Page not found",
+      };
+      vi.mocked(mockRepository.getGraphPageContent).mockResolvedValue(err(notFoundError));
+      vi.mocked(mockRepository.updateGraphPageContent).mockResolvedValue(ok(undefined));
+
+      const result = await service.saveGraphData(pageId, graphData);
+
+      expect(result.ok).toBe(true);
+      const savedData = vi.mocked(mockRepository.updateGraphPageContent).mock.calls[0]?.[1];
+      const { layout: _layout, ...expected } = graphData;
+      expect(savedData).toEqual(expected);
+    });
+
+    it("should keep zoom when positions and pan are missing", async () => {
+      const pageId = "page-123";
+      const graphData: RelationshipGraphData = {
+        ...createValidGraphData(),
+        layout: {
+          zoom: 2,
+        },
+      };
+
+      const notFoundError: EntityRepositoryError = {
+        code: "ENTITY_NOT_FOUND",
+        message: "Page not found",
+      };
+      vi.mocked(mockRepository.getGraphPageContent).mockResolvedValue(err(notFoundError));
+      vi.mocked(mockRepository.updateGraphPageContent).mockResolvedValue(ok(undefined));
+
+      const result = await service.saveGraphData(pageId, graphData);
+
+      expect(result.ok).toBe(true);
+      const savedData = vi.mocked(mockRepository.updateGraphPageContent).mock.calls[0]?.[1];
+      expect(savedData).toEqual({
+        ...graphData,
+        layout: {
+          zoom: 2,
+        },
+      });
+    });
+
     it("should warn when lastVersion exists (conflict detected)", async () => {
       const pageId = "page-123";
       const graphData = createValidGraphData();

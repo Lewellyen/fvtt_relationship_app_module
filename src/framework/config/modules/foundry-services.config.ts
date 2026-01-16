@@ -27,6 +27,12 @@ import { DIFoundrySettingsRegistrationAdapter } from "@/infrastructure/adapters/
 import { libWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry/lib-wrapper-service.token";
 import { journalContextMenuLibWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry/journal-context-menu-lib-wrapper-service.token";
 import { platformContextMenuRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
+import { createFoundryUtilsPort } from "@/infrastructure/adapters/foundry/services/FoundryUtilsPort";
+import { foundryUtilsToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils.token";
+import { foundryUtilsUuidToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-uuid.token";
+import { foundryUtilsObjectToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-object.token";
+import { foundryUtilsHtmlToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-html.token";
+import { foundryUtilsAsyncToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-async.token";
 
 /**
  * Registers Foundry service wrappers.
@@ -42,8 +48,10 @@ import { platformContextMenuRegistrationPortToken } from "@/application/tokens/d
  * - JournalDirectoryProcessor (singleton) - Processes journal directory DOM
  * - FoundryLibWrapperService (singleton) - Facade for libWrapper
  * - JournalContextMenuLibWrapperService (singleton) - Manages libWrapper for journal context menu
+ * - FoundryUtilsPort (singleton) - Wrapper for Foundry utils API (UUID, Object, HTML, Async)
  *
  * All services use port-based adapter pattern for Foundry version compatibility.
+ * FoundryUtilsPort does not use Port-Adapter-Pattern since Utils are stable across versions.
  *
  * @param container - The service container to register services in
  * @returns Result indicating success or error with details
@@ -185,6 +193,41 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
     return err(
       `Failed to register PlatformContextMenuRegistrationPort: ${contextMenuPortResult.error.message}`
     );
+  }
+
+  // Register FoundryUtilsPort (Composition Interface)
+  // Provides all Foundry utils functionality (UUID, Object, HTML, Async)
+  // Uses factory function to create instance with real Foundry API
+  const utilsResult = container.registerFactory(
+    foundryUtilsToken,
+    () => createFoundryUtilsPort(),
+    ServiceLifecycle.SINGLETON,
+    []
+  );
+  if (isErr(utilsResult)) {
+    return err(`Failed to register FoundryUtils service: ${utilsResult.error.message}`);
+  }
+
+  // Register aliases for specific ports (ISP-konform)
+  // Clients can inject only the port they need instead of the full FoundryUtils
+  const uuidAliasResult = container.registerAlias(foundryUtilsUuidToken, foundryUtilsToken);
+  if (isErr(uuidAliasResult)) {
+    return err(`Failed to register FoundryUtilsUuid alias: ${uuidAliasResult.error.message}`);
+  }
+
+  const objectAliasResult = container.registerAlias(foundryUtilsObjectToken, foundryUtilsToken);
+  if (isErr(objectAliasResult)) {
+    return err(`Failed to register FoundryUtilsObject alias: ${objectAliasResult.error.message}`);
+  }
+
+  const htmlAliasResult = container.registerAlias(foundryUtilsHtmlToken, foundryUtilsToken);
+  if (isErr(htmlAliasResult)) {
+    return err(`Failed to register FoundryUtilsHtml alias: ${htmlAliasResult.error.message}`);
+  }
+
+  const asyncAliasResult = container.registerAlias(foundryUtilsAsyncToken, foundryUtilsToken);
+  if (isErr(asyncAliasResult)) {
+    return err(`Failed to register FoundryUtilsAsync alias: ${asyncAliasResult.error.message}`);
   }
 
   return ok(undefined);

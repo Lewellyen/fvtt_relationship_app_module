@@ -13,6 +13,8 @@ import type { IGraphDataService } from "@/application/services/GraphDataService"
 import type { PlatformRelationshipPageRepositoryPort } from "@/domain/ports/repositories/platform-relationship-page-repository-port.interface";
 import type { PlatformPageCreationPort } from "@/domain/ports/repositories/platform-page-creation-port.interface";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
+import type { PlatformRelationshipPageCollectionPort } from "@/domain/ports/repositories/platform-relationship-page-collection-port.interface";
+import type { RelationshipPage } from "@/domain/ports/repositories/platform-relationship-page-collection-port.interface";
 // NOTE: Return type should be JournalEntryPage domain type when available
 // For now using string (pageId) as placeholder
 import { err, ok } from "@/domain/utils/result";
@@ -22,6 +24,7 @@ import {
   platformRelationshipPageRepositoryPortToken,
   platformPageCreationPortToken,
   notificationPublisherPortToken,
+  platformRelationshipPageCollectionPortToken,
 } from "@/application/tokens/domain-ports.tokens";
 
 /**
@@ -45,7 +48,8 @@ export class CreateGraphPageUseCase {
     private readonly graphDataService: IGraphDataService,
     private readonly pageRepository: PlatformRelationshipPageRepositoryPort,
     private readonly pageCreationPort: PlatformPageCreationPort,
-    private readonly notifications: NotificationPublisherPort
+    private readonly notifications: NotificationPublisherPort,
+    private readonly pageCollection: PlatformRelationshipPageCollectionPort
   ) {}
 
   /**
@@ -53,11 +57,12 @@ export class CreateGraphPageUseCase {
    *
    * Steps:
    * 1. Validate journal entry exists
-   * 2. Validate graph data
-   * 3. Create page (via Foundry API - requires infrastructure access)
-   * 4. Save graph data to page (lastVersion initial empty)
-   * 5. Set marker flag
-   * 6. Return created page
+   * 2. Auto-import node pages from journal (if any)
+   * 3. Validate graph data
+   * 4. Create page (via Foundry API - requires infrastructure access)
+   * 5. Save graph data to page (lastVersion initial empty)
+   * 6. Set marker flag
+   * 7. Return created page
    */
   async execute(input: CreateGraphPageInput): Promise<Result<string, UseCaseError>> {
     // Step 1: Validate journal entry exists
@@ -70,13 +75,50 @@ export class CreateGraphPageUseCase {
       });
     }
 
-    // Step 2: Validate graph data
+    // Step 2: Auto-import node pages from journal
+    const nodePagesResult = await this.pageCollection.findNodePagesByJournalEntry(
+      input.journalEntryId
+    );
+    if (nodePagesResult.ok) {
+      // Extract IDs from node pages (domain uses id field)
+      const nodeIds = nodePagesResult.value
+        .map((page: RelationshipPage) => page.id)
+        .filter((id: string | undefined): id is string => id !== undefined);
+
+      if (nodeIds.length > 0) {
+        // Combine existing nodeKeys with new IDs (avoid duplicates)
+        const existingNodeKeys = new Set(input.graphData.nodeKeys);
+        nodeIds.forEach((id: string) => existingNodeKeys.add(id));
+
+        // Update graphData with merged nodeKeys
+        input.graphData = {
+          ...input.graphData,
+          nodeKeys: Array.from(existingNodeKeys),
+        };
+
+        // Notify about imported nodes
+        this.notifications.info(
+          `Imported ${nodeIds.length} node(s) from journal`,
+          { journalId: input.journalEntryId, nodeCount: nodeIds.length },
+          { channels: ["ConsoleChannel"] }
+        );
+      }
+    } else {
+      // Non-critical error: log warning but continue
+      this.notifications.warn(
+        `Failed to find node pages in journal ${input.journalEntryId}`,
+        nodePagesResult.error,
+        { channels: ["ConsoleChannel"] }
+      );
+    }
+
+    // Step 3: Validate graph data
     const validationResult = this.graphDataService.validateGraphData(input.graphData);
     if (!validationResult.ok) {
       return validationResult;
     }
 
-    // Step 3: Create page
+    // Step 4: Create page
     const pageCreationResult = await this.pageCreationPort.createGraphPage(
       input.journalEntryId,
       input.graphData
@@ -91,7 +133,7 @@ export class CreateGraphPageUseCase {
 
     const pageId = pageCreationResult.value;
 
-    // Step 4: Save graph data to page (lastVersion initial empty)
+    // Step 5: Save graph data to page (lastVersion initial empty)
     const saveResult = await this.graphDataService.saveGraphData(pageId, input.graphData);
     if (!saveResult.ok) {
       this.notifications.error(`Failed to save graph data to page ${pageId}`, saveResult.error, {
@@ -100,7 +142,7 @@ export class CreateGraphPageUseCase {
       return saveResult;
     }
 
-    // Step 5: Set marker flag
+    // Step 6: Set marker flag
     const flagResult = await this.pageRepository.setGraphMarker(pageId, true);
     if (!flagResult.ok) {
       this.notifications.warn(
@@ -111,7 +153,7 @@ export class CreateGraphPageUseCase {
       // Non-critical error - continue
     }
 
-    // Step 6: Return created page ID
+    // Step 7: Return created page ID
     // TODO: Return full page object when domain type is available
     return ok(pageId);
   }
@@ -127,6 +169,7 @@ export class DICreateGraphPageUseCase extends CreateGraphPageUseCase {
     platformRelationshipPageRepositoryPortToken,
     platformPageCreationPortToken,
     notificationPublisherPortToken,
+    platformRelationshipPageCollectionPortToken,
   ] as const;
 
   constructor(
@@ -134,8 +177,16 @@ export class DICreateGraphPageUseCase extends CreateGraphPageUseCase {
     graphDataService: IGraphDataService,
     pageRepository: PlatformRelationshipPageRepositoryPort,
     pageCreationPort: PlatformPageCreationPort,
-    notifications: NotificationPublisherPort
+    notifications: NotificationPublisherPort,
+    pageCollection: PlatformRelationshipPageCollectionPort
   ) {
-    super(journalRepository, graphDataService, pageRepository, pageCreationPort, notifications);
+    super(
+      journalRepository,
+      graphDataService,
+      pageRepository,
+      pageCreationPort,
+      notifications,
+      pageCollection
+    );
   }
 }

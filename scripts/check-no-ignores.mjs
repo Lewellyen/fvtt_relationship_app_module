@@ -103,6 +103,11 @@ const ALLOWED_WITH_MARKERS = [
     reason: 'Foundry Runtime-Casts: Zentralisierte Foundry-spezifische Runtime-Cast-Helpers (bereits global in type-coverage.json ausgenommen, eslint-disable für any-Type-Casts notwendig)',
   },
   {
+    file: 'src/infrastructure/adapters/foundry/services/FoundryUtilsPort.ts',
+    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
+    reason: 'Foundry API: Foundry utils API (parseUuid, buildUuid) benötigt Type-Casts, da Foundry-Typen komplexe Overloads haben. eslint-disable und type-coverage:ignore für any-Type-Casts notwendig.',
+  },
+  {
     file: 'src/application/utils/registry-casts.ts',
     allowed: ['type-coverage:ignore', 'eslint-disable'],
     reason: 'Registry-Casts: Zentralisierte Registry-Type-Cast-Helpers für Type-Varianz (bereits global in type-coverage.json ausgenommen, eslint-disable für any-Parameter in castBindingToUnknown notwendig)',
@@ -169,6 +174,11 @@ const ALLOWED_WITH_MARKERS = [
     file: 'src/infrastructure/adapters/foundry/collection-adapters/foundry-relationship-page-collection-adapter.ts',
     allowed: ['type-coverage:ignore-next-line'],
     reason: 'Foundry Runtime-Casts: Runtime cast required for Foundry EmbeddedCollection pages property (journal.pages can be array or EmbeddedCollection)',
+  },
+  {
+    file: 'src/infrastructure/adapters/foundry/collection-adapters/foundry-platform-relationship-page-collection-port-adapter.ts',
+    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
+    reason: 'Foundry API: FoundryJournalEntryPage has complex type structure. Spread operator and runtime property access require type casts. Domain port adapter converts Foundry types to domain types.',
   },
   {
     file: 'src/infrastructure/adapters/foundry/repository-adapters/foundry-relationship-page-repository-adapter.ts',

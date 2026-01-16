@@ -382,6 +382,24 @@ export default [
     }
   },
 
+  // Runtime-Casts: any ist für Foundry API Type-Casts notwendig
+  // Diese Datei ist bereits global von type-coverage ausgenommen
+  {
+    files: ['**/runtime-casts.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off'
+    }
+  },
+
+  // FoundryUtilsPort: any ist für Foundry utils API Type-Casts notwendig
+  // Diese Datei ist bereits in der check-no-ignores Whitelist
+  {
+    files: ['**/FoundryUtilsPort.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off'
+    }
+  },
+
   // Type-Definitionen: deprecated APIs erlauben
   {
     files: ['**/*.d.ts'],

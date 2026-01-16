@@ -685,9 +685,109 @@ export function castPageDataForCreateEmbeddedDocuments(
     type: string;
     system: unknown;
   }>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Runtime cast required: Foundry's CreateData type doesn't include custom module page types, but they are valid at runtime. This file is excluded from type-coverage.
 ): any {
   // type-coverage:ignore-next-line -- Runtime cast required: Foundry's CreateData type doesn't include custom module page types, but they are valid at runtime. This file is excluded from type-coverage.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Runtime cast required: Foundry's CreateData type doesn't include custom module page types, but they are valid at runtime. This file is excluded from type-coverage.
+
   return pageDataArray as any;
+}
+
+/**
+ * Casts FoundryJournalEntryPage to Record<string, unknown> for spread operator usage.
+ *
+ * FoundryJournalEntryPage has a complex type structure that doesn't support
+ * the spread operator directly. This function provides a safe cast to
+ * Record<string, unknown> which allows spreading all page properties.
+ *
+ * @param page - The Foundry journal entry page to cast
+ * @returns The page as Record<string, unknown> for spread operations
+ *
+ * @remarks
+ * This cast is necessary because FoundryJournalEntryPage types from fvtt-types
+ * don't support index signatures, but at runtime all properties are accessible.
+ * The cast is safe because we're only using it for spreading properties into
+ * domain objects, not for type narrowing.
+ */
+export function castFoundryJournalEntryPageToRecord(
+  page: import("./types").FoundryJournalEntryPage
+): Record<string, unknown> {
+  // type-coverage:ignore-next-line -- Foundry API: FoundryJournalEntryPage has complex type structure, spread operator requires any cast
+  return page as any;
+}
+
+/**
+ * Casts parseUuid options to Foundry's ParseUUIDOptions type.
+ *
+ * Foundry's parseUuid function requires a specific options type that doesn't
+ * match our abstraction layer's interface. This function provides a safe cast.
+ *
+ * @param options - The options object to cast
+ * @returns The options as Foundry's ParseUUIDOptions type
+ *
+ * @remarks
+ * This cast is necessary because Foundry's ParseUUIDOptions type has complex
+ * constraints that don't match our simplified interface.
+ */
+export function castParseUuidOptions(options: { relative?: unknown } | undefined): unknown {
+  return options;
+}
+
+/**
+ * Casts Foundry's parseUuid result to ResolvedUUID interface.
+ *
+ * Foundry's parseUuid returns a complex type that doesn't directly match
+ * our ResolvedUUID interface. This function extracts the properties safely.
+ *
+ * @param result - The result from foundry.utils.parseUuid
+ * @returns The result as ResolvedUUID interface
+ *
+ * @remarks
+ * This cast is necessary because Foundry's parseUuid return type has properties
+ * that need to be accessed dynamically, but TypeScript can't infer the exact shape.
+ */
+export function castParseUuidResultToResolvedUUID(result: unknown): {
+  uuid: string;
+  collection: unknown;
+  documentId: string;
+  documentType: string;
+  doc: unknown | null;
+  embedded: string[];
+} {
+  // type-coverage:ignore-next-line -- Foundry API: parseUuid result requires any cast for property access
+  const foundryResult = result as any;
+  return {
+    // type-coverage:ignore-next-line -- Foundry API: Property access on any-typed result
+    uuid: foundryResult.uuid,
+    // type-coverage:ignore-next-line -- Foundry API: Property access on any-typed result
+    collection: foundryResult.collection,
+    // type-coverage:ignore-next-line -- Foundry API: Property access on any-typed result
+    documentId: foundryResult.documentId || "",
+    // type-coverage:ignore-next-line -- Foundry API: Property access on any-typed result
+    documentType: foundryResult.documentType || "",
+    // type-coverage:ignore-next-line -- Foundry API: Property access on any-typed result
+    doc: foundryResult.doc ?? null,
+    // type-coverage:ignore-next-line -- Foundry API: Property access on any-typed result
+    embedded: foundryResult.embedded ?? [],
+  };
+}
+
+/**
+ * Casts BuildUUID context to Foundry's BuildUUIDContext type.
+ *
+ * Foundry's buildUuid function requires a specific context type that doesn't
+ * match our abstraction layer's interface. This function provides a safe cast.
+ *
+ * @param context - The context object to cast
+ * @returns The context as Foundry's BuildUUIDContext type
+ *
+ * @remarks
+ * This cast is necessary because Foundry's BuildUUIDContext type has complex
+ * constraints that don't match our simplified interface.
+ */
+export function castBuildUuidContext(context: {
+  documentName?: string;
+  id: string;
+  pack?: null | string;
+  parent?: null | unknown;
+}): unknown {
+  return context;
 }

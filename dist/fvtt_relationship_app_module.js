@@ -13,7 +13,7 @@ var __privateAdd = (obj, member, value2) => member.has(obj) ? __typeError("Canno
 var __privateSet = (obj, member, value2, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value2) : member.set(obj, value2), value2);
 var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
 var __superGet = (cls, obj, key2) => __reflectGet(__getProtoOf(cls), key2, obj);
-var _a, _disposed, _disposed2, _disposed3, _disposed4, _disposed5, _disposed6, _b, _commit_callbacks, _discard_callbacks, _pending, _blocking_pending, _deferred, _dirty_effects, _maybe_dirty_effects, _Batch_instances, traverse_effect_tree_fn, defer_effects_fn, clear_marked_fn, resolve_fn, commit_fn, _pending2, _anchor, _hydrate_open, _props, _children, _effect, _main_effect, _pending_effect, _failed_effect, _offscreen_fragment, _pending_anchor, _local_pending_count, _pending_count, _is_creating_fallback, _effect_pending, _effect_pending_subscriber, _Boundary_instances, hydrate_resolved_content_fn, hydrate_pending_content_fn, get_anchor_fn, run_fn, show_pending_snippet_fn, update_pending_count_fn, _batches, _onscreen, _offscreen, _outroing, _transition, _commit, _discard, _listeners, _observer, _options, _ResizeObserverSingleton_instances, getObserver_fn, _events, _instance, _c, _d, _runeState, _actorsById, _itemsById, _itemsByActorId;
+var _a, _disposed, _disposed2, _disposed3, _disposed4, _disposed5, _disposed6, _b, _commit_callbacks, _discard_callbacks, _pending, _blocking_pending, _deferred, _dirty_effects, _maybe_dirty_effects, _Batch_instances, traverse_effect_tree_fn, defer_effects_fn, clear_marked_fn, resolve_fn, commit_fn, _pending2, _anchor, _hydrate_open, _props, _children, _effect, _main_effect, _pending_effect, _failed_effect, _offscreen_fragment, _pending_anchor, _local_pending_count, _pending_count, _is_creating_fallback, _effect_pending, _effect_pending_subscriber, _Boundary_instances, hydrate_resolved_content_fn, hydrate_pending_content_fn, get_anchor_fn, run_fn, show_pending_snippet_fn, update_pending_count_fn, _batches, _onscreen, _offscreen, _outroing, _transition, _commit, _discard, _listeners, _observer, _options, _ResizeObserverSingleton_instances, getObserver_fn, _events, _instance, _c, _d, _disposed7, _runeState, _actorsById, _itemsById, _itemsByActorId;
 const MODULE_METADATA = {
   ID: "fvtt_relationship_app_module",
   NAME: "Beziehungsnetzwerke für Foundry",
@@ -2634,6 +2634,9 @@ const platformPageCreationPortToken = createInjectionToken(
   "PlatformPageCreationPort"
 );
 const platformJournalPermissionPortToken = createInjectionToken("PlatformJournalPermissionPort");
+const platformRelationshipPageCollectionPortToken = createInjectionToken(
+  "PlatformRelationshipPageCollectionPort"
+);
 const platformContextMenuRegistrationPortToken = createInjectionToken("PlatformContextMenuRegistrationPort");
 const platformValidationPortToken = createInjectionToken("PlatformValidationPort");
 const platformLoggingPortToken = createInjectionToken("PlatformLoggingPort");
@@ -9719,6 +9722,36 @@ function castPageDataForCreateEmbeddedDocuments(pageDataArray) {
   return pageDataArray;
 }
 __name(castPageDataForCreateEmbeddedDocuments, "castPageDataForCreateEmbeddedDocuments");
+function castFoundryJournalEntryPageToRecord(page) {
+  return page;
+}
+__name(castFoundryJournalEntryPageToRecord, "castFoundryJournalEntryPageToRecord");
+function castParseUuidOptions(options2) {
+  return options2;
+}
+__name(castParseUuidOptions, "castParseUuidOptions");
+function castParseUuidResultToResolvedUUID(result) {
+  const foundryResult = result;
+  return {
+    // type-coverage:ignore-next-line -- Foundry API: Property access on any-typed result
+    uuid: foundryResult.uuid,
+    // type-coverage:ignore-next-line -- Foundry API: Property access on any-typed result
+    collection: foundryResult.collection,
+    // type-coverage:ignore-next-line -- Foundry API: Property access on any-typed result
+    documentId: foundryResult.documentId || "",
+    // type-coverage:ignore-next-line -- Foundry API: Property access on any-typed result
+    documentType: foundryResult.documentType || "",
+    // type-coverage:ignore-next-line -- Foundry API: Property access on any-typed result
+    doc: foundryResult.doc ?? null,
+    // type-coverage:ignore-next-line -- Foundry API: Property access on any-typed result
+    embedded: foundryResult.embedded ?? []
+  };
+}
+__name(castParseUuidResultToResolvedUUID, "castParseUuidResultToResolvedUUID");
+function castBuildUuidContext(context) {
+  return context;
+}
+__name(castBuildUuidContext, "castBuildUuidContext");
 const _FoundryV13DocumentPort = class _FoundryV13DocumentPort {
   constructor() {
     __privateAdd(this, _disposed3, false);
@@ -13200,6 +13233,11 @@ const foundryHooksToken = createInjectionToken("FoundryHooks");
 const foundryDocumentToken = createInjectionToken("FoundryDocument");
 const foundrySettingsToken = createInjectionToken("FoundrySettings");
 const foundryJournalFacadeToken = createInjectionToken("FoundryJournalFacade");
+const foundryUtilsToken = createInjectionToken("FoundryUtils");
+const foundryUtilsUuidToken = createInjectionToken("FoundryUtilsUuidPort");
+const foundryUtilsObjectToken = createInjectionToken("FoundryUtilsObjectPort");
+const foundryUtilsHtmlToken = createInjectionToken("FoundryUtilsHtmlPort");
+const foundryUtilsAsyncToken = createInjectionToken("FoundryUtilsAsyncPort");
 function createApiTokens() {
   return {
     notificationCenterToken: markAsApiSafe(notificationCenterToken),
@@ -13213,7 +13251,12 @@ function createApiTokens() {
     i18nFacadeToken: markAsApiSafe(i18nFacadeToken),
     foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken),
     graphDataServiceToken: markAsApiSafe(graphDataServiceToken),
-    nodeDataServiceToken: markAsApiSafe(nodeDataServiceToken)
+    nodeDataServiceToken: markAsApiSafe(nodeDataServiceToken),
+    foundryUtilsToken: markAsApiSafe(foundryUtilsToken),
+    foundryUtilsUuidToken: markAsApiSafe(foundryUtilsUuidToken),
+    foundryUtilsObjectToken: markAsApiSafe(foundryUtilsObjectToken),
+    foundryUtilsHtmlToken: markAsApiSafe(foundryUtilsHtmlToken),
+    foundryUtilsAsyncToken: markAsApiSafe(foundryUtilsAsyncToken)
   };
 }
 __name(createApiTokens, "createApiTokens");
@@ -13261,7 +13304,12 @@ const _ModuleApiBuilder = class _ModuleApiBuilder {
           ["foundryJournalFacadeToken", foundryJournalFacadeToken],
           ["notificationCenterToken", notificationCenterToken],
           ["graphDataServiceToken", graphDataServiceToken],
-          ["nodeDataServiceToken", nodeDataServiceToken]
+          ["nodeDataServiceToken", nodeDataServiceToken],
+          ["foundryUtilsToken", foundryUtilsToken],
+          ["foundryUtilsUuidToken", foundryUtilsUuidToken],
+          ["foundryUtilsObjectToken", foundryUtilsObjectToken],
+          ["foundryUtilsHtmlToken", foundryUtilsHtmlToken],
+          ["foundryUtilsAsyncToken", foundryUtilsAsyncToken]
         ];
         for (const [, token] of tokenEntries) {
           const isRegisteredResult = container2.isRegistered(token);
@@ -25518,7 +25566,7 @@ function CytoscapeGraph($$anchor, $$props) {
         cyInstance,
         cytoscape3({
           container: containerElement,
-          elements: convertGraphDataToElements($$props.graphData),
+          elements: convertGraphDataToElements($$props.graphData, $$props.nodeLabels),
           style: getGraphStyle(),
           layout: {
             name: "preset",
@@ -25549,7 +25597,7 @@ function CytoscapeGraph($$anchor, $$props) {
       set$1(cyInstance, null);
     }
   });
-  function convertGraphDataToElements(graphData) {
+  function convertGraphDataToElements(graphData, nodeLabels) {
     if (!graphData) return [];
     const elements = [];
     if (graphData.nodeKeys) {
@@ -25557,8 +25605,8 @@ function CytoscapeGraph($$anchor, $$props) {
         elements.push({
           data: {
             id: nodeKey,
-            label: nodeKey
-            // TODO: Load actual node data
+            label: nodeLabels?.[nodeKey] ?? nodeKey
+            // Verwende Label oder Fallback auf UUID
           }
         });
       }
@@ -25631,6 +25679,17 @@ function CytoscapeGraph($$anchor, $$props) {
         },
         500
       );
+    });
+    get$2(cyInstance).on("select", (event3) => {
+      const element3 = event3.target;
+      if (element3.isNode()) {
+        $$props.onSelectionChange?.({ type: "node", id: element3.id(), data: element3.data() });
+      } else if (element3.isEdge()) {
+        $$props.onSelectionChange?.({ type: "edge", id: element3.id(), data: element3.data() });
+      }
+    });
+    get$2(cyInstance).on("unselect", () => {
+      $$props.onSelectionChange?.(void 0);
     });
   }
   __name(setupEventHandlers, "setupEventHandlers");
@@ -25795,7 +25854,7 @@ __name(GraphInspector, "GraphInspector");
 delegate(["change"]);
 var root_2 = /* @__PURE__ */ from_html(`<li> </li>`);
 var root_1$2 = /* @__PURE__ */ from_html(`<div class="json-editor-errors svelte-173vm0z"><h4 class="svelte-173vm0z">Validation Errors:</h4> <ul class="svelte-173vm0z"></ul></div>`);
-var root$3 = /* @__PURE__ */ from_html(`<div class="graph-json-editor svelte-173vm0z"><div class="json-editor-header svelte-173vm0z"><h3 class="svelte-173vm0z">JSON Editor</h3> <div class="json-editor-actions svelte-173vm0z"><button class="action-button svelte-173vm0z">Validate</button> <button class="action-button primary svelte-173vm0z">Apply</button></div></div> <!> <div class="json-editor-content svelte-173vm0z"><textarea class="json-textarea svelte-173vm0z"></textarea></div></div>`);
+var root$3 = /* @__PURE__ */ from_html(`<div class="graph-json-editor svelte-173vm0z"><div class="json-editor-header svelte-173vm0z"><h3 class="svelte-173vm0z">JSON Editor</h3> <div class="json-editor-actions svelte-173vm0z"><button class="action-button svelte-173vm0z" title="Import all node pages from the same journal"> </button> <button class="action-button svelte-173vm0z">Validate</button> <button class="action-button primary svelte-173vm0z">Apply</button></div></div> <!> <div class="json-editor-content svelte-173vm0z"><textarea class="json-textarea svelte-173vm0z"></textarea></div></div>`);
 const $$css$2 = {
   hash: "svelte-173vm0z",
   code: ".graph-json-editor.svelte-173vm0z {display:flex;flex-direction:column;height:100%;}.json-editor-header.svelte-173vm0z {display:flex;justify-content:space-between;align-items:center;padding:1rem;border-bottom:1px solid var(--color-border, var(--color-border-light-primary));background:var(--color-bg-secondary, var(--color-cool-4));}.json-editor-header.svelte-173vm0z h3:where(.svelte-173vm0z) {margin:0;font-size:1.1rem;color:var(--color-text-primary, var(--color-text-light-primary));}.json-editor-actions.svelte-173vm0z {display:flex;gap:0.5rem;}.action-button.svelte-173vm0z {padding:0.5rem 1rem;border:1px solid var(--button-border-color);background-color:var(--button-background-color);color:var(--button-text-color);cursor:pointer;border-radius:4px;font-size:0.9rem;transition:all 0.2s;}.action-button.svelte-173vm0z:hover {background-color:var(--button-hover-background-color);border-color:var(--button-hover-border-color);color:var(--button-hover-text-color);}.action-button.primary.svelte-173vm0z {background-color:var(--button-hover-background-color);color:var(--button-hover-text-color);border-color:var(--button-hover-border-color);}.action-button.primary.svelte-173vm0z:hover {background-color:var(--color-warm-1);border-color:var(--color-warm-2);color:var(--color-cool-5);}.json-editor-errors.svelte-173vm0z {padding:1rem;background:var(--color-level-error-bg);border-bottom:1px solid var(--color-level-error-border);color:var(--color-level-error);}.json-editor-errors.svelte-173vm0z h4:where(.svelte-173vm0z) {margin:0 0 0.5rem 0;font-size:1rem;}.json-editor-errors.svelte-173vm0z ul:where(.svelte-173vm0z) {margin:0;padding-left:1.5rem;}.json-editor-content.svelte-173vm0z {flex:1;padding:1rem;overflow:hidden;}.json-textarea.svelte-173vm0z {width:100%;height:100%;font-family:var(--font-monospace);font-size:0.9rem;padding:0.5rem;border:1px solid var(--input-border-color);border-radius:4px;resize:none;background-color:var(--input-background-color);color:var(--input-text-color);}.json-textarea.svelte-173vm0z:focus {outline:none;border-color:var(--input-focus-outline-color);color:var(--input-text-color);}"
@@ -25807,12 +25866,33 @@ function GraphJsonEditor($$anchor, $$props) {
   let jsonText = /* @__PURE__ */ state("");
   let validationErrors = /* @__PURE__ */ state(proxy([]));
   let isValid = /* @__PURE__ */ state(true);
+  let isImporting = /* @__PURE__ */ state(false);
+  const graphPageUuid = /* @__PURE__ */ user_derived(() => () => {
+    if (!$$props.document) return "";
+    const pageWithUuid = $$props.document;
+    return pageWithUuid.uuid ?? pageWithUuid.id ?? pageWithUuid._id ?? "";
+  });
+  const defaultGraphData = /* @__PURE__ */ user_derived(() => () => ({
+    schemaVersion: 1,
+    graphKey: get$2(graphPageUuid)(),
+    nodeKeys: [],
+    edges: []
+  }));
   user_effect(() => {
-    set$1(jsonText, JSON.stringify($$props.graphData ?? {}, null, 2), true);
+    if ($$props.graphData) {
+      set$1(jsonText, JSON.stringify($$props.graphData, null, 2), true);
+    } else {
+      set$1(jsonText, JSON.stringify(get$2(defaultGraphData)(), null, 2), true);
+    }
   });
   function handleValidate() {
     try {
       const parsed = JSON.parse(get$2(jsonText));
+      const uuid3 = get$2(graphPageUuid)();
+      if (uuid3 && (!parsed.graphKey || parsed.graphKey === "")) {
+        parsed.graphKey = uuid3;
+        set$1(jsonText, JSON.stringify(parsed, null, 2), true);
+      }
       const result = $$props.onValidate?.(parsed);
       if (result) {
         set$1(isValid, result.valid, true);
@@ -25845,13 +25925,74 @@ function GraphJsonEditor($$anchor, $$props) {
     }
   }
   __name(handleApply, "handleApply");
+  async function handleImportNodes() {
+    if (!$$props.document || readonly2()) return;
+    set$1(isImporting, true);
+    try {
+      const pageWithParent = $$props.document;
+      const journalId = pageWithParent.parent?.id ?? pageWithParent.parent?._id;
+      if (!journalId) {
+        console.error("[GraphJsonEditor] No journal ID found in document");
+        return;
+      }
+      const mod = game?.modules?.get("fvtt_relationship_app_module");
+      if (!mod?.api) {
+        console.error("[GraphJsonEditor] Module API not available");
+        return;
+      }
+      const foundryGame = mod.api.resolve(mod.api.tokens.foundryGameToken);
+      const journalsResult = foundryGame.getJournalEntries();
+      if (!journalsResult.ok) {
+        console.error("[GraphJsonEditor] Failed to get journal entries:", journalsResult.error);
+        return;
+      }
+      const journal = journalsResult.value.find((j) => j.id === journalId || j._id === journalId);
+      if (!journal) {
+        console.error("[GraphJsonEditor] Journal not found:", journalId);
+        return;
+      }
+      const journalWithPages = journal;
+      let pages = [];
+      if (Array.isArray(journalWithPages.pages)) {
+        pages = journalWithPages.pages;
+      } else if (journalWithPages.pages && "contents" in journalWithPages.pages) {
+        pages = journalWithPages.pages.contents ?? [];
+      }
+      const nodePages = pages.filter((page) => page.type === "fvtt_relationship_app_module.relationship_app_node");
+      const nodeUuids = nodePages.map((page) => page.uuid ?? page.id ?? page._id).filter((uuid3) => uuid3 !== void 0);
+      if (nodeUuids.length === 0) {
+        console.info("[GraphJsonEditor] No node pages found in journal");
+        return;
+      }
+      let currentData;
+      try {
+        currentData = JSON.parse(get$2(jsonText));
+      } catch {
+        currentData = { schemaVersion: 1, graphKey: "", nodeKeys: [], edges: [] };
+      }
+      const existingNodeKeys = new Set(currentData.nodeKeys ?? []);
+      nodeUuids.forEach((uuid3) => existingNodeKeys.add(uuid3));
+      const updatedData = { ...currentData, nodeKeys: Array.from(existingNodeKeys) };
+      set$1(jsonText, JSON.stringify(updatedData, null, 2), true);
+      console.info(`[GraphJsonEditor] Imported ${nodeUuids.length} node(s) from journal`);
+    } catch (error3) {
+      console.error("[GraphJsonEditor] Error importing nodes:", error3);
+    } finally {
+      set$1(isImporting, false);
+    }
+  }
+  __name(handleImportNodes, "handleImportNodes");
   var div = root$3();
   var div_1 = child(div);
   var div_2 = sibling(child(div_1), 2);
   var button = child(div_2);
-  button.__click = handleValidate;
+  button.__click = handleImportNodes;
+  var text2 = child(button, true);
+  reset(button);
   var button_1 = sibling(button, 2);
-  button_1.__click = handleApply;
+  button_1.__click = handleValidate;
+  var button_2 = sibling(button_1, 2);
+  button_2.__click = handleApply;
   reset(div_2);
   reset(div_1);
   var node = sibling(div_1, 2);
@@ -25861,9 +26002,9 @@ function GraphJsonEditor($$anchor, $$props) {
       var ul = sibling(child(div_3), 2);
       each(ul, 21, () => get$2(validationErrors), index, ($$anchor3, error3) => {
         var li = root_2();
-        var text2 = child(li, true);
+        var text_1 = child(li, true);
         reset(li);
-        template_effect(() => set_text(text2, get$2(error3)));
+        template_effect(() => set_text(text_1, get$2(error3)));
         append($$anchor3, li);
       });
       reset(ul);
@@ -25881,8 +26022,10 @@ function GraphJsonEditor($$anchor, $$props) {
   reset(div_4);
   reset(div);
   template_effect(() => {
-    button.disabled = readonly2();
+    button.disabled = readonly2() || get$2(isImporting);
+    set_text(text2, get$2(isImporting) ? "Importing..." : "Import Nodes");
     button_1.disabled = readonly2();
+    button_2.disabled = readonly2();
     textarea.disabled = readonly2();
   });
   bind_value(textarea, () => get$2(jsonText), ($$value) => set$1(jsonText, $$value));
@@ -25904,14 +26047,21 @@ function GraphSheetView($$anchor, $$props) {
   let initialState = prop($$props, "state", 19, () => ({})), readonly2 = prop($$props, "readonly", 3, false);
   const graphDataServiceTyped = /* @__PURE__ */ user_derived(() => $$props.graphDataService);
   const notificationCenterTyped = /* @__PURE__ */ user_derived(() => $$props.notificationCenter);
+  const nodeDataServiceTyped = /* @__PURE__ */ user_derived(() => $$props.nodeDataService);
   let activeTab = /* @__PURE__ */ state("ui");
   let graphData = /* @__PURE__ */ state(void 0);
-  let selectedElement = void 0;
+  let nodeLabels = /* @__PURE__ */ state(proxy({}));
+  let selectedElement = /* @__PURE__ */ state(void 0);
   let cytoscapeInstance = null;
   let pageId = /* @__PURE__ */ user_derived(() => $$props.document?.id ?? "");
   user_effect(() => {
     if (get$2(pageId) && get$2(graphDataServiceTyped)) {
       loadGraphData();
+    }
+  });
+  user_effect(() => {
+    if (get$2(graphData)) {
+      loadNodeLabels();
     }
   });
   async function loadGraphData() {
@@ -25924,6 +26074,22 @@ function GraphSheetView($$anchor, $$props) {
     }
   }
   __name(loadGraphData, "loadGraphData");
+  async function loadNodeLabels() {
+    if (!get$2(graphData)?.nodeKeys || !get$2(nodeDataServiceTyped)) return;
+    const labels = {};
+    const loadPromises = get$2(graphData).nodeKeys.map(async (nodeKey) => {
+      const result = await get$2(nodeDataServiceTyped).loadNodeData(nodeKey);
+      if (result.ok && result.value) {
+        const nodeData = result.value;
+        labels[nodeKey] = nodeData.name ?? nodeKey;
+      } else {
+        labels[nodeKey] = nodeKey;
+      }
+    });
+    await Promise.all(loadPromises);
+    set$1(nodeLabels, labels, true);
+  }
+  __name(loadNodeLabels, "loadNodeLabels");
   function handleLayoutChange(layout4) {
     if (!get$2(graphData)) return;
     const updatedData = { ...get$2(graphData), layout: layout4 };
@@ -25960,9 +26126,16 @@ function GraphSheetView($$anchor, $$props) {
     return { valid: false, errors: [errorMessage] };
   }
   __name(handleValidate, "handleValidate");
-  function handleApply(newGraphData) {
-    set$1(graphData, newGraphData, true);
-    loadGraphData();
+  async function handleApply(newGraphData) {
+    if (!get$2(graphDataServiceTyped) || !get$2(pageId)) return;
+    const typedData = newGraphData;
+    const saveResult = await get$2(graphDataServiceTyped).saveGraphData(get$2(pageId), typedData);
+    if (!saveResult.ok) {
+      get$2(notificationCenterTyped)?.error("Failed to save graph data", saveResult.error);
+      return;
+    }
+    set$1(graphData, typedData, true);
+    get$2(notificationCenterTyped)?.info("Graph data saved and applied");
   }
   __name(handleApply, "handleApply");
   function handleFit() {
@@ -25974,21 +26147,194 @@ function GraphSheetView($$anchor, $$props) {
   }
   __name(handleCenter, "handleCenter");
   function handleAddEdge() {
-    get$2(notificationCenterTyped)?.info("Add edge feature coming soon");
+    if (!get$2(graphData)?.nodeKeys || get$2(graphData).nodeKeys.length < 2) {
+      get$2(notificationCenterTyped)?.error("At least 2 nodes required to add an edge");
+      return;
+    }
+    const nodeOptions = get$2(graphData).nodeKeys.map((key2) => {
+      const label2 = get$2(nodeLabels)[key2] ?? key2;
+      return `<option value="${key2}">${label2}</option>`;
+    }).join("");
+    const content = `
+    <div class="form-group">
+      <label>Source Node:</label>
+      <select name="source" required>
+        <option value="">-- Select Source --</option>
+        ${nodeOptions}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Target Node:</label>
+      <select name="target" required>
+        <option value="">-- Select Target --</option>
+        ${nodeOptions}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Knowledge Level:</label>
+      <label><input type="radio" name="knowledge" value="public" checked> Public</label>
+      <label><input type="radio" name="knowledge" value="hidden"> Hidden</label>
+      <label><input type="radio" name="knowledge" value="secret"> Secret</label>
+    </div>
+    <div class="form-group">
+      <label>Label (optional):</label>
+      <input type="text" name="label" placeholder="Edge label">
+    </div>
+  `;
+    new foundry.applications.api.DialogV2({
+      window: { title: "Add Edge" },
+      content,
+      buttons: [
+        {
+          action: "add",
+          label: "Add Edge",
+          default: true,
+          callback: /* @__PURE__ */ __name((event3, button, dialog) => {
+            const form = button.form;
+            if (!form) {
+              get$2(notificationCenterTyped)?.error("Form not found");
+              return false;
+            }
+            const sourceElement = form.elements.namedItem("source");
+            const targetElement = form.elements.namedItem("target");
+            const knowledgeElement = form.elements.namedItem("knowledge");
+            const labelElement = form.elements.namedItem("label");
+            const source2 = sourceElement?.value;
+            const target = targetElement?.value;
+            const knowledge = knowledgeElement?.value;
+            const label2 = labelElement?.value || void 0;
+            if (!source2 || !target) {
+              get$2(notificationCenterTyped)?.error("Source and target are required");
+              return false;
+            }
+            if (source2 === target) {
+              get$2(notificationCenterTyped)?.error("Source and target must be different");
+              return false;
+            }
+            const edgeData = { source: source2, target, knowledge };
+            if (label2) {
+              edgeData.label = label2;
+            }
+            handleEdgeConfirm(edgeData);
+            return true;
+          }, "callback")
+        },
+        { action: "cancel", label: "Cancel" }
+      ]
+    }).render({ force: true });
   }
   __name(handleAddEdge, "handleAddEdge");
+  function handleEdgeConfirm(edgeData) {
+    if (!get$2(graphData)) return;
+    let uuid3 = "";
+    try {
+      if (typeof game !== "undefined" && game?.modules) {
+        const mod = game.modules.get("fvtt_relationship_app_module");
+        if (mod?.api?.resolve) {
+          const utilsUuid = mod.api.resolve(mod.api.tokens.foundryUtilsUuidToken);
+          uuid3 = utilsUuid.randomID();
+        } else {
+          uuid3 = foundry.utils.randomID();
+        }
+      } else {
+        uuid3 = foundry.utils.randomID();
+      }
+    } catch {
+      uuid3 = foundry.utils.randomID();
+    }
+    const edgeId = `${edgeData.source}-${edgeData.target}-${uuid3}`;
+    const existingEdge = get$2(graphData).edges?.find((e) => e.source === edgeData.source && e.target === edgeData.target);
+    if (existingEdge) {
+      get$2(notificationCenterTyped)?.error("Edge already exists between these nodes");
+      return;
+    }
+    const newEdge = {
+      id: edgeId,
+      source: edgeData.source,
+      target: edgeData.target,
+      knowledge: edgeData.knowledge,
+      ...edgeData.label ? { label: edgeData.label } : {}
+    };
+    const updatedData = {
+      ...get$2(graphData),
+      edges: [...get$2(graphData).edges ?? [], newEdge]
+    };
+    handleStructureChange(updatedData);
+  }
+  __name(handleEdgeConfirm, "handleEdgeConfirm");
+  function handleSelectionChange(element3) {
+    set$1(selectedElement, element3, true);
+  }
+  __name(handleSelectionChange, "handleSelectionChange");
   function handleDelete() {
-    get$2(notificationCenterTyped)?.info("Delete feature coming soon");
+    if (!get$2(selectedElement) || !get$2(graphData)) return;
+    if (get$2(selectedElement).type === "node") {
+      const nodeEdges = get$2(graphData).edges?.filter((e) => e.source === get$2(selectedElement).id || e.target === get$2(selectedElement).id);
+      if (nodeEdges && nodeEdges.length > 0) {
+        get$2(notificationCenterTyped)?.error(`Cannot delete node: ${nodeEdges.length} edge(s) connected. Delete edges first.`);
+        return;
+      } else {
+        const updatedData = {
+          ...get$2(graphData),
+          nodeKeys: get$2(graphData).nodeKeys?.filter((k) => k !== get$2(selectedElement).id) ?? []
+        };
+        handleStructureChange(updatedData);
+        set$1(
+          selectedElement,
+          void 0
+          // Selection zurücksetzen
+        );
+      }
+    } else if (get$2(selectedElement).type === "edge") {
+      const updatedData = {
+        ...get$2(graphData),
+        edges: get$2(graphData).edges?.filter((e) => e.id !== get$2(selectedElement).id) ?? []
+      };
+      handleStructureChange(updatedData);
+      set$1(
+        selectedElement,
+        void 0
+        // Selection zurücksetzen
+      );
+    }
   }
   __name(handleDelete, "handleDelete");
+  function handleElementUpdate(id2, data4) {
+    if (!get$2(graphData) || !get$2(selectedElement)) return;
+    if (get$2(selectedElement).type === "edge") {
+      const updatedEdges = get$2(graphData).edges?.map((edge) => {
+        if (edge.id === id2) {
+          return {
+            ...edge,
+            ...data4
+            // knowledge, label werden überschrieben
+          };
+        }
+        return edge;
+      });
+      const updatedData = { ...get$2(graphData), edges: updatedEdges ?? [] };
+      handleStructureChange(updatedData);
+      set$1(
+        selectedElement,
+        {
+          ...get$2(selectedElement),
+          data: { ...get$2(selectedElement).data, ...data4 }
+        },
+        true
+      );
+    } else if (get$2(selectedElement).type === "node") {
+      get$2(notificationCenterTyped)?.info("Node properties editing not yet implemented");
+    }
+  }
+  __name(handleElementUpdate, "handleElementUpdate");
   var div = root$2();
   var div_1 = child(div);
-  var button = child(div_1);
+  var button_1 = child(div_1);
   let classes2;
-  button.__click = () => set$1(activeTab, "ui");
-  var button_1 = sibling(button, 2);
+  button_1.__click = () => set$1(activeTab, "ui");
+  var button_2 = sibling(button_1, 2);
   let classes_1;
-  button_1.__click = () => set$1(activeTab, "json");
+  button_2.__click = () => set$1(activeTab, "json");
   reset(div_1);
   var node = sibling(div_1, 2);
   {
@@ -26013,8 +26359,12 @@ function GraphSheetView($$anchor, $$props) {
             get readonly() {
               return readonly2();
             },
+            get nodeLabels() {
+              return get$2(nodeLabels);
+            },
             onLayoutChange: handleLayoutChange,
-            onStructureChange: handleStructureChange
+            onStructureChange: handleStructureChange,
+            onSelectionChange: handleSelectionChange
           });
         }, "consequent");
         if_block(node_2, ($$render) => {
@@ -26026,17 +26376,17 @@ function GraphSheetView($$anchor, $$props) {
       {
         var consequent_1 = /* @__PURE__ */ __name(($$anchor3) => {
           GraphInspector($$anchor3, {
-            selectedElement,
+            get selectedElement() {
+              return get$2(selectedElement);
+            },
             get readonly() {
               return readonly2();
             },
-            onUpdate: /* @__PURE__ */ __name((id2, data4) => {
-              get$2(notificationCenterTyped)?.info("Update feature coming soon");
-            }, "onUpdate")
+            onUpdate: handleElementUpdate
           });
         }, "consequent_1");
         if_block(node_3, ($$render) => {
-          if (selectedElement) $$render(consequent_1);
+          if (get$2(selectedElement)) $$render(consequent_1);
         });
       }
       reset(div_3);
@@ -26049,6 +26399,9 @@ function GraphSheetView($$anchor, $$props) {
       GraphJsonEditor(node_4, {
         get graphData() {
           return get$2(graphData);
+        },
+        get document() {
+          return $$props.document;
         },
         get readonly() {
           return readonly2();
@@ -26066,8 +26419,8 @@ function GraphSheetView($$anchor, $$props) {
   }
   reset(div);
   template_effect(() => {
-    classes2 = set_class(button, 1, "tab-button svelte-1cqg2z6", null, classes2, { active: get$2(activeTab) === "ui" });
-    classes_1 = set_class(button_1, 1, "tab-button svelte-1cqg2z6", null, classes_1, { active: get$2(activeTab) === "json" });
+    classes2 = set_class(button_1, 1, "tab-button svelte-1cqg2z6", null, classes2, { active: get$2(activeTab) === "ui" });
+    classes_1 = set_class(button_2, 1, "tab-button svelte-1cqg2z6", null, classes_1, { active: get$2(activeTab) === "json" });
   });
   append($$anchor, div);
   pop();
@@ -28487,6 +28840,439 @@ const _DIFoundrySettingsRegistrationAdapter = class _DIFoundrySettingsRegistrati
 __name(_DIFoundrySettingsRegistrationAdapter, "DIFoundrySettingsRegistrationAdapter");
 _DIFoundrySettingsRegistrationAdapter.dependencies = [foundrySettingsToken];
 let DIFoundrySettingsRegistrationAdapter = _DIFoundrySettingsRegistrationAdapter;
+const _FoundryUtilsPort = class _FoundryUtilsPort {
+  constructor(foundryAPI) {
+    __privateAdd(this, _disposed7, false);
+    this.foundryAPI = foundryAPI;
+  }
+  // ===== UUID & Dokument-Handling =====
+  randomID() {
+    if (__privateGet(this, _disposed7)) {
+      return "";
+    }
+    try {
+      if (!this.foundryAPI) {
+        return `fallback-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      }
+      return this.foundryAPI.randomID();
+    } catch {
+      return `fallback-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    }
+  }
+  async fromUuid(uuid3) {
+    if (__privateGet(this, _disposed7)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot resolve UUID on disposed port", { uuid: uuid3 })
+      };
+    }
+    try {
+      if (!this.foundryAPI) {
+        return ok(null);
+      }
+      const document2 = await this.foundryAPI.fromUuid(uuid3);
+      return ok(document2);
+    } catch (error3) {
+      return err(
+        createFoundryError("OPERATION_FAILED", `Failed to resolve UUID: ${uuid3}`, { uuid: uuid3 }, error3)
+      );
+    }
+  }
+  fromUuidSync(uuid3) {
+    if (__privateGet(this, _disposed7)) {
+      return {
+        ok: false,
+        error: createFoundryError(
+          "DISPOSED",
+          "Cannot resolve UUID synchronously on disposed port",
+          {
+            uuid: uuid3
+          }
+        )
+      };
+    }
+    try {
+      if (!this.foundryAPI) {
+        return ok(null);
+      }
+      return ok(this.foundryAPI.fromUuidSync(uuid3));
+    } catch (error3) {
+      return err(
+        createFoundryError(
+          "OPERATION_FAILED",
+          `Failed to resolve UUID synchronously: ${uuid3}`,
+          { uuid: uuid3 },
+          error3
+        )
+      );
+    }
+  }
+  parseUuid(uuid3) {
+    if (__privateGet(this, _disposed7)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot parse UUID on disposed port", { uuid: uuid3 })
+      };
+    }
+    try {
+      if (!this.foundryAPI) {
+        return err(
+          createFoundryError("API_NOT_AVAILABLE", "Foundry utils API not available", { uuid: uuid3 })
+        );
+      }
+      const resolved = this.foundryAPI.parseUuid(uuid3);
+      if (resolved === null) {
+        return err(
+          createFoundryError("OPERATION_FAILED", `Failed to parse UUID: ${uuid3}`, { uuid: uuid3 })
+        );
+      }
+      const components2 = {
+        type: resolved.documentType,
+        documentName: resolved.documentType,
+        documentId: resolved.documentId
+      };
+      if (resolved.collection) {
+        components2.pack = String(resolved.collection);
+      }
+      return ok(components2);
+    } catch (error3) {
+      return err(
+        createFoundryError("OPERATION_FAILED", `Failed to parse UUID: ${uuid3}`, { uuid: uuid3 }, error3)
+      );
+    }
+  }
+  buildUuid(type, documentName, documentId, pack) {
+    if (__privateGet(this, _disposed7)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot build UUID on disposed port", {
+          type,
+          documentName,
+          documentId,
+          pack
+        })
+      };
+    }
+    try {
+      if (!this.foundryAPI) {
+        return err(
+          createFoundryError("API_NOT_AVAILABLE", "Foundry utils API not available", {
+            type,
+            documentName,
+            documentId,
+            pack
+          })
+        );
+      }
+      const uuid3 = this.foundryAPI.buildUuid({
+        documentName: documentName || type,
+        id: documentId,
+        pack: pack ?? null
+      });
+      if (uuid3 === null) {
+        return err(
+          createFoundryError(
+            "OPERATION_FAILED",
+            `Failed to build UUID: ${type}.${documentName}.${documentId}`,
+            { type, documentName, documentId, pack }
+          )
+        );
+      }
+      return ok(uuid3);
+    } catch (error3) {
+      return err(
+        createFoundryError(
+          "OPERATION_FAILED",
+          `Failed to build UUID: ${type}.${documentName}.${documentId}`,
+          { type, documentName, documentId, pack },
+          error3
+        )
+      );
+    }
+  }
+  // ===== Objekt-Manipulation =====
+  deepClone(obj) {
+    if (__privateGet(this, _disposed7)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot deep clone on disposed port", {})
+      };
+    }
+    try {
+      if (!this.foundryAPI) {
+        return err(createFoundryError("API_NOT_AVAILABLE", "Foundry utils API not available", {}));
+      }
+      return ok(this.foundryAPI.deepClone(obj));
+    } catch (error3) {
+      return err(createFoundryError("OPERATION_FAILED", "Failed to deep clone object", {}, error3));
+    }
+  }
+  mergeObject(original, updates, options2) {
+    if (__privateGet(this, _disposed7)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot merge object on disposed port", {})
+      };
+    }
+    try {
+      if (!this.foundryAPI) {
+        return err(createFoundryError("API_NOT_AVAILABLE", "Foundry utils API not available", {}));
+      }
+      return ok(this.foundryAPI.mergeObject(original, updates, options2));
+    } catch (error3) {
+      return err(createFoundryError("OPERATION_FAILED", "Failed to merge object", {}, error3));
+    }
+  }
+  diffObject(original, updated) {
+    if (__privateGet(this, _disposed7)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot diff object on disposed port", {})
+      };
+    }
+    try {
+      if (!this.foundryAPI) {
+        return err(createFoundryError("API_NOT_AVAILABLE", "Foundry utils API not available", {}));
+      }
+      if (typeof original !== "object" || original === null) {
+        return err(
+          createFoundryError("OPERATION_FAILED", "Original must be an object", { original })
+        );
+      }
+      if (typeof updated !== "object" || updated === null) {
+        return err(
+          createFoundryError("OPERATION_FAILED", "Updated must be an object", { updated })
+        );
+      }
+      return ok(this.foundryAPI.diffObject(original, updated));
+    } catch (error3) {
+      return err(createFoundryError("OPERATION_FAILED", "Failed to diff object", {}, error3));
+    }
+  }
+  flattenObject(obj) {
+    if (__privateGet(this, _disposed7)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot flatten object on disposed port", {})
+      };
+    }
+    try {
+      if (!this.foundryAPI) {
+        return err(createFoundryError("API_NOT_AVAILABLE", "Foundry utils API not available", {}));
+      }
+      if (typeof obj !== "object" || obj === null) {
+        return err(createFoundryError("OPERATION_FAILED", "Value must be an object", { obj }));
+      }
+      return ok(this.foundryAPI.flattenObject(obj));
+    } catch (error3) {
+      return err(createFoundryError("OPERATION_FAILED", "Failed to flatten object", {}, error3));
+    }
+  }
+  expandObject(obj) {
+    if (__privateGet(this, _disposed7)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot expand object on disposed port", {})
+      };
+    }
+    try {
+      if (!this.foundryAPI) {
+        return err(createFoundryError("API_NOT_AVAILABLE", "Foundry utils API not available", {}));
+      }
+      return ok(this.foundryAPI.expandObject(obj));
+    } catch (error3) {
+      return err(createFoundryError("OPERATION_FAILED", "Failed to expand object", {}, error3));
+    }
+  }
+  // ===== HTML =====
+  cleanHTML(html2) {
+    if (__privateGet(this, _disposed7)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot clean HTML on disposed port", {})
+      };
+    }
+    try {
+      if (!this.foundryAPI) {
+        return ok(html2);
+      }
+      return ok(this.foundryAPI.cleanHTML(html2));
+    } catch (error3) {
+      return err(createFoundryError("OPERATION_FAILED", "Failed to clean HTML", {}, error3));
+    }
+  }
+  escapeHTML(str) {
+    if (__privateGet(this, _disposed7)) {
+      return str;
+    }
+    try {
+      if (!this.foundryAPI) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      }
+      return this.foundryAPI.escapeHTML(str);
+    } catch {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+  }
+  unescapeHTML(str) {
+    if (__privateGet(this, _disposed7)) {
+      return str;
+    }
+    try {
+      if (!this.foundryAPI) {
+        return str.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+      }
+      return this.foundryAPI.unescapeHTML(str);
+    } catch {
+      return str.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    }
+  }
+  // ===== Async/Timeout =====
+  async fetchWithTimeout(url2, options2, timeoutMs) {
+    if (__privateGet(this, _disposed7)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot fetch with timeout on disposed port", {
+          url: url2
+        })
+      };
+    }
+    try {
+      if (!this.foundryAPI) {
+        return err(
+          createFoundryError("API_NOT_AVAILABLE", "Foundry utils API not available", { url: url2 })
+        );
+      }
+      return ok(
+        // type-coverage:ignore-next-line -- Foundry API: RequestInit type cast required for Foundry utils API
+        await this.foundryAPI.fetchWithTimeout(url2, options2, {
+          timeoutMs
+        })
+      );
+    } catch (error3) {
+      return err(
+        createFoundryError(
+          "OPERATION_FAILED",
+          `Failed to fetch with timeout: ${url2}`,
+          { url: url2, timeoutMs },
+          error3
+        )
+      );
+    }
+  }
+  async fetchJsonWithTimeout(url2, options2, timeoutMs) {
+    if (__privateGet(this, _disposed7)) {
+      return {
+        ok: false,
+        error: createFoundryError("DISPOSED", "Cannot fetch JSON with timeout on disposed port", {
+          url: url2
+        })
+      };
+    }
+    try {
+      if (!this.foundryAPI) {
+        return err(
+          createFoundryError("API_NOT_AVAILABLE", "Foundry utils API not available", { url: url2 })
+        );
+      }
+      return ok(
+        // type-coverage:ignore-next-line -- Foundry API: RequestInit type cast required for Foundry utils API
+        await this.foundryAPI.fetchJsonWithTimeout(url2, options2, {
+          timeoutMs
+        })
+      );
+    } catch (error3) {
+      return err(
+        createFoundryError(
+          "OPERATION_FAILED",
+          `Failed to fetch JSON with timeout: ${url2}`,
+          { url: url2, timeoutMs },
+          error3
+        )
+      );
+    }
+  }
+  dispose() {
+    if (__privateGet(this, _disposed7)) return;
+    __privateSet(this, _disposed7, true);
+  }
+};
+_disposed7 = new WeakMap();
+__name(_FoundryUtilsPort, "FoundryUtilsPort");
+_FoundryUtilsPort.dependencies = [];
+let FoundryUtilsPort = _FoundryUtilsPort;
+function createFoundryUtilsPort() {
+  if (typeof foundry === "undefined" || !foundry?.utils) {
+    return new FoundryUtilsPort(null);
+  }
+  const parseUuid = foundry.utils.parseUuid;
+  const buildUuid = foundry.utils.buildUuid;
+  return new FoundryUtilsPort({
+    randomID: /* @__PURE__ */ __name(() => foundry.utils.randomID(), "randomID"),
+    fromUuid: /* @__PURE__ */ __name((uuid3) => foundry.utils.fromUuid(uuid3), "fromUuid"),
+    fromUuidSync: /* @__PURE__ */ __name((uuid3) => foundry.utils.fromUuidSync(uuid3), "fromUuidSync"),
+    parseUuid: /* @__PURE__ */ __name((uuid3, options2) => {
+      const foundryOptions = castParseUuidOptions(options2);
+      const result = parseUuid(uuid3, foundryOptions);
+      if (result === null) {
+        return null;
+      }
+      return castParseUuidResultToResolvedUUID(result);
+    }, "parseUuid"),
+    buildUuid: /* @__PURE__ */ __name((context) => {
+      const foundryContext = {
+        id: context.id
+      };
+      if (context.documentName !== void 0) {
+        foundryContext.documentName = context.documentName;
+      }
+      if (context.pack !== void 0) {
+        foundryContext.pack = context.pack;
+      }
+      if (context.parent !== void 0) {
+        foundryContext.parent = context.parent;
+      }
+      const castContext = castBuildUuidContext(foundryContext);
+      return buildUuid(castContext);
+    }, "buildUuid"),
+    deepClone: /* @__PURE__ */ __name((obj) => foundry.utils.deepClone(obj), "deepClone"),
+    mergeObject: /* @__PURE__ */ __name((original, updates, options2) => {
+      if (typeof original !== "object" || original === null) {
+        return original;
+      }
+      return foundry.utils.mergeObject(
+        original,
+        // type-coverage:ignore-next-line -- Foundry API: Type cast for mergeObject updates parameter
+        updates,
+        // type-coverage:ignore-next-line -- Foundry API: Type cast for mergeObject options parameter
+        options2
+      );
+    }, "mergeObject"),
+    diffObject: /* @__PURE__ */ __name((original, updated) => (
+      // type-coverage:ignore-next-line -- Foundry API: diffObject return type cast
+      foundry.utils.diffObject(original, updated)
+    ), "diffObject"),
+    flattenObject: /* @__PURE__ */ __name((obj) => (
+      // type-coverage:ignore-next-line -- Foundry API: flattenObject return type cast
+      foundry.utils.flattenObject(obj)
+    ), "flattenObject"),
+    expandObject: /* @__PURE__ */ __name((obj) => foundry.utils.expandObject(obj), "expandObject"),
+    cleanHTML: /* @__PURE__ */ __name((html2) => foundry.utils.cleanHTML(html2), "cleanHTML"),
+    escapeHTML: /* @__PURE__ */ __name((str) => foundry.utils.escapeHTML(str), "escapeHTML"),
+    unescapeHTML: /* @__PURE__ */ __name((str) => foundry.utils.unescapeHTML(str), "unescapeHTML"),
+    fetchWithTimeout: /* @__PURE__ */ __name((url2, data4, options2) => foundry.utils.fetchWithTimeout(url2, data4, options2), "fetchWithTimeout"),
+    fetchJsonWithTimeout: /* @__PURE__ */ __name((url2, data4, options2) => foundry.utils.fetchJsonWithTimeout(url2, data4, options2), "fetchJsonWithTimeout")
+  });
+}
+__name(createFoundryUtilsPort, "createFoundryUtilsPort");
+const _DIFoundryUtilsPort = class _DIFoundryUtilsPort extends FoundryUtilsPort {
+  constructor() {
+    super(null);
+  }
+};
+__name(_DIFoundryUtilsPort, "DIFoundryUtilsPort");
+_DIFoundryUtilsPort.dependencies = [];
+let DIFoundryUtilsPort = _DIFoundryUtilsPort;
 function registerFoundryServices(container2) {
   const gameServiceResult = container2.registerClass(
     foundryGameToken,
@@ -28596,6 +29382,31 @@ function registerFoundryServices(container2) {
     return err(
       `Failed to register PlatformContextMenuRegistrationPort: ${contextMenuPortResult.error.message}`
     );
+  }
+  const utilsResult = container2.registerFactory(
+    foundryUtilsToken,
+    () => createFoundryUtilsPort(),
+    ServiceLifecycle.SINGLETON,
+    []
+  );
+  if (isErr(utilsResult)) {
+    return err(`Failed to register FoundryUtils service: ${utilsResult.error.message}`);
+  }
+  const uuidAliasResult = container2.registerAlias(foundryUtilsUuidToken, foundryUtilsToken);
+  if (isErr(uuidAliasResult)) {
+    return err(`Failed to register FoundryUtilsUuid alias: ${uuidAliasResult.error.message}`);
+  }
+  const objectAliasResult = container2.registerAlias(foundryUtilsObjectToken, foundryUtilsToken);
+  if (isErr(objectAliasResult)) {
+    return err(`Failed to register FoundryUtilsObject alias: ${objectAliasResult.error.message}`);
+  }
+  const htmlAliasResult = container2.registerAlias(foundryUtilsHtmlToken, foundryUtilsToken);
+  if (isErr(htmlAliasResult)) {
+    return err(`Failed to register FoundryUtilsHtml alias: ${htmlAliasResult.error.message}`);
+  }
+  const asyncAliasResult = container2.registerAlias(foundryUtilsAsyncToken, foundryUtilsToken);
+  if (isErr(asyncAliasResult)) {
+    return err(`Failed to register FoundryUtilsAsync alias: ${asyncAliasResult.error.message}`);
   }
   return ok(void 0);
 }
@@ -37011,6 +37822,110 @@ const _DIFoundryPageCreationAdapter = class _DIFoundryPageCreationAdapter extend
 __name(_DIFoundryPageCreationAdapter, "DIFoundryPageCreationAdapter");
 _DIFoundryPageCreationAdapter.dependencies = [foundryGameToken];
 let DIFoundryPageCreationAdapter = _DIFoundryPageCreationAdapter;
+function convertToRelationshipPage(foundryPage, journalId) {
+  const pageType = isRelationshipNodePage(foundryPage) ? "node" : isRelationshipGraphPage(foundryPage) ? "graph" : "graph";
+  const foundryPageRecord = castFoundryJournalEntryPageToRecord(foundryPage);
+  return {
+    ...foundryPageRecord,
+    id: foundryPage.id,
+    type: pageType,
+    journalId
+  };
+}
+__name(convertToRelationshipPage, "convertToRelationshipPage");
+const _FoundryPlatformRelationshipPageCollectionPortAdapter = class _FoundryPlatformRelationshipPageCollectionPortAdapter {
+  constructor(adapter) {
+    this.adapter = adapter;
+  }
+  async findPagesByType(type) {
+    const result = await this.adapter.findPagesByType(type);
+    if (!result.ok) {
+      return result;
+    }
+    const domainPages = result.value.map((page) => {
+      const journalId = (
+        // type-coverage:ignore-next-line - Foundry API: FoundryJournalEntryPage has complex type structure, runtime property access requires type casts
+        page.parent?.id || // type-coverage:ignore-next-line - Foundry API: Runtime property access
+        page.journalId || // type-coverage:ignore-next-line - Foundry API: Runtime property access
+        page.journal?.id || ""
+      );
+      return convertToRelationshipPage(page, journalId);
+    });
+    return { ok: true, value: domainPages };
+  }
+  async findNodePages() {
+    const result = await this.adapter.findNodePages();
+    if (!result.ok) {
+      return result;
+    }
+    const domainPages = result.value.map((page) => {
+      const journalId = (
+        // type-coverage:ignore-next-line - Foundry API: FoundryJournalEntryPage has complex type structure, runtime property access requires type casts
+        page.parent?.id || // type-coverage:ignore-next-line - Foundry API: Runtime property access
+        page.journalId || // type-coverage:ignore-next-line - Foundry API: Runtime property access
+        page.journal?.id || ""
+      );
+      return convertToRelationshipPage(page, journalId);
+    });
+    return { ok: true, value: domainPages };
+  }
+  async findGraphPages() {
+    const result = await this.adapter.findGraphPages();
+    if (!result.ok) {
+      return result;
+    }
+    const domainPages = result.value.map((page) => {
+      const journalId = (
+        // type-coverage:ignore-next-line - Foundry API: FoundryJournalEntryPage has complex type structure, runtime property access requires type casts
+        page.parent?.id || // type-coverage:ignore-next-line - Foundry API: Runtime property access
+        page.journalId || // type-coverage:ignore-next-line - Foundry API: Runtime property access
+        page.journal?.id || ""
+      );
+      return convertToRelationshipPage(page, journalId);
+    });
+    return { ok: true, value: domainPages };
+  }
+  async findPagesByJournalEntry(journalId) {
+    const result = await this.adapter.findPagesByJournalEntry(journalId);
+    if (!result.ok) {
+      return result;
+    }
+    const domainPages = result.value.map(
+      (page) => convertToRelationshipPage(page, journalId)
+    );
+    return { ok: true, value: domainPages };
+  }
+  async findNodePagesByJournalEntry(journalId) {
+    const result = await this.adapter.findNodePagesByJournalEntry(journalId);
+    if (!result.ok) {
+      return result;
+    }
+    const domainPages = result.value.map(
+      (page) => convertToRelationshipPage(page, journalId)
+    );
+    return { ok: true, value: domainPages };
+  }
+  async findGraphPagesByJournalEntry(journalId) {
+    const result = await this.adapter.findGraphPagesByJournalEntry(journalId);
+    if (!result.ok) {
+      return result;
+    }
+    const domainPages = result.value.map(
+      (page) => convertToRelationshipPage(page, journalId)
+    );
+    return { ok: true, value: domainPages };
+  }
+};
+__name(_FoundryPlatformRelationshipPageCollectionPortAdapter, "FoundryPlatformRelationshipPageCollectionPortAdapter");
+let FoundryPlatformRelationshipPageCollectionPortAdapter = _FoundryPlatformRelationshipPageCollectionPortAdapter;
+const _DIFoundryPlatformRelationshipPageCollectionPortAdapter = class _DIFoundryPlatformRelationshipPageCollectionPortAdapter extends FoundryPlatformRelationshipPageCollectionPortAdapter {
+  constructor(adapter) {
+    super(adapter);
+  }
+};
+__name(_DIFoundryPlatformRelationshipPageCollectionPortAdapter, "DIFoundryPlatformRelationshipPageCollectionPortAdapter");
+_DIFoundryPlatformRelationshipPageCollectionPortAdapter.dependencies = [relationshipPageCollectionAdapterToken];
+let DIFoundryPlatformRelationshipPageCollectionPortAdapter = _DIFoundryPlatformRelationshipPageCollectionPortAdapter;
 function registerRelationshipPageServices(container2) {
   const repositoryResult = container2.registerClass(
     platformRelationshipPageRepositoryPortToken,
@@ -37030,6 +37945,16 @@ function registerRelationshipPageServices(container2) {
   if (isErr(collectionResult)) {
     return err(
       `Failed to register RelationshipPageCollectionAdapter: ${collectionResult.error.message}`
+    );
+  }
+  const domainPortResult = container2.registerClass(
+    platformRelationshipPageCollectionPortToken,
+    DIFoundryPlatformRelationshipPageCollectionPortAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(domainPortResult)) {
+    return err(
+      `Failed to register PlatformRelationshipPageCollectionPort: ${domainPortResult.error.message}`
     );
   }
   const pageCreationResult = container2.registerClass(
@@ -37437,6 +38362,40 @@ function isRelationshipGraphData(data4) {
   return result.success;
 }
 __name(isRelationshipGraphData, "isRelationshipGraphData");
+function cleanGraphData(data4) {
+  if (!data4.layout) {
+    return data4;
+  }
+  const cleanedLayout = {};
+  if (data4.layout.positions) {
+    const cleanedPositions = {};
+    for (const [key2, position3] of Object.entries(data4.layout.positions)) {
+      if (position3 && typeof position3.x === "number" && typeof position3.y === "number") {
+        cleanedPositions[key2] = position3;
+      }
+    }
+    if (Object.keys(cleanedPositions).length > 0) {
+      cleanedLayout.positions = cleanedPositions;
+    }
+  }
+  if (data4.layout.zoom !== void 0 && typeof data4.layout.zoom === "number") {
+    cleanedLayout.zoom = data4.layout.zoom;
+  }
+  if (data4.layout.pan) {
+    if (typeof data4.layout.pan.x === "number" && typeof data4.layout.pan.y === "number") {
+      cleanedLayout.pan = data4.layout.pan;
+    }
+  }
+  if (Object.keys(cleanedLayout).length > 0) {
+    return {
+      ...data4,
+      layout: cleanedLayout
+    };
+  }
+  const { layout: _, ...rest } = data4;
+  return rest;
+}
+__name(cleanGraphData, "cleanGraphData");
 const _GraphDataService = class _GraphDataService {
   constructor(repository, migrationService, notifications2) {
     this.repository = repository;
@@ -37468,16 +38427,17 @@ const _GraphDataService = class _GraphDataService {
       return this.mapRepositoryError(loadResult.error);
     }
     const rawData = loadResult.value;
-    if (this.migrationService.needsMigration(rawData, "graph")) {
+    const cleanedData = cleanGraphData(rawData);
+    if (this.migrationService.needsMigration(cleanedData, "graph")) {
       this.notifications.debug(
         `Graph data at page ${pageId} needs migration`,
-        { pageId, currentVersion: this.migrationService.getCurrentSchemaVersion(rawData) },
+        { pageId, currentVersion: this.migrationService.getCurrentSchemaVersion(cleanedData) },
         { channels: ["ConsoleChannel"] }
       );
       const backup = {
-        ...rawData
+        ...cleanedData
       };
-      const migrationResult = await this.migrationService.migrateToLatest(rawData, "graph");
+      const migrationResult = await this.migrationService.migrateToLatest(cleanedData, "graph");
       if (!migrationResult.ok) {
         this.notifications.error(
           `Failed to migrate graph data at page ${pageId}`,
@@ -37508,11 +38468,11 @@ const _GraphDataService = class _GraphDataService {
       }
       return ok(migratedGraphData);
     }
-    const validationResult = this.validateGraphData(rawData);
+    const validationResult = this.validateGraphData(cleanedData);
     if (!validationResult.ok) {
       return validationResult;
     }
-    return ok(rawData);
+    return ok(cleanedData);
   }
   /**
    * Saves graph data to a page.
@@ -37521,7 +38481,8 @@ const _GraphDataService = class _GraphDataService {
    * Implements MVP Conflict Policy: Last-write-wins + Warning Banner.
    */
   async saveGraphData(pageId, data4) {
-    const validationResult = this.validateGraphData(data4);
+    const cleanedData = cleanGraphData(data4);
+    const validationResult = this.validateGraphData(cleanedData);
     if (!validationResult.ok) {
       return validationResult;
     }
@@ -37533,7 +38494,7 @@ const _GraphDataService = class _GraphDataService {
         { channels: ["ConsoleChannel"] }
       );
     }
-    const saveResult = await this.repository.updateGraphPageContent(pageId, data4);
+    const saveResult = await this.repository.updateGraphPageContent(pageId, cleanedData);
     if (!saveResult.ok) {
       return this.mapRepositoryError(saveResult.error);
     }
@@ -37643,23 +38604,25 @@ _DICreateNodePageUseCase.dependencies = [
 ];
 let DICreateNodePageUseCase = _DICreateNodePageUseCase;
 const _CreateGraphPageUseCase = class _CreateGraphPageUseCase {
-  constructor(journalRepository, graphDataService, pageRepository, pageCreationPort, notifications2) {
+  constructor(journalRepository, graphDataService, pageRepository, pageCreationPort, notifications2, pageCollection) {
     this.journalRepository = journalRepository;
     this.graphDataService = graphDataService;
     this.pageRepository = pageRepository;
     this.pageCreationPort = pageCreationPort;
     this.notifications = notifications2;
+    this.pageCollection = pageCollection;
   }
   /**
    * Creates a new graph page.
    *
    * Steps:
    * 1. Validate journal entry exists
-   * 2. Validate graph data
-   * 3. Create page (via Foundry API - requires infrastructure access)
-   * 4. Save graph data to page (lastVersion initial empty)
-   * 5. Set marker flag
-   * 6. Return created page
+   * 2. Auto-import node pages from journal (if any)
+   * 3. Validate graph data
+   * 4. Create page (via Foundry API - requires infrastructure access)
+   * 5. Save graph data to page (lastVersion initial empty)
+   * 6. Set marker flag
+   * 7. Return created page
    */
   async execute(input) {
     const journalResult = await this.journalRepository.getById(input.journalEntryId);
@@ -37669,6 +38632,31 @@ const _CreateGraphPageUseCase = class _CreateGraphPageUseCase {
         message: `Journal entry ${input.journalEntryId} not found: ${journalResult.error.message}`,
         details: journalResult.error
       });
+    }
+    const nodePagesResult = await this.pageCollection.findNodePagesByJournalEntry(
+      input.journalEntryId
+    );
+    if (nodePagesResult.ok) {
+      const nodeIds = nodePagesResult.value.map((page) => page.id).filter((id2) => id2 !== void 0);
+      if (nodeIds.length > 0) {
+        const existingNodeKeys = new Set(input.graphData.nodeKeys);
+        nodeIds.forEach((id2) => existingNodeKeys.add(id2));
+        input.graphData = {
+          ...input.graphData,
+          nodeKeys: Array.from(existingNodeKeys)
+        };
+        this.notifications.info(
+          `Imported ${nodeIds.length} node(s) from journal`,
+          { journalId: input.journalEntryId, nodeCount: nodeIds.length },
+          { channels: ["ConsoleChannel"] }
+        );
+      }
+    } else {
+      this.notifications.warn(
+        `Failed to find node pages in journal ${input.journalEntryId}`,
+        nodePagesResult.error,
+        { channels: ["ConsoleChannel"] }
+      );
     }
     const validationResult = this.graphDataService.validateGraphData(input.graphData);
     if (!validationResult.ok) {
@@ -37707,8 +38695,15 @@ const _CreateGraphPageUseCase = class _CreateGraphPageUseCase {
 __name(_CreateGraphPageUseCase, "CreateGraphPageUseCase");
 let CreateGraphPageUseCase = _CreateGraphPageUseCase;
 const _DICreateGraphPageUseCase = class _DICreateGraphPageUseCase extends CreateGraphPageUseCase {
-  constructor(journalRepository, graphDataService, pageRepository, pageCreationPort, notifications2) {
-    super(journalRepository, graphDataService, pageRepository, pageCreationPort, notifications2);
+  constructor(journalRepository, graphDataService, pageRepository, pageCreationPort, notifications2, pageCollection) {
+    super(
+      journalRepository,
+      graphDataService,
+      pageRepository,
+      pageCreationPort,
+      notifications2,
+      pageCollection
+    );
   }
 };
 __name(_DICreateGraphPageUseCase, "DICreateGraphPageUseCase");
@@ -37717,7 +38712,8 @@ _DICreateGraphPageUseCase.dependencies = [
   graphDataServiceToken,
   platformRelationshipPageRepositoryPortToken,
   platformPageCreationPortToken,
-  notificationPublisherPortToken
+  notificationPublisherPortToken,
+  platformRelationshipPageCollectionPortToken
 ];
 let DICreateGraphPageUseCase = _DICreateGraphPageUseCase;
 const _AddNodeToGraphUseCase = class _AddNodeToGraphUseCase {

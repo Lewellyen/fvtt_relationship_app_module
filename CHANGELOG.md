@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.59.1] - 2026-01-16
+### Hinzugefügt
+- Erweiterung des Graphsheets um weitere Features
+
+### Geändert
+- **Tests**: Coverage für Foundry-Utils/Relationship-Page-Ports ergänzt und Performance-Schwelle stabilisiert ([Details](src/infrastructure/adapters/foundry/services/__tests__/FoundryUtilsPort.test.ts), [Details](src/infrastructure/adapters/foundry/collection-adapters/__tests__/foundry-platform-relationship-page-collection-port-adapter.test.ts), [Details](src/infrastructure/di/__tests__/container-performance.test.ts))
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.59.0] - 2026-01-14
 ### Hinzugefügt
 - **Phase 4 – UI: Graph & Node Sheets**: Vollständige Implementierung der Graph- und Node-Sheets ([Details](docs/roadmaps/phasesv2/phase-4-ui-sheets.md))

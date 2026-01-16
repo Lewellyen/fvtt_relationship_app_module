@@ -13,6 +13,7 @@ import type { RelationshipGraphData } from "@/domain/types/relationship-graph-da
 import type { ServiceError } from "@/application/types/use-case-error.types";
 import type { EntityRepositoryError } from "@/domain/ports/repositories/platform-entity-repository.types";
 import type { EntityCollectionError } from "@/domain/ports/collections/entity-collection-error.interface";
+import type { PlatformRelationshipPageCollectionPort } from "@/domain/ports/repositories/platform-relationship-page-collection-port.interface";
 import { RELATIONSHIP_GRAPH_SCHEMA_VERSION } from "@/domain/types/relationship-graph-data.interface";
 import { ok, err } from "@/domain/utils/result";
 
@@ -76,6 +77,17 @@ function createMockNotifications(): NotificationPublisherPort {
   } as unknown as NotificationPublisherPort;
 }
 
+function createMockPageCollection(): PlatformRelationshipPageCollectionPort {
+  return {
+    findPagesByType: vi.fn().mockResolvedValue(ok([])),
+    findNodePages: vi.fn().mockResolvedValue(ok([])),
+    findGraphPages: vi.fn().mockResolvedValue(ok([])),
+    findPagesByJournalEntry: vi.fn().mockResolvedValue(ok([])),
+    findNodePagesByJournalEntry: vi.fn().mockResolvedValue(ok([])),
+    findGraphPagesByJournalEntry: vi.fn().mockResolvedValue(ok([])),
+  } as unknown as PlatformRelationshipPageCollectionPort;
+}
+
 function createValidGraphData(): RelationshipGraphData {
   return {
     schemaVersion: RELATIONSHIP_GRAPH_SCHEMA_VERSION,
@@ -92,6 +104,7 @@ describe("CreateGraphPageUseCase", () => {
   let mockPageRepository: PlatformRelationshipPageRepositoryPort;
   let mockPageCreationPort: PlatformPageCreationPort;
   let mockNotifications: NotificationPublisherPort;
+  let mockPageCollection: PlatformRelationshipPageCollectionPort;
 
   beforeEach(() => {
     mockJournalRepository = createMockJournalRepository();
@@ -99,12 +112,14 @@ describe("CreateGraphPageUseCase", () => {
     mockPageRepository = createMockRepository();
     mockPageCreationPort = createMockPageCreationPort();
     mockNotifications = createMockNotifications();
+    mockPageCollection = createMockPageCollection();
     useCase = new CreateGraphPageUseCase(
       mockJournalRepository,
       mockGraphDataService,
       mockPageRepository,
       mockPageCreationPort,
-      mockNotifications
+      mockNotifications,
+      mockPageCollection
     );
   });
 
@@ -197,6 +212,90 @@ describe("CreateGraphPageUseCase", () => {
       expect(mockPageRepository.setGraphMarker).toHaveBeenCalledWith(pageId, true);
     });
 
+    it("should import node pages from journal entry", async () => {
+      const journalEntryId = "journal-123";
+      const pageId = "page-123";
+      const graphData = {
+        ...createValidGraphData(),
+        nodeKeys: ["existing-node"],
+      };
+
+      vi.mocked(mockJournalRepository.getById).mockResolvedValue(
+        ok({ id: journalEntryId, name: "Test Journal" })
+      );
+      vi.mocked(mockPageCollection.findNodePagesByJournalEntry).mockResolvedValue(
+        ok([
+          { id: "node-1", type: "node", journalId: journalEntryId },
+          { id: "existing-node", type: "node", journalId: journalEntryId },
+          { id: undefined as unknown as string, type: "node", journalId: journalEntryId },
+        ])
+      );
+      vi.mocked(mockGraphDataService.validateGraphData).mockReturnValue(ok(undefined));
+      vi.mocked(mockPageCreationPort.createGraphPage).mockResolvedValue(ok(pageId));
+      vi.mocked(mockGraphDataService.saveGraphData).mockResolvedValue(ok(undefined));
+      vi.mocked(mockPageRepository.setGraphMarker).mockResolvedValue(ok(undefined));
+
+      const result = await useCase.execute({ journalEntryId, graphData });
+
+      expect(result.ok).toBe(true);
+      const createdGraphData = vi.mocked(mockPageCreationPort.createGraphPage).mock.calls[0]?.[1];
+      expect(createdGraphData?.nodeKeys.sort()).toEqual(["existing-node", "node-1"].sort());
+      expect(mockNotifications.info).toHaveBeenCalledWith(
+        "Imported 2 node(s) from journal",
+        { journalId: journalEntryId, nodeCount: 2 },
+        { channels: ["ConsoleChannel"] }
+      );
+    });
+
+    it("should skip import when no node pages are found", async () => {
+      const journalEntryId = "journal-123";
+      const pageId = "page-123";
+      const graphData = createValidGraphData();
+
+      vi.mocked(mockJournalRepository.getById).mockResolvedValue(
+        ok({ id: journalEntryId, name: "Test Journal" })
+      );
+      vi.mocked(mockPageCollection.findNodePagesByJournalEntry).mockResolvedValue(ok([]));
+      vi.mocked(mockGraphDataService.validateGraphData).mockReturnValue(ok(undefined));
+      vi.mocked(mockPageCreationPort.createGraphPage).mockResolvedValue(ok(pageId));
+      vi.mocked(mockGraphDataService.saveGraphData).mockResolvedValue(ok(undefined));
+      vi.mocked(mockPageRepository.setGraphMarker).mockResolvedValue(ok(undefined));
+
+      const result = await useCase.execute({ journalEntryId, graphData });
+
+      expect(result.ok).toBe(true);
+      expect(mockNotifications.info).not.toHaveBeenCalled();
+      expect(mockPageCreationPort.createGraphPage).toHaveBeenCalledWith(journalEntryId, graphData);
+    });
+
+    it("should warn when node page lookup fails but continue", async () => {
+      const journalEntryId = "journal-123";
+      const pageId = "page-123";
+      const graphData = createValidGraphData();
+      const lookupError: EntityCollectionError = {
+        code: "PLATFORM_ERROR",
+        message: "Lookup failed",
+      };
+
+      vi.mocked(mockJournalRepository.getById).mockResolvedValue(
+        ok({ id: journalEntryId, name: "Test Journal" })
+      );
+      vi.mocked(mockPageCollection.findNodePagesByJournalEntry).mockResolvedValue(err(lookupError));
+      vi.mocked(mockGraphDataService.validateGraphData).mockReturnValue(ok(undefined));
+      vi.mocked(mockPageCreationPort.createGraphPage).mockResolvedValue(ok(pageId));
+      vi.mocked(mockGraphDataService.saveGraphData).mockResolvedValue(ok(undefined));
+      vi.mocked(mockPageRepository.setGraphMarker).mockResolvedValue(ok(undefined));
+
+      const result = await useCase.execute({ journalEntryId, graphData });
+
+      expect(result.ok).toBe(true);
+      expect(mockNotifications.warn).toHaveBeenCalledWith(
+        `Failed to find node pages in journal ${journalEntryId}`,
+        lookupError,
+        { channels: ["ConsoleChannel"] }
+      );
+    });
+
     it("should return error when save fails after page creation", async () => {
       const journalEntryId = "journal-123";
       const pageId = "page-123";
@@ -257,8 +356,9 @@ describe("CreateGraphPageUseCase", () => {
         expect.anything(), // platformRelationshipPageRepositoryPortToken
         expect.anything(), // platformPageCreationPortToken
         expect.anything(), // notificationPublisherPortToken
+        expect.anything(), // platformRelationshipPageCollectionPortToken
       ]);
-      expect(DICreateGraphPageUseCase.dependencies).toHaveLength(5);
+      expect(DICreateGraphPageUseCase.dependencies).toHaveLength(6);
     });
 
     it("should create instance correctly", () => {
@@ -267,7 +367,8 @@ describe("CreateGraphPageUseCase", () => {
         mockGraphDataService,
         mockPageRepository,
         mockPageCreationPort,
-        mockNotifications
+        mockNotifications,
+        mockPageCollection
       );
       expect(diUseCase).toBeInstanceOf(CreateGraphPageUseCase);
       expect(diUseCase).toBeInstanceOf(DICreateGraphPageUseCase);

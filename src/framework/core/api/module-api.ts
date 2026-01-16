@@ -15,6 +15,11 @@ import type { ContainerError } from "@/infrastructure/di/interfaces";
 import type { HealthStatus } from "@/domain/types/health-status";
 import type { IGraphDataService } from "@/application/services/GraphDataService";
 import type { INodeDataService } from "@/application/services/NodeDataService";
+import type { FoundryUtils } from "@/infrastructure/adapters/foundry/interfaces/FoundryUtils";
+import type { FoundryUtilsUuidPort } from "@/infrastructure/adapters/foundry/interfaces/FoundryUtilsUuidPort";
+import type { FoundryUtilsObjectPort } from "@/infrastructure/adapters/foundry/interfaces/FoundryUtilsObjectPort";
+import type { FoundryUtilsHtmlPort } from "@/infrastructure/adapters/foundry/interfaces/FoundryUtilsHtmlPort";
+import type { FoundryUtilsAsyncPort } from "@/infrastructure/adapters/foundry/interfaces/FoundryUtilsAsyncPort";
 
 /**
  * Information about a registered service token.
@@ -65,6 +70,11 @@ export interface ModuleApiTokens {
   foundryJournalFacadeToken: ApiSafeToken<FoundryJournalFacade>;
   graphDataServiceToken: ApiSafeToken<IGraphDataService>;
   nodeDataServiceToken: ApiSafeToken<INodeDataService>;
+  foundryUtilsToken: ApiSafeToken<FoundryUtils>;
+  foundryUtilsUuidToken: ApiSafeToken<FoundryUtilsUuidPort>;
+  foundryUtilsObjectToken: ApiSafeToken<FoundryUtilsObjectPort>;
+  foundryUtilsHtmlToken: ApiSafeToken<FoundryUtilsHtmlPort>;
+  foundryUtilsAsyncToken: ApiSafeToken<FoundryUtilsAsyncPort>;
 }
 
 /**

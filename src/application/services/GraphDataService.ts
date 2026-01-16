@@ -31,6 +31,58 @@ function isRelationshipGraphData(data: unknown): data is RelationshipGraphData {
 }
 
 /**
+ * Cleans graph data by removing invalid layout values.
+ * Removes positions and pan entries that have undefined x or y values.
+ *
+ * @param data - Graph data to clean
+ * @returns Cleaned graph data
+ */
+function cleanGraphData(data: RelationshipGraphData): RelationshipGraphData {
+  if (!data.layout) {
+    return data;
+  }
+
+  const cleanedLayout: RelationshipGraphData["layout"] = {};
+
+  // Clean positions: remove entries with undefined x or y
+  if (data.layout.positions) {
+    const cleanedPositions: Record<string, { x: number; y: number }> = {};
+    for (const [key, position] of Object.entries(data.layout.positions)) {
+      if (position && typeof position.x === "number" && typeof position.y === "number") {
+        cleanedPositions[key] = position;
+      }
+    }
+    if (Object.keys(cleanedPositions).length > 0) {
+      cleanedLayout.positions = cleanedPositions;
+    }
+  }
+
+  // Clean zoom: only include if it's a valid number
+  if (data.layout.zoom !== undefined && typeof data.layout.zoom === "number") {
+    cleanedLayout.zoom = data.layout.zoom;
+  }
+
+  // Clean pan: only include if both x and y are valid numbers
+  if (data.layout.pan) {
+    if (typeof data.layout.pan.x === "number" && typeof data.layout.pan.y === "number") {
+      cleanedLayout.pan = data.layout.pan;
+    }
+  }
+
+  // Only include layout if it has at least one property
+  if (Object.keys(cleanedLayout).length > 0) {
+    return {
+      ...data,
+      layout: cleanedLayout,
+    };
+  }
+
+  // If layout is empty after cleaning, remove it
+  const { layout: _, ...rest } = data;
+  return rest;
+}
+
+/**
  * Interface for Graph Data Service.
  */
 export interface IGraphDataService {
@@ -108,22 +160,25 @@ export class GraphDataService implements IGraphDataService {
 
     const rawData = loadResult.value;
 
+    // Clean data before validation/migration to remove invalid layout values
+    const cleanedData = cleanGraphData(rawData);
+
     // Check if migration is needed
-    if (this.migrationService.needsMigration(rawData, "graph")) {
+    if (this.migrationService.needsMigration(cleanedData, "graph")) {
       this.notifications.debug(
         `Graph data at page ${pageId} needs migration`,
-        { pageId, currentVersion: this.migrationService.getCurrentSchemaVersion(rawData) },
+        { pageId, currentVersion: this.migrationService.getCurrentSchemaVersion(cleanedData) },
         { channels: ["ConsoleChannel"] }
       );
 
       // Backup: Store current data in lastVersion before migration
-      // Note: rawData already contains schemaVersion, which will be used in backup
+      // Note: cleanedData already contains schemaVersion, which will be used in backup
       const backup: GraphDataLastVersion = {
-        ...rawData,
+        ...cleanedData,
       } as GraphDataLastVersion;
 
       // Perform migration
-      const migrationResult = await this.migrationService.migrateToLatest(rawData, "graph");
+      const migrationResult = await this.migrationService.migrateToLatest(cleanedData, "graph");
       if (!migrationResult.ok) {
         this.notifications.error(
           `Failed to migrate graph data at page ${pageId}`,
@@ -163,12 +218,12 @@ export class GraphDataService implements IGraphDataService {
     }
 
     // Validate data (even if no migration needed)
-    const validationResult = this.validateGraphData(rawData);
+    const validationResult = this.validateGraphData(cleanedData);
     if (!validationResult.ok) {
       return validationResult;
     }
 
-    return ok(rawData);
+    return ok(cleanedData);
   }
 
   /**
@@ -181,8 +236,11 @@ export class GraphDataService implements IGraphDataService {
     pageId: string,
     data: RelationshipGraphData
   ): Promise<Result<void, ServiceError>> {
+    // Clean data before validation to remove invalid layout values
+    const cleanedData = cleanGraphData(data);
+
     // Validate data before saving
-    const validationResult = this.validateGraphData(data);
+    const validationResult = this.validateGraphData(cleanedData);
     if (!validationResult.ok) {
       return validationResult;
     }
@@ -201,7 +259,7 @@ export class GraphDataService implements IGraphDataService {
     }
 
     // Save via repository (last-write-wins: simply overwrite)
-    const saveResult = await this.repository.updateGraphPageContent(pageId, data);
+    const saveResult = await this.repository.updateGraphPageContent(pageId, cleanedData);
     if (!saveResult.ok) {
       return this.mapRepositoryError(saveResult.error);
     }

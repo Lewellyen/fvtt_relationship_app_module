@@ -11,25 +11,56 @@
 
   interface Props {
     graphData?: unknown;
+    document?: unknown; // JournalEntryPage - needed to get journal ID
     readonly?: boolean;
     onApply?: (graphData: unknown) => void;
     onValidate?: (graphData: unknown) => { valid: boolean; errors?: string[] };
   }
 
-  let { graphData, readonly = false, onApply, onValidate }: Props = $props();
+  let { graphData, document, readonly = false, onApply, onValidate }: Props = $props();
 
   let jsonText = $state("");
   let validationErrors = $state<string[]>([]);
   let isValid = $state(true);
+  let isImporting = $state(false);
+
+  // Get graph page UUID from document
+  const graphPageUuid = $derived(() => {
+    if (!document) return "";
+    const pageWithUuid = document as { uuid?: string; id?: string; _id?: string };
+    return pageWithUuid.uuid ?? pageWithUuid.id ?? pageWithUuid._id ?? "";
+  });
+
+  // Default graph data structure (valid schema) with graph page UUID
+  const defaultGraphData = $derived(() => ({
+    schemaVersion: 1,
+    graphKey: graphPageUuid(),
+    nodeKeys: [],
+    edges: [],
+  }));
 
   // Update jsonText when graphData changes
   $effect(() => {
-    jsonText = JSON.stringify(graphData ?? {}, null, 2);
+    if (graphData) {
+      jsonText = JSON.stringify(graphData, null, 2);
+    } else {
+      // Use default structure with graph page UUID
+      jsonText = JSON.stringify(defaultGraphData(), null, 2);
+    }
   });
 
   function handleValidate() {
     try {
       const parsed = JSON.parse(jsonText);
+
+      // Set graphKey if empty
+      const uuid = graphPageUuid();
+      if (uuid && (!parsed.graphKey || parsed.graphKey === "")) {
+        parsed.graphKey = uuid;
+        // Update jsonText with graphKey set
+        jsonText = JSON.stringify(parsed, null, 2);
+      }
+
       const result = onValidate?.(parsed);
 
       if (result) {
@@ -64,12 +95,125 @@
       validationErrors = [error instanceof Error ? error.message : String(error)];
     }
   }
+
+  async function handleImportNodes() {
+    if (!document || readonly) return;
+
+    isImporting = true;
+    try {
+      // Get journal ID from document
+      const pageWithParent = document as {
+        parent?: { id?: string; _id?: string };
+        uuid?: string;
+      };
+      const journalId = pageWithParent.parent?.id ?? pageWithParent.parent?._id;
+      if (!journalId) {
+        console.error("[GraphJsonEditor] No journal ID found in document");
+        return;
+      }
+
+      // Get module API
+      const mod = game?.modules?.get("fvtt_relationship_app_module");
+      if (!mod?.api) {
+        console.error("[GraphJsonEditor] Module API not available");
+        return;
+      }
+
+      // Get FoundryGame to access journals
+      const foundryGame = mod.api.resolve(mod.api.tokens.foundryGameToken);
+      const journalsResult = foundryGame.getJournalEntries();
+      if (!journalsResult.ok) {
+        console.error("[GraphJsonEditor] Failed to get journal entries:", journalsResult.error);
+        return;
+      }
+
+      // Find the journal entry
+      const journal = journalsResult.value.find((j) => j.id === journalId || j._id === journalId);
+      if (!journal) {
+        console.error("[GraphJsonEditor] Journal not found:", journalId);
+        return;
+      }
+
+      // Extract pages from journal
+      const journalWithPages = journal as {
+        pages?:
+          | Array<{ uuid?: string; id?: string; _id?: string; system?: { type?: string } }>
+          | {
+              contents?: Array<{
+                uuid?: string;
+                id?: string;
+                _id?: string;
+                type?: string;
+              }>;
+            };
+      };
+
+      let pages: Array<{ uuid?: string; id?: string; _id?: string; type?: string }> = [];
+      if (Array.isArray(journalWithPages.pages)) {
+        pages = journalWithPages.pages;
+      } else if (journalWithPages.pages && "contents" in journalWithPages.pages) {
+        pages = journalWithPages.pages.contents ?? [];
+      }
+
+      // Filter for node pages (type === "relationship_app_node")
+      const nodePages = pages.filter(
+        (page) => page.type === "fvtt_relationship_app_module.relationship_app_node"
+      );
+
+      // Extract UUIDs
+      const nodeUuids = nodePages
+        .map((page) => page.uuid ?? page.id ?? page._id)
+        .filter((uuid): uuid is string => uuid !== undefined);
+
+      if (nodeUuids.length === 0) {
+        console.info("[GraphJsonEditor] No node pages found in journal");
+        return;
+      }
+
+      // Parse current JSON
+      let currentData: {
+        nodeKeys?: string[];
+        [key: string]: unknown;
+      };
+      try {
+        currentData = JSON.parse(jsonText);
+      } catch {
+        // If JSON is invalid, create default structure
+        currentData = { schemaVersion: 1, graphKey: "", nodeKeys: [], edges: [] };
+      }
+
+      // Combine existing nodeKeys with new UUIDs (avoid duplicates)
+      const existingNodeKeys = new Set(currentData.nodeKeys ?? []);
+      nodeUuids.forEach((uuid) => existingNodeKeys.add(uuid));
+
+      // Update JSON
+      const updatedData = {
+        ...currentData,
+        nodeKeys: Array.from(existingNodeKeys),
+      };
+
+      jsonText = JSON.stringify(updatedData, null, 2);
+      console.info(`[GraphJsonEditor] Imported ${nodeUuids.length} node(s) from journal`);
+    } catch (error) {
+      console.error("[GraphJsonEditor] Error importing nodes:", error);
+    } finally {
+      isImporting = false;
+    }
+  }
 </script>
 
 <div class="graph-json-editor">
   <div class="json-editor-header">
     <h3>JSON Editor</h3>
     <div class="json-editor-actions">
+      <button
+        class="action-button"
+        disabled={readonly || isImporting}
+        onclick={handleImportNodes}
+        title="Import all node pages from the same journal"
+      >
+        {isImporting ? "Importing..." : "Import Nodes"}
+      </button>
       <button class="action-button" disabled={readonly} onclick={handleValidate}>Validate</button>
       <button class="action-button primary" disabled={readonly} onclick={handleApply}>Apply</button>
     </div>

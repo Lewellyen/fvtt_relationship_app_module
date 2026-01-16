@@ -18,6 +18,11 @@ import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry/foundry-u
 import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
 import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n/i18n-facade.token";
 import { foundryJournalFacadeToken } from "@/infrastructure/shared/tokens/foundry/foundry-journal-facade.token";
+import { foundryUtilsToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils.token";
+import { foundryUtilsUuidToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-uuid.token";
+import { foundryUtilsObjectToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-object.token";
+import { foundryUtilsHtmlToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-html.token";
+import { foundryUtilsAsyncToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-async.token";
 import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
 import type { IApiServiceResolver } from "../interfaces/api-component-interfaces";
 import type { IApiHealthMetricsProvider } from "../interfaces/api-component-interfaces";
@@ -80,6 +85,11 @@ export class ModuleApiBuilder implements IModuleApiBuilder {
           ["notificationCenterToken", notificationCenterToken],
           ["graphDataServiceToken", graphDataServiceToken],
           ["nodeDataServiceToken", nodeDataServiceToken],
+          ["foundryUtilsToken", foundryUtilsToken],
+          ["foundryUtilsUuidToken", foundryUtilsUuidToken],
+          ["foundryUtilsObjectToken", foundryUtilsObjectToken],
+          ["foundryUtilsHtmlToken", foundryUtilsHtmlToken],
+          ["foundryUtilsAsyncToken", foundryUtilsAsyncToken],
         ];
 
         for (const [, token] of tokenEntries) {
