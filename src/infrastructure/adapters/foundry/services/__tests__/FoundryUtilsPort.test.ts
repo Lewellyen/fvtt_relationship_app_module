@@ -26,7 +26,12 @@ describe("FoundryUtilsPort", () => {
       diffObject: vi.fn().mockReturnValue({ changed: "value" }),
       flattenObject: vi.fn().mockReturnValue({ ["a.b"]: 1 }),
       expandObject: vi.fn().mockReturnValue({ a: { b: 1 } }),
-      cleanHTML: vi.fn((html) => html.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*[^>]*>/gi, "")),
+      cleanHTML: vi.fn((html) =>
+        // Remove all script tags and their content, including variants with whitespace and attributes
+        // Pattern matches: <script>, <script >, <SCRIPT>, <script type="...">, </script>, </script >, etc.
+        // Using [\s\S]*? to match any character including newlines, and [^>]* to match attributes
+        html.replace(/<script[^>]*>[\s\S]*?<\/script[^>]*>/gi, "")
+      ),
       escapeHTML: vi.fn((str) =>
         str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       ),
@@ -736,7 +741,10 @@ describe("FoundryUtilsPort", () => {
           flattenObject: vi.fn().mockReturnValue({ ["a.b"]: 1 }),
           expandObject: vi.fn().mockReturnValue({ a: { b: 1 } }),
           cleanHTML: vi.fn((html) =>
-            html.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*[^>]*>/gi, "")
+            // Remove all script tags and their content, including variants with whitespace and attributes
+            // Pattern matches: <script>, <script >, <SCRIPT>, <script type="...">, </script>, </script >, etc.
+            // Using [\s\S]*? to match any character including newlines, and [^>]* to match attributes
+            html.replace(/<script[^>]*>[\s\S]*?<\/script[^>]*>/gi, "")
           ),
           escapeHTML: vi.fn((str) => str.replace(/</g, "&lt;")),
           unescapeHTML: vi.fn((str) => str.replace(/&lt;/g, "<")),

@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.59.3] - 2026-01-16
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **Security**: Weitere Verbesserung der Script-Tag-Filterung in Test-Mocks - Pattern `<script[^>]*>` erfasst nun alle Varianten ohne Word-Boundary, um CodeQL-Alerts zu beheben ([Details](src/infrastructure/adapters/foundry/services/__tests__/FoundryUtilsPort.test.ts))
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.59.2] - 2026-01-16
 ### Hinzugefügt
 - Keine Einträge
