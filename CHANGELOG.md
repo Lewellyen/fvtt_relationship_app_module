@@ -12,6 +12,24 @@
 
 ### Upgrade-Hinweise
 
+## [0.59.2] - 2026-01-16
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- Keine Einträge
+
+### Fehlerbehebungen
+- **Security**: Korrigierte HTML-Entity-Unescaping-Reihenfolge in `FoundryUtilsPort.unescapeHTML()` - `&amp;` wird nun zuletzt ersetzt, um Double-Escaping-Probleme zu vermeiden (z.B. `&amp;amp;` → `&`) ([Details](docs/security/code-scanning-fix-plan.md#problem-1-double-escapingunescaping-alert-22-23))
+- **Security**: Verbesserte Script-Tag-Filterung in Test-Mocks für `cleanHTML` - robusteres Regex-Pattern erfasst nun auch Varianten mit Leerzeichen und Attributen in Closing-Tags (z.B. `</script >`, `</script foo="bar">`) ([Details](docs/security/code-scanning-fix-plan.md#problem-2-incomplete-multi-character-sanitization-alert-24-25))
+- **Security**: Erweiterte Tests für Edge Cases bei HTML-Entity-Unescaping (double-escaped entities) und Script-Tag-Varianten ([Details](src/infrastructure/adapters/foundry/services/__tests__/FoundryUtilsPort.test.ts))
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.59.1] - 2026-01-16
 ### Hinzugefügt
 - Erweiterung des Graphsheets um weitere Features

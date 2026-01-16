@@ -13,7 +13,7 @@ var __privateAdd = (obj, member, value2) => member.has(obj) ? __typeError("Canno
 var __privateSet = (obj, member, value2, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value2) : member.set(obj, value2), value2);
 var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
 var __superGet = (cls, obj, key2) => __reflectGet(__getProtoOf(cls), key2, obj);
-var _a, _disposed, _disposed2, _disposed3, _disposed4, _disposed5, _disposed6, _b, _commit_callbacks, _discard_callbacks, _pending, _blocking_pending, _deferred, _dirty_effects, _maybe_dirty_effects, _Batch_instances, traverse_effect_tree_fn, defer_effects_fn, clear_marked_fn, resolve_fn, commit_fn, _pending2, _anchor, _hydrate_open, _props, _children, _effect, _main_effect, _pending_effect, _failed_effect, _offscreen_fragment, _pending_anchor, _local_pending_count, _pending_count, _is_creating_fallback, _effect_pending, _effect_pending_subscriber, _Boundary_instances, hydrate_resolved_content_fn, hydrate_pending_content_fn, get_anchor_fn, run_fn, show_pending_snippet_fn, update_pending_count_fn, _batches, _onscreen, _offscreen, _outroing, _transition, _commit, _discard, _listeners, _observer, _options, _ResizeObserverSingleton_instances, getObserver_fn, _events, _instance, _c, _d, _disposed7, _runeState, _actorsById, _itemsById, _itemsByActorId;
+var _a, _disposed, _disposed2, _disposed3, _disposed4, _disposed5, _disposed6, _b, _commit_callbacks, _discard_callbacks, _pending, _blocking_pending, _deferred, _dirty_effects, _maybe_dirty_effects, _Batch_instances, traverse_effect_tree_fn, defer_effects_fn, resolve_fn, commit_fn, _anchor, _hydrate_open, _props, _children, _effect, _main_effect, _pending_effect, _failed_effect, _offscreen_fragment, _pending_anchor, _local_pending_count, _pending_count, _is_creating_fallback, _dirty_effects2, _maybe_dirty_effects2, _effect_pending, _effect_pending_subscriber, _Boundary_instances, hydrate_resolved_content_fn, hydrate_pending_content_fn, get_anchor_fn, run_fn, show_pending_snippet_fn, update_pending_count_fn, _batches, _onscreen, _offscreen, _outroing, _transition, _commit, _discard, _listeners, _observer, _options, _ResizeObserverSingleton_instances, getObserver_fn, _events, _instance, _c, _d, _disposed7, _runeState, _actorsById, _itemsById, _itemsByActorId;
 const MODULE_METADATA = {
   ID: "fvtt_relationship_app_module",
   NAME: "Beziehungsnetzwerke für Foundry",
@@ -15575,6 +15575,43 @@ function apply_adjustments(error3) {
   }
 }
 __name(apply_adjustments, "apply_adjustments");
+const STATUS_MASK = ~(DIRTY | MAYBE_DIRTY | CLEAN);
+function set_signal_status(signal, status) {
+  signal.f = signal.f & STATUS_MASK | status;
+}
+__name(set_signal_status, "set_signal_status");
+function update_derived_status(derived2) {
+  if ((derived2.f & CONNECTED) !== 0 || derived2.deps === null) {
+    set_signal_status(derived2, CLEAN);
+  } else {
+    set_signal_status(derived2, MAYBE_DIRTY);
+  }
+}
+__name(update_derived_status, "update_derived_status");
+function clear_marked(deps) {
+  if (deps === null) return;
+  for (const dep of deps) {
+    if ((dep.f & DERIVED) === 0 || (dep.f & WAS_MARKED) === 0) {
+      continue;
+    }
+    dep.f ^= WAS_MARKED;
+    clear_marked(
+      /** @type {Derived} */
+      dep.deps
+    );
+  }
+}
+__name(clear_marked, "clear_marked");
+function defer_effect(effect2, dirty_effects, maybe_dirty_effects) {
+  if ((effect2.f & DIRTY) !== 0) {
+    dirty_effects.add(effect2);
+  } else if ((effect2.f & MAYBE_DIRTY) !== 0) {
+    maybe_dirty_effects.add(effect2);
+  }
+  clear_marked(effect2.deps);
+  set_signal_status(effect2, CLEAN);
+}
+__name(defer_effect, "defer_effect");
 const batches = /* @__PURE__ */ new Set();
 let current_batch = null;
 let previous_batch = null;
@@ -15653,26 +15690,22 @@ const _Batch = class _Batch {
     queued_root_effects = [];
     previous_batch = null;
     this.apply();
-    var target = {
-      parent: null,
-      effect: null,
-      effects: [],
-      render_effects: []
-    };
+    var effects = [];
+    var render_effects = [];
     for (const root2 of root_effects) {
-      __privateMethod(this, _Batch_instances, traverse_effect_tree_fn).call(this, root2, target);
+      __privateMethod(this, _Batch_instances, traverse_effect_tree_fn).call(this, root2, effects, render_effects);
     }
     if (!this.is_fork) {
       __privateMethod(this, _Batch_instances, resolve_fn).call(this);
     }
     if (this.is_deferred()) {
-      __privateMethod(this, _Batch_instances, defer_effects_fn).call(this, target.effects);
-      __privateMethod(this, _Batch_instances, defer_effects_fn).call(this, target.render_effects);
+      __privateMethod(this, _Batch_instances, defer_effects_fn).call(this, render_effects);
+      __privateMethod(this, _Batch_instances, defer_effects_fn).call(this, effects);
     } else {
       previous_batch = this;
       current_batch = null;
-      flush_queued_effects(target.render_effects);
-      flush_queued_effects(target.effects);
+      flush_queued_effects(render_effects);
+      flush_queued_effects(effects);
       previous_batch = null;
       __privateGet(this, _deferred)?.resolve();
     }
@@ -15685,7 +15718,7 @@ const _Batch = class _Batch {
    * @param {any} value
    */
   capture(source2, value2) {
-    if (!this.previous.has(source2)) {
+    if (value2 !== UNINITIALIZED && !this.previous.has(source2)) {
       this.previous.set(source2, value2);
     }
     if ((source2.f & ERROR_VALUE) === 0) {
@@ -15802,33 +15835,32 @@ _Batch_instances = new WeakSet();
  * Traverse the effect tree, executing effects or stashing
  * them for later execution as appropriate
  * @param {Effect} root
- * @param {EffectTarget} target
+ * @param {Effect[]} effects
+ * @param {Effect[]} render_effects
  */
-traverse_effect_tree_fn = /* @__PURE__ */ __name(function(root2, target) {
+traverse_effect_tree_fn = /* @__PURE__ */ __name(function(root2, effects, render_effects) {
   root2.f ^= CLEAN;
   var effect2 = root2.first;
+  var pending_boundary = null;
   while (effect2 !== null) {
     var flags2 = effect2.f;
     var is_branch = (flags2 & (BRANCH_EFFECT | ROOT_EFFECT)) !== 0;
     var is_skippable_branch = is_branch && (flags2 & CLEAN) !== 0;
     var skip = is_skippable_branch || (flags2 & INERT) !== 0 || this.skipped_effects.has(effect2);
-    if ((effect2.f & BOUNDARY_EFFECT) !== 0 && effect2.b?.is_pending()) {
-      target = {
-        parent: target,
-        effect: effect2,
-        effects: [],
-        render_effects: []
-      };
+    if (async_mode_flag && pending_boundary === null && (flags2 & BOUNDARY_EFFECT) !== 0 && effect2.b?.is_pending) {
+      pending_boundary = effect2;
     }
     if (!skip && effect2.fn !== null) {
       if (is_branch) {
         effect2.f ^= CLEAN;
+      } else if (pending_boundary !== null && (flags2 & (EFFECT | RENDER_EFFECT | MANAGED_EFFECT)) !== 0) {
+        pending_boundary.b.defer_effect(effect2);
       } else if ((flags2 & EFFECT) !== 0) {
-        target.effects.push(effect2);
+        effects.push(effect2);
       } else if (async_mode_flag && (flags2 & (RENDER_EFFECT | MANAGED_EFFECT)) !== 0) {
-        target.render_effects.push(effect2);
+        render_effects.push(effect2);
       } else if (is_dirty(effect2)) {
-        if ((effect2.f & BLOCK_EFFECT) !== 0) __privateGet(this, _dirty_effects).add(effect2);
+        if ((flags2 & BLOCK_EFFECT) !== 0) __privateGet(this, _dirty_effects).add(effect2);
         update_effect(effect2);
       }
       var child2 = effect2.first;
@@ -15840,11 +15872,8 @@ traverse_effect_tree_fn = /* @__PURE__ */ __name(function(root2, target) {
     var parent4 = effect2.parent;
     effect2 = effect2.next;
     while (effect2 === null && parent4 !== null) {
-      if (parent4 === target.effect) {
-        __privateMethod(this, _Batch_instances, defer_effects_fn).call(this, target.effects);
-        __privateMethod(this, _Batch_instances, defer_effects_fn).call(this, target.render_effects);
-        target = /** @type {EffectTarget} */
-        target.parent;
+      if (parent4 === pending_boundary) {
+        pending_boundary = null;
       }
       effect2 = parent4.next;
       parent4 = parent4.parent;
@@ -15855,33 +15884,10 @@ traverse_effect_tree_fn = /* @__PURE__ */ __name(function(root2, target) {
  * @param {Effect[]} effects
  */
 defer_effects_fn = /* @__PURE__ */ __name(function(effects) {
-  for (const e of effects) {
-    if ((e.f & DIRTY) !== 0) {
-      __privateGet(this, _dirty_effects).add(e);
-    } else if ((e.f & MAYBE_DIRTY) !== 0) {
-      __privateGet(this, _maybe_dirty_effects).add(e);
-    }
-    __privateMethod(this, _Batch_instances, clear_marked_fn).call(this, e.deps);
-    set_signal_status(e, CLEAN);
+  for (var i = 0; i < effects.length; i += 1) {
+    defer_effect(effects[i], __privateGet(this, _dirty_effects), __privateGet(this, _maybe_dirty_effects));
   }
 }, "#defer_effects");
-/**
- * @param {Value[] | null} deps
- */
-clear_marked_fn = /* @__PURE__ */ __name(function(deps) {
-  if (deps === null) return;
-  for (const dep of deps) {
-    if ((dep.f & DERIVED) === 0 || (dep.f & WAS_MARKED) === 0) {
-      continue;
-    }
-    dep.f ^= WAS_MARKED;
-    __privateMethod(this, _Batch_instances, clear_marked_fn).call(
-      this,
-      /** @type {Derived} */
-      dep.deps
-    );
-  }
-}, "#clear_marked");
 resolve_fn = /* @__PURE__ */ __name(function() {
   if (__privateGet(this, _blocking_pending) === 0) {
     for (const fn3 of __privateGet(this, _commit_callbacks)) fn3();
@@ -15897,12 +15903,6 @@ commit_fn = /* @__PURE__ */ __name(function() {
     this.previous.clear();
     var previous_batch_values = batch_values;
     var is_earlier = true;
-    var dummy_target = {
-      parent: null,
-      effect: null,
-      effects: [],
-      render_effects: []
-    };
     for (const batch2 of batches) {
       if (batch2 === this) {
         is_earlier = false;
@@ -15935,7 +15935,7 @@ commit_fn = /* @__PURE__ */ __name(function() {
           current_batch = batch2;
           batch2.apply();
           for (const root2 of queued_root_effects) {
-            __privateMethod(_a2 = batch2, _Batch_instances, traverse_effect_tree_fn).call(_a2, root2, dummy_target);
+            __privateMethod(_a2 = batch2, _Batch_instances, traverse_effect_tree_fn).call(_a2, root2, [], []);
           }
           batch2.deactivate();
         }
@@ -16230,9 +16230,13 @@ function fork(fn3) {
   var committed = false;
   var settled2 = batch2.settled();
   flushSync(fn3);
-  batch_values = null;
   for (var [source2, value2] of batch2.previous) {
     source2.v = value2;
+  }
+  for (source2 of batch2.current.keys()) {
+    if ((source2.f & DERIVED) !== 0) {
+      set_signal_status(source2, DIRTY);
+    }
   }
   return {
     commit: /* @__PURE__ */ __name(async () => {
@@ -16247,6 +16251,7 @@ function fork(fn3) {
       batch2.is_fork = false;
       for (var [source3, value3] of batch2.current) {
         source3.v = value3;
+        source3.wv = increment_write_version();
       }
       flushSync(() => {
         var eager_effects2 = /* @__PURE__ */ new Set();
@@ -16317,7 +16322,7 @@ const _Boundary = class _Boundary {
     __privateAdd(this, _Boundary_instances);
     /** @type {Boundary | null} */
     __publicField(this, "parent");
-    __privateAdd(this, _pending2, false);
+    __publicField(this, "is_pending", false);
     /** @type {TemplateNode} */
     __privateAdd(this, _anchor);
     /** @type {TemplateNode | null} */
@@ -16341,6 +16346,10 @@ const _Boundary = class _Boundary {
     __privateAdd(this, _local_pending_count, 0);
     __privateAdd(this, _pending_count, 0);
     __privateAdd(this, _is_creating_fallback, false);
+    /** @type {Set<Effect>} */
+    __privateAdd(this, _dirty_effects2, /* @__PURE__ */ new Set());
+    /** @type {Set<Effect>} */
+    __privateAdd(this, _maybe_dirty_effects2, /* @__PURE__ */ new Set());
     /**
      * A source containing the number of pending async deriveds/expressions.
      * Only created if `$effect.pending()` is used inside the boundary,
@@ -16363,7 +16372,7 @@ const _Boundary = class _Boundary {
     __privateSet(this, _children, children);
     this.parent = /** @type {Effect} */
     active_effect.b;
-    __privateSet(this, _pending2, !!__privateGet(this, _props).pending);
+    this.is_pending = !!__privateGet(this, _props).pending;
     __privateSet(this, _effect, block(() => {
       active_effect.b = this;
       if (hydrating) {
@@ -16378,6 +16387,9 @@ const _Boundary = class _Boundary {
           __privateMethod(this, _Boundary_instances, hydrate_pending_content_fn).call(this);
         } else {
           __privateMethod(this, _Boundary_instances, hydrate_resolved_content_fn).call(this);
+          if (__privateGet(this, _pending_count) === 0) {
+            this.is_pending = false;
+          }
         }
       } else {
         var anchor = __privateMethod(this, _Boundary_instances, get_anchor_fn).call(this);
@@ -16389,7 +16401,7 @@ const _Boundary = class _Boundary {
         if (__privateGet(this, _pending_count) > 0) {
           __privateMethod(this, _Boundary_instances, show_pending_snippet_fn).call(this);
         } else {
-          __privateSet(this, _pending2, false);
+          this.is_pending = false;
         }
       }
       return () => {
@@ -16401,11 +16413,18 @@ const _Boundary = class _Boundary {
     }
   }
   /**
-   * Returns `true` if the effect exists inside a boundary whose pending snippet is shown
+   * Defer an effect inside a pending boundary until the boundary resolves
+   * @param {Effect} effect
+   */
+  defer_effect(effect2) {
+    defer_effect(effect2, __privateGet(this, _dirty_effects2), __privateGet(this, _maybe_dirty_effects2));
+  }
+  /**
+   * Returns `false` if the effect exists inside a boundary whose pending snippet is shown
    * @returns {boolean}
    */
-  is_pending() {
-    return __privateGet(this, _pending2) || !!this.parent && this.parent.is_pending();
+  is_rendered() {
+    return !this.is_pending && (!this.parent || this.parent.is_rendered());
   }
   has_pending_snippet() {
     return !!__privateGet(this, _props).pending;
@@ -16475,7 +16494,7 @@ const _Boundary = class _Boundary {
           __privateSet(this, _failed_effect, null);
         });
       }
-      __privateSet(this, _pending2, this.has_pending_snippet());
+      this.is_pending = this.has_pending_snippet();
       __privateSet(this, _main_effect, __privateMethod(this, _Boundary_instances, run_fn).call(this, () => {
         __privateSet(this, _is_creating_fallback, false);
         return branch(() => __privateGet(this, _children).call(this, __privateGet(this, _anchor)));
@@ -16483,7 +16502,7 @@ const _Boundary = class _Boundary {
       if (__privateGet(this, _pending_count) > 0) {
         __privateMethod(this, _Boundary_instances, show_pending_snippet_fn).call(this);
       } else {
-        __privateSet(this, _pending2, false);
+        this.is_pending = false;
       }
     }, "reset");
     var previous_reaction = active_reaction;
@@ -16525,7 +16544,6 @@ const _Boundary = class _Boundary {
     }
   }
 };
-_pending2 = new WeakMap();
 _anchor = new WeakMap();
 _hydrate_open = new WeakMap();
 _props = new WeakMap();
@@ -16539,6 +16557,8 @@ _pending_anchor = new WeakMap();
 _local_pending_count = new WeakMap();
 _pending_count = new WeakMap();
 _is_creating_fallback = new WeakMap();
+_dirty_effects2 = new WeakMap();
+_maybe_dirty_effects2 = new WeakMap();
 _effect_pending = new WeakMap();
 _effect_pending_subscriber = new WeakMap();
 _Boundary_instances = new WeakSet();
@@ -16548,7 +16568,6 @@ hydrate_resolved_content_fn = /* @__PURE__ */ __name(function() {
   } catch (error3) {
     this.error(error3);
   }
-  __privateSet(this, _pending2, false);
 }, "#hydrate_resolved_content");
 hydrate_pending_content_fn = /* @__PURE__ */ __name(function() {
   const pending2 = __privateGet(this, _props).pending;
@@ -16572,13 +16591,13 @@ hydrate_pending_content_fn = /* @__PURE__ */ __name(function() {
           __privateSet(this, _pending_effect, null);
         }
       );
-      __privateSet(this, _pending2, false);
+      this.is_pending = false;
     }
   });
 }, "#hydrate_pending_content");
 get_anchor_fn = /* @__PURE__ */ __name(function() {
   var anchor = __privateGet(this, _anchor);
-  if (__privateGet(this, _pending2)) {
+  if (this.is_pending) {
     __privateSet(this, _pending_anchor, create_text());
     __privateGet(this, _anchor).before(__privateGet(this, _pending_anchor));
     anchor = __privateGet(this, _pending_anchor);
@@ -16638,7 +16657,17 @@ update_pending_count_fn = /* @__PURE__ */ __name(function(d) {
   }
   __privateSet(this, _pending_count, __privateGet(this, _pending_count) + d);
   if (__privateGet(this, _pending_count) === 0) {
-    __privateSet(this, _pending2, false);
+    this.is_pending = false;
+    for (const e2 of __privateGet(this, _dirty_effects2)) {
+      set_signal_status(e2, DIRTY);
+      schedule_effect(e2);
+    }
+    for (const e2 of __privateGet(this, _maybe_dirty_effects2)) {
+      set_signal_status(e2, MAYBE_DIRTY);
+      schedule_effect(e2);
+    }
+    __privateGet(this, _dirty_effects2).clear();
+    __privateGet(this, _maybe_dirty_effects2).clear();
     if (__privateGet(this, _pending_effect)) {
       pause_effect(__privateGet(this, _pending_effect), () => {
         __privateSet(this, _pending_effect, null);
@@ -16792,46 +16821,6 @@ function unset_context() {
   }
 }
 __name(unset_context, "unset_context");
-async function async_body(anchor, fn3) {
-  var boundary2 = get_boundary();
-  var batch2 = (
-    /** @type {Batch} */
-    current_batch
-  );
-  var blocking = !boundary2.is_pending();
-  boundary2.update_pending_count(1);
-  batch2.increment(blocking);
-  var active = (
-    /** @type {Effect} */
-    active_effect
-  );
-  var was_hydrating = hydrating;
-  var next_hydrate_node = void 0;
-  if (was_hydrating) {
-    hydrate_next();
-    next_hydrate_node = skip_nodes(false);
-  }
-  try {
-    var promise4 = fn3(anchor);
-  } finally {
-    if (next_hydrate_node) {
-      set_hydrate_node(next_hydrate_node);
-      hydrate_next();
-    }
-  }
-  try {
-    await promise4;
-  } catch (error3) {
-    if (!aborted(active)) {
-      invoke_error_boundary(error3, active);
-    }
-  } finally {
-    boundary2.update_pending_count(-1);
-    batch2.decrement(blocking);
-    unset_context();
-  }
-}
-__name(async_body, "async_body");
 function run$1(thunks) {
   const restore = capture();
   var boundary2 = get_boundary();
@@ -16839,7 +16828,7 @@ function run$1(thunks) {
     /** @type {Batch} */
     current_batch
   );
-  var blocking = !boundary2.is_pending();
+  var blocking = boundary2.is_rendered();
   boundary2.update_pending_count(1);
   batch2.increment(blocking);
   var active = (
@@ -16863,14 +16852,11 @@ function run$1(thunks) {
       if (aborted(active)) {
         throw STALE_REACTION;
       }
-      try {
-        restore();
-        return fn3();
-      } finally {
-        unset_context();
-      }
+      restore();
+      return fn3();
     }).catch(handle_error2).finally(() => {
       unset_context();
+      current_batch?.deactivate();
     });
     promises.push(promise4);
   }
@@ -16921,7 +16907,7 @@ function derived$1(fn3) {
 }
 __name(derived$1, "derived$1");
 // @__NO_SIDE_EFFECTS__
-function async_derived(fn3, location) {
+function async_derived(fn3, label2, location) {
   let parent4 = (
     /** @type {Effect | null} */
     active_effect
@@ -16942,6 +16928,7 @@ function async_derived(fn3, location) {
     /** @type {V} */
     UNINITIALIZED
   );
+  if (DEV) signal.label = label2;
   var should_suspend = !active_reaction;
   var deferreds = /* @__PURE__ */ new Map();
   async_effect(() => {
@@ -16965,7 +16952,7 @@ function async_derived(fn3, location) {
       current_batch
     );
     if (should_suspend) {
-      var blocking = !boundary2.is_pending();
+      var blocking = boundary2.is_rendered();
       boundary2.update_pending_count(1);
       batch2.increment(blocking);
       deferreds.get(batch2)?.reject(STALE_REACTION);
@@ -17113,10 +17100,14 @@ __name(execute_derived, "execute_derived");
 function update_derived(derived2) {
   var value2 = execute_derived(derived2);
   if (!derived2.equals(value2)) {
-    if (!current_batch?.is_fork) {
-      derived2.v = value2;
-    }
     derived2.wv = increment_write_version();
+    if (!current_batch?.is_fork || derived2.deps === null) {
+      derived2.v = value2;
+      if (derived2.deps === null) {
+        set_signal_status(derived2, CLEAN);
+        return;
+      }
+    }
   }
   if (is_destroying_effect) {
     return;
@@ -17126,8 +17117,7 @@ function update_derived(derived2) {
       batch_values.set(derived2, value2);
     }
   } else {
-    var status = (derived2.f & CONNECTED) === 0 ? MAYBE_DIRTY : CLEAN;
-    set_signal_status(derived2, status);
+    update_derived_status(derived2);
   }
 }
 __name(update_derived, "update_derived");
@@ -17242,13 +17232,14 @@ function internal_set(source2, value2) {
       }
     }
     if ((source2.f & DERIVED) !== 0) {
+      const derived2 = (
+        /** @type {Derived} */
+        source2
+      );
       if ((source2.f & DIRTY) !== 0) {
-        execute_derived(
-          /** @type {Derived} */
-          source2
-        );
+        execute_derived(derived2);
       }
-      set_signal_status(source2, (source2.f & CONNECTED) !== 0 ? CLEAN : MAYBE_DIRTY);
+      update_derived_status(derived2);
     }
     source2.wv = increment_write_version();
     mark_reactions(source2, DIRTY);
@@ -18124,7 +18115,7 @@ function legacy_pre_effect_reset() {
     for (var token of context.l.$) {
       token.deps();
       var effect2 = token.effect;
-      if ((effect2.f & CLEAN) !== 0) {
+      if ((effect2.f & CLEAN) !== 0 && effect2.deps !== null) {
         set_signal_status(effect2, MAYBE_DIRTY);
       }
       if (is_dirty(effect2)) {
@@ -18448,23 +18439,24 @@ function is_dirty(reaction) {
     reaction.f &= ~WAS_MARKED;
   }
   if ((flags2 & MAYBE_DIRTY) !== 0) {
-    var dependencies = reaction.deps;
-    if (dependencies !== null) {
-      var length2 = dependencies.length;
-      for (var i = 0; i < length2; i++) {
-        var dependency = dependencies[i];
-        if (is_dirty(
+    var dependencies = (
+      /** @type {Value[]} */
+      reaction.deps
+    );
+    var length2 = dependencies.length;
+    for (var i = 0; i < length2; i++) {
+      var dependency = dependencies[i];
+      if (is_dirty(
+        /** @type {Derived} */
+        dependency
+      )) {
+        update_derived(
           /** @type {Derived} */
           dependency
-        )) {
-          update_derived(
-            /** @type {Derived} */
-            dependency
-          );
-        }
-        if (dependency.wv > reaction.wv) {
-          return true;
-        }
+        );
+      }
+      if (dependency.wv > reaction.wv) {
+        return true;
       }
     }
     if ((flags2 & CONNECTED) !== 0 && // During time traveling we don't want to reset the status so that
@@ -18617,20 +18609,17 @@ function remove_reaction(signal, dependency) {
   // to be unused, when in fact it is used by the currently-updating parent. Checking `new_deps`
   // allows us to skip the expensive work of disconnecting and immediately reconnecting it
   (new_deps === null || !new_deps.includes(dependency))) {
-    set_signal_status(dependency, MAYBE_DIRTY);
-    if ((dependency.f & CONNECTED) !== 0) {
-      dependency.f ^= CONNECTED;
-      dependency.f &= ~WAS_MARKED;
-    }
-    destroy_derived_effects(
-      /** @type {Derived} **/
+    var derived2 = (
+      /** @type {Derived} */
       dependency
     );
-    remove_reactions(
-      /** @type {Derived} **/
-      dependency,
-      0
-    );
+    if ((derived2.f & CONNECTED) !== 0) {
+      derived2.f ^= CONNECTED;
+      derived2.f &= ~WAS_MARKED;
+    }
+    update_derived_status(derived2);
+    destroy_derived_effects(derived2);
+    remove_reactions(derived2, 0);
   }
 }
 __name(remove_reaction, "remove_reaction");
@@ -18755,15 +18744,15 @@ function get$2(signal) {
       }
     }
   }
-  if (is_destroying_effect) {
-    if (old_values.has(signal)) {
-      return old_values.get(signal);
-    }
-    if (is_derived) {
-      var derived2 = (
-        /** @type {Derived} */
-        signal
-      );
+  if (is_destroying_effect && old_values.has(signal)) {
+    return old_values.get(signal);
+  }
+  if (is_derived) {
+    var derived2 = (
+      /** @type {Derived} */
+      signal
+    );
+    if (is_destroying_effect) {
       var value2 = derived2.v;
       if ((derived2.f & CLEAN) === 0 && derived2.reactions !== null || depends_on_old_values(derived2)) {
         value2 = execute_derived(derived2);
@@ -18771,13 +18760,15 @@ function get$2(signal) {
       old_values.set(derived2, value2);
       return value2;
     }
-  } else if (is_derived && (!batch_values?.has(signal) || current_batch?.is_fork && !effect_tracking())) {
-    derived2 = /** @type {Derived} */
-    signal;
+    var should_connect = (derived2.f & CONNECTED) === 0 && !untracking && active_reaction !== null && (is_updating_effect || (active_reaction.f & CONNECTED) !== 0);
+    var is_new = derived2.deps === null;
     if (is_dirty(derived2)) {
+      if (should_connect) {
+        derived2.f |= CONNECTED;
+      }
       update_derived(derived2);
     }
-    if (is_updating_effect && effect_tracking() && (derived2.f & CONNECTED) === 0) {
+    if (should_connect && !is_new) {
       reconnect(derived2);
     }
   }
@@ -18792,7 +18783,7 @@ function get$2(signal) {
 __name(get$2, "get$2");
 function reconnect(derived2) {
   if (derived2.deps === null) return;
-  derived2.f ^= CONNECTED;
+  derived2.f |= CONNECTED;
   for (const dep of derived2.deps) {
     (dep.reactions ?? (dep.reactions = [])).push(derived2);
     if ((dep.f & DERIVED) !== 0 && (dep.f & CONNECTED) === 0) {
@@ -18835,11 +18826,6 @@ function untrack(fn3) {
   }
 }
 __name(untrack, "untrack");
-const STATUS_MASK = ~(DIRTY | MAYBE_DIRTY | CLEAN);
-function set_signal_status(signal, status) {
-  signal.f = signal.f & STATUS_MASK | status;
-}
-__name(set_signal_status, "set_signal_status");
 function exclude_from_object(obj, keys) {
   var result = {};
   for (var key2 in obj) {
@@ -20238,7 +20224,7 @@ function async(node, blockers = [], expressions = [], fn3) {
     /** @type {Batch} */
     current_batch
   );
-  var blocking = !boundary2.is_pending();
+  var blocking = boundary2.is_rendered();
   boundary2.update_pending_count(1);
   batch2.increment(blocking);
   var was_hydrating = hydrating;
@@ -25033,7 +25019,7 @@ function JournalEntryPageWindowSystemBridgeMixin(BaseSheet, windowDefinition, mo
   return MixedClass;
 }
 __name(JournalEntryPageWindowSystemBridgeMixin, "JournalEntryPageWindowSystemBridgeMixin");
-const VERSION = "5.46.1";
+const VERSION = "5.46.4";
 const PUBLIC_VERSION = "5";
 if (typeof window !== "undefined") {
   ((_d = window.__svelte ?? (window.__svelte = {})).v ?? (_d.v = /* @__PURE__ */ new Set())).add(PUBLIC_VERSION);
@@ -29120,11 +29106,23 @@ const _FoundryUtilsPort = class _FoundryUtilsPort {
     }
     try {
       if (!this.foundryAPI) {
-        return str.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+        let result = str;
+        let previous;
+        do {
+          previous = result;
+          result = result.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+        } while (result !== previous);
+        return result;
       }
       return this.foundryAPI.unescapeHTML(str);
     } catch {
-      return str.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+      let result = str;
+      let previous;
+      do {
+        previous = result;
+        result = result.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+      } while (result !== previous);
+      return result;
     }
   }
   // ===== Async/Timeout =====

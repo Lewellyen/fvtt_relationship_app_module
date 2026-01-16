@@ -26,7 +26,7 @@ describe("FoundryUtilsPort", () => {
       diffObject: vi.fn().mockReturnValue({ changed: "value" }),
       flattenObject: vi.fn().mockReturnValue({ ["a.b"]: 1 }),
       expandObject: vi.fn().mockReturnValue({ a: { b: 1 } }),
-      cleanHTML: vi.fn((html) => html.replace(/<script.*?<\/script>/gi, "")),
+      cleanHTML: vi.fn((html) => html.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*[^>]*>/gi, "")),
       escapeHTML: vi.fn((str) =>
         str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       ),
@@ -445,6 +445,43 @@ describe("FoundryUtilsPort", () => {
         expectResultErr(result);
         expect(result.error.code).toBe("DISPOSED");
       });
+
+      describe("Edge Cases: Script tag variants (Security Fix)", () => {
+        it("should remove script tags with space before closing tag: </script >", () => {
+          const dirty = "<script>alert(1)</script >";
+          const result = service.cleanHTML(dirty);
+          expectResultOk(result);
+          expect(result.value).toBe("");
+        });
+
+        it("should remove script tags with attributes in closing tag: </script foo='bar'>", () => {
+          const dirty = "<script>alert(1)</script foo='bar'>";
+          const result = service.cleanHTML(dirty);
+          expectResultOk(result);
+          expect(result.value).toBe("");
+        });
+
+        it("should remove mixed script tags: <script></script >", () => {
+          const dirty = "<script>alert(1)</script ><p>Safe</p>";
+          const result = service.cleanHTML(dirty);
+          expectResultOk(result);
+          expect(result.value).toBe("<p>Safe</p>");
+        });
+
+        it("should remove uppercase script tags: <SCRIPT></SCRIPT >", () => {
+          const dirty = "<SCRIPT>alert(1)</SCRIPT ><p>Safe</p>";
+          const result = service.cleanHTML(dirty);
+          expectResultOk(result);
+          expect(result.value).toBe("<p>Safe</p>");
+        });
+
+        it("should remove script tags with attributes in opening tag", () => {
+          const dirty = '<script type="text/javascript">alert(1)</script>';
+          const result = service.cleanHTML(dirty);
+          expectResultOk(result);
+          expect(result.value).toBe("");
+        });
+      });
     });
 
     describe("escapeHTML", () => {
@@ -508,6 +545,50 @@ describe("FoundryUtilsPort", () => {
         const str = "&lt;div&gt;Test&lt;/div&gt;";
         const unescaped = service.unescapeHTML(str);
         expect(unescaped).toBe(str);
+      });
+
+      describe("Edge Cases: Double-escaped entities (Security Fix)", () => {
+        it("should correctly unescape &amp;amp; to &", () => {
+          const nullService = new FoundryUtilsPort(null);
+          const str = "&amp;amp;";
+          const unescaped = nullService.unescapeHTML(str);
+          expect(unescaped).toBe("&");
+        });
+
+        it('should correctly unescape &amp;quot; to "', () => {
+          const nullService = new FoundryUtilsPort(null);
+          const str = "&amp;quot;";
+          const unescaped = nullService.unescapeHTML(str);
+          expect(unescaped).toBe('"');
+        });
+
+        it("should correctly unescape &amp;lt; to <", () => {
+          const nullService = new FoundryUtilsPort(null);
+          const str = "&amp;lt;";
+          const unescaped = nullService.unescapeHTML(str);
+          expect(unescaped).toBe("<");
+        });
+
+        it("should correctly unescape &amp;gt; to >", () => {
+          const nullService = new FoundryUtilsPort(null);
+          const str = "&amp;gt;";
+          const unescaped = nullService.unescapeHTML(str);
+          expect(unescaped).toBe(">");
+        });
+
+        it("should correctly unescape combinations like &lt;script&gt;", () => {
+          const nullService = new FoundryUtilsPort(null);
+          const str = "&lt;script&gt;alert(1)&lt;/script&gt;";
+          const unescaped = nullService.unescapeHTML(str);
+          expect(unescaped).toBe("<script>alert(1)</script>");
+        });
+
+        it("should correctly unescape mixed double-escaped entities", () => {
+          const nullService = new FoundryUtilsPort(null);
+          const str = "&amp;amp;&amp;quot;&amp;lt;test&amp;gt;";
+          const unescaped = nullService.unescapeHTML(str);
+          expect(unescaped).toBe('&"<test>');
+        });
       });
     });
   });
@@ -654,7 +735,9 @@ describe("FoundryUtilsPort", () => {
           diffObject: vi.fn().mockReturnValue({ changed: "value" }),
           flattenObject: vi.fn().mockReturnValue({ ["a.b"]: 1 }),
           expandObject: vi.fn().mockReturnValue({ a: { b: 1 } }),
-          cleanHTML: vi.fn((html) => html.replace(/<script.*?<\/script>/gi, "")),
+          cleanHTML: vi.fn((html) =>
+            html.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*[^>]*>/gi, "")
+          ),
           escapeHTML: vi.fn((str) => str.replace(/</g, "&lt;")),
           unescapeHTML: vi.fn((str) => str.replace(/&lt;/g, "<")),
           fetchWithTimeout: vi.fn().mockResolvedValue(new Response()),

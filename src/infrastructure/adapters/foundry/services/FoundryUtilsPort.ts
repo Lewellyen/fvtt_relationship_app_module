@@ -342,22 +342,40 @@ export class FoundryUtilsPort implements FoundryUtils {
     try {
       if (!this.foundryAPI) {
         // Fallback: basic HTML unescaping
-        return str
-          .replace(/&amp;/g, "&")
-          .replace(/&lt;/g, "<")
-          .replace(/&gt;/g, ">")
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'");
+        // IMPORTANT: Replace &amp; LAST to avoid double-unescaping issues
+        // Example: &amp;amp; should become &, not &amp;
+        // We need to iterate until no more changes occur to handle double-escaped entities
+        let result = str;
+        let previous: string;
+        do {
+          previous = result;
+          result = result
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&amp;/g, "&");
+        } while (result !== previous);
+        return result;
       }
       return this.foundryAPI.unescapeHTML(str);
     } catch {
       // Fallback on error
-      return str
-        .replace(/&amp;/g, "&")
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'");
+      // IMPORTANT: Replace &amp; LAST to avoid double-unescaping issues
+      // Example: &amp;amp; should become &, not &amp;
+      // We need to iterate until no more changes occur to handle double-escaped entities
+      let result = str;
+      let previous: string;
+      do {
+        previous = result;
+        result = result
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&amp;/g, "&");
+      } while (result !== previous);
+      return result;
     }
   }
 
