@@ -3,11 +3,9 @@ import type { Result } from "@/domain/types/result";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import { ENV } from "@/framework/config/environment";
 import { BootstrapPerformanceTracker } from "@/infrastructure/observability/bootstrap-performance-tracker";
-import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
 import { BootstrapErrorHandler } from "@/framework/core/bootstrap-error-handler";
 import { RuntimeConfigAdapter } from "@/infrastructure/config/runtime-config-adapter";
-import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
+import { platformLoggingPortToken } from "@/application/tokens/domain-ports.tokens";
 import type { IContainerFactory } from "@/framework/core/factory/container-factory";
 import { ContainerFactory } from "@/framework/core/factory/container-factory";
 import type { IDependencyConfigurator } from "@/framework/core/config/dependency-configurator";
@@ -70,10 +68,9 @@ export class CompositionRoot {
    */
   tryLogBootstrapCompletion(container: ServiceContainer, duration: number): void {
     // Use logger from container if available (container is validated at this point)
-    const loggerResult = container.resolveWithError(loggerToken);
+    const loggerResult = container.resolveWithError(platformLoggingPortToken);
     if (loggerResult.ok) {
-      const logger = castResolvedService<Logger>(loggerResult.value);
-      logger.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
+      loggerResult.value.debug(`Bootstrap completed in ${duration.toFixed(2)}ms`);
     } else {
       // Logger not available - silently continue (graceful degradation)
     }

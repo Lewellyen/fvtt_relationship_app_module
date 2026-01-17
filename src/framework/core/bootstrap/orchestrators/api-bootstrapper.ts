@@ -1,8 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
-import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
+import { frameworkModuleApiInitializerToken } from "@/framework/tokens/module-api-initializer.token";
 import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
 
 /**
@@ -20,12 +19,14 @@ export class ApiBootstrapper {
    * @returns Result indicating success or error
    */
   static exposeApi(container: PlatformContainerPort): Result<void, string> {
-    const apiInitializerResult = container.resolveWithError(moduleApiInitializerToken);
+    const apiInitializerResult = container.resolveWithError<ModuleApiInitializer>(
+      frameworkModuleApiInitializerToken
+    );
     if (!apiInitializerResult.ok) {
       return err(`Failed to resolve ModuleApiInitializer: ${apiInitializerResult.error.message}`);
     }
 
-    const apiInitializer = castResolvedService<ModuleApiInitializer>(apiInitializerResult.value);
+    const apiInitializer = apiInitializerResult.value;
     const exposeResult = apiInitializer.expose(container);
     if (!exposeResult.ok) {
       return err(`Failed to expose API: ${exposeResult.error}`);

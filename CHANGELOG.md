@@ -12,6 +12,26 @@
 
 ### Upgrade-Hinweise
 
+## [0.59.6] - 2026-01-17
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **Public API Tokens**: `platformJournalCollectionPortToken` wird nun in der Public API (`ModuleApiTokens`) exportiert und in `getAvailableTokens()` aufgeführt ([Details](src/framework/core/api/module-api.ts), [Details](src/framework/core/api/api-token-config.ts), [Details](src/framework/core/api/builder/module-api-builder.ts))
+- **DI / Foundry Services**: Platform-Utils-Ports werden über eine gemeinsame Adapter-Registrierung + ISP-konforme Aliase gebunden (ohne Type-Assertions) ([Details](src/framework/config/modules/foundry-services.config.ts))
+- **Bootstrap Hook Tokens**: Framework-Tokens für Init/Ready Hooks sind jetzt typisiert über `BootstrapHookService` statt `unknown` ([Details](src/framework/tokens/bootstrap-init-hook-service.token.ts), [Details](src/framework/tokens/bootstrap-ready-hook-service.token.ts), [Details](src/framework/core/bootstrap/bootstrap-hook-service.interface.ts))
+
+### Fehlerbehebungen
+- **Type Coverage (100%)**: Entfernt `any`-Leak in Promise-`.catch()`-Callbacks und ergänzt gezielten Unit-Test für `castResolvedService`, damit Global-Threshold wieder 100% erreicht ([Details](src/infrastructure/adapters/foundry/adapters/foundry-journal-directory-buttons-adapter.ts), [Details](src/framework/core/utils/__tests__/cast-resolved-service.test.ts))
+- **TypeScript (resolveWithError Inferenz)**: Overload-Reihenfolge in `ServiceContainer.resolveWithError` korrigiert, damit `InjectionToken<T>` korrekt inferiert wird (kein `unknown` im Framework) ([Details](src/infrastructure/di/container.ts))
+- **Journal Sheets (WindowSystemBridgeMixin)**: Fix für API-Boundary-Violation beim Service-Resolve in `JournalEntryPageWindowSystemBridgeMixin` – Notifications werden über `platformNotificationPortToken` bezogen und interne Services (Node/GraphDataService) über `platformContainerPortToken.resolveWithError(...)` statt über nicht-exponierte Tokens via `api.resolve()` ([Details](src/infrastructure/ui/window-system/JournalEntryPageWindowSystemBridgeMixin.ts))
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.59.5] - 2026-01-16
 ### Hinzugefügt
 - Keine Einträge

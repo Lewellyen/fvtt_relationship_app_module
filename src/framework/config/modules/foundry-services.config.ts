@@ -2,6 +2,7 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
+import { createInjectionToken } from "@/application/di/token-factory";
 import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
 import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";
 import { foundryDocumentToken } from "@/infrastructure/shared/tokens/foundry/foundry-document.token";
@@ -33,6 +34,21 @@ import { foundryUtilsUuidToken } from "@/infrastructure/shared/tokens/foundry/fo
 import { foundryUtilsObjectToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-object.token";
 import { foundryUtilsHtmlToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-html.token";
 import { foundryUtilsAsyncToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-async.token";
+import {
+  platformUuidUtilsPortToken,
+  platformObjectUtilsPortToken,
+  platformHtmlUtilsPortToken,
+  platformAsyncUtilsPortToken,
+  platformJournalEntryPageSheetRegistrationPortToken,
+  platformJournalDirectoryButtonsPortToken,
+} from "@/application/tokens/domain-ports.tokens";
+import { DIFoundryPlatformUtilsAdapter } from "@/infrastructure/adapters/foundry/adapters/foundry-platform-utils-adapter";
+import { DIFoundryJournalEntryPageSheetRegistrationAdapter } from "@/infrastructure/adapters/foundry/adapters/foundry-journal-entry-page-sheet-registration-adapter";
+import { DIFoundryJournalDirectoryButtonsAdapter } from "@/infrastructure/adapters/foundry/adapters/foundry-journal-directory-buttons-adapter";
+import type { PlatformAsyncUtilsPort } from "@/domain/ports/utils/platform-async-utils-port.interface";
+import type { PlatformHtmlUtilsPort } from "@/domain/ports/utils/platform-html-utils-port.interface";
+import type { PlatformObjectUtilsPort } from "@/domain/ports/utils/platform-object-utils-port.interface";
+import type { PlatformUuidUtilsPort } from "@/domain/ports/utils/platform-uuid-utils-port.interface";
 
 /**
  * Registers Foundry service wrappers.
@@ -228,6 +244,84 @@ export function registerFoundryServices(container: ServiceContainer): Result<voi
   const asyncAliasResult = container.registerAlias(foundryUtilsAsyncToken, foundryUtilsToken);
   if (isErr(asyncAliasResult)) {
     return err(`Failed to register FoundryUtilsAsync alias: ${asyncAliasResult.error.message}`);
+  }
+
+  // Register platform-agnostic utils ports (domain-facing)
+  const platformUtilsAdapterToken = createInjectionToken<
+    PlatformUuidUtilsPort & PlatformObjectUtilsPort & PlatformHtmlUtilsPort & PlatformAsyncUtilsPort
+  >("PlatformUtilsAdapter");
+
+  const platformUtilsAdapterResult = container.registerClass(
+    platformUtilsAdapterToken,
+    DIFoundryPlatformUtilsAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(platformUtilsAdapterResult)) {
+    return err(
+      `Failed to register PlatformUtilsAdapter: ${platformUtilsAdapterResult.error.message}`
+    );
+  }
+
+  // ISP aliases: same adapter implements multiple utils ports
+  const platformUuidAlias = container.registerAlias(
+    platformUuidUtilsPortToken,
+    platformUtilsAdapterToken
+  );
+  if (isErr(platformUuidAlias)) {
+    return err(
+      `Failed to register PlatformUuidUtilsPort alias: ${platformUuidAlias.error.message}`
+    );
+  }
+
+  const platformObjectAlias = container.registerAlias(
+    platformObjectUtilsPortToken,
+    platformUtilsAdapterToken
+  );
+  if (isErr(platformObjectAlias)) {
+    return err(
+      `Failed to register PlatformObjectUtilsPort alias: ${platformObjectAlias.error.message}`
+    );
+  }
+  const platformHtmlAlias = container.registerAlias(
+    platformHtmlUtilsPortToken,
+    platformUtilsAdapterToken
+  );
+  if (isErr(platformHtmlAlias)) {
+    return err(
+      `Failed to register PlatformHtmlUtilsPort alias: ${platformHtmlAlias.error.message}`
+    );
+  }
+  const platformAsyncAlias = container.registerAlias(
+    platformAsyncUtilsPortToken,
+    platformUtilsAdapterToken
+  );
+  if (isErr(platformAsyncAlias)) {
+    return err(
+      `Failed to register PlatformAsyncUtilsPort alias: ${platformAsyncAlias.error.message}`
+    );
+  }
+
+  // Register platform-agnostic bootstrap ports (domain-facing)
+  const sheetRegResult = container.registerClass(
+    platformJournalEntryPageSheetRegistrationPortToken,
+    DIFoundryJournalEntryPageSheetRegistrationAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(sheetRegResult)) {
+    return err(
+      `Failed to register PlatformJournalEntryPageSheetRegistrationPort: ${sheetRegResult.error.message}`
+    );
+  }
+
+  const buttonsResult = container.registerClass(
+    platformJournalDirectoryButtonsPortToken,
+    DIFoundryJournalDirectoryButtonsAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(buttonsResult)) {
+    return err(
+      `Failed to register PlatformJournalDirectoryButtonsPort: ${buttonsResult.error.message}`
+    );
   }
 
   return ok(undefined);

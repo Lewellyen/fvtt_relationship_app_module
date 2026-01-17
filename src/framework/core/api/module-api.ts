@@ -1,25 +1,29 @@
 import type { ApiSafeToken } from "@/infrastructure/di/types/utilities/api-safe-token";
-import type { NotificationService } from "@/application/services/notification-center.interface";
-import type { JournalVisibilityService } from "@/application/services/JournalVisibilityService";
-import type { JournalDirectoryProcessor } from "@/application/services/JournalDirectoryProcessor";
-import type { FoundryGame } from "@/infrastructure/adapters/foundry/interfaces/FoundryGame";
-import type { FoundryHooks } from "@/infrastructure/adapters/foundry/interfaces/FoundryHooks";
-import type { FoundryDocument } from "@/infrastructure/adapters/foundry/interfaces/FoundryDocument";
-import type { FoundryUI } from "@/infrastructure/adapters/foundry/interfaces/FoundryUI";
-import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
-import type { MetricsSnapshot } from "@/infrastructure/observability/metrics-types";
-import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
-import type { FoundryJournalFacade } from "@/infrastructure/adapters/foundry/facades/foundry-journal-facade.interface";
+import type {
+  PlatformContainerPort,
+  ContainerError,
+} from "@/domain/ports/platform-container-port.interface";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
+import type {
+  PlatformMetricsSnapshotPort,
+  MetricsSnapshot,
+} from "@/domain/ports/platform-metrics-snapshot-port.interface";
+import type { PlatformSettingsPort } from "@/domain/ports/platform-settings-port.interface";
+import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
+import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
+import type { PlatformJournalDirectoryUiPort } from "@/domain/ports/platform-journal-directory-ui-port.interface";
+import type { PlatformUINotificationPort } from "@/domain/ports/platform-ui-notification-port.interface";
+import type { PlatformValidationPort } from "@/domain/ports/platform-validation-port.interface";
+import type { PlatformContextMenuRegistrationPort } from "@/domain/ports/platform-context-menu-registration-port.interface";
+import type { PlatformJournalCollectionPort } from "@/domain/ports/collections/platform-journal-collection-port.interface";
+import type { PlatformUuidUtilsPort } from "@/domain/ports/utils/platform-uuid-utils-port.interface";
+import type { PlatformObjectUtilsPort } from "@/domain/ports/utils/platform-object-utils-port.interface";
+import type { PlatformHtmlUtilsPort } from "@/domain/ports/utils/platform-html-utils-port.interface";
+import type { PlatformAsyncUtilsPort } from "@/domain/ports/utils/platform-async-utils-port.interface";
 import type { Result } from "@/domain/types/result";
-import type { ContainerError } from "@/infrastructure/di/interfaces";
 import type { HealthStatus } from "@/domain/types/health-status";
-import type { IGraphDataService } from "@/application/services/GraphDataService";
-import type { INodeDataService } from "@/application/services/NodeDataService";
-import type { FoundryUtils } from "@/infrastructure/adapters/foundry/interfaces/FoundryUtils";
-import type { FoundryUtilsUuidPort } from "@/infrastructure/adapters/foundry/interfaces/FoundryUtilsUuidPort";
-import type { FoundryUtilsObjectPort } from "@/infrastructure/adapters/foundry/interfaces/FoundryUtilsObjectPort";
-import type { FoundryUtilsHtmlPort } from "@/infrastructure/adapters/foundry/interfaces/FoundryUtilsHtmlPort";
-import type { FoundryUtilsAsyncPort } from "@/infrastructure/adapters/foundry/interfaces/FoundryUtilsAsyncPort";
 
 /**
  * Information about a registered service token.
@@ -58,23 +62,23 @@ export interface DeprecationInfo {
  * Internal code cannot use these with container.resolve() due to type enforcement.
  */
 export interface ModuleApiTokens {
-  notificationCenterToken: ApiSafeToken<NotificationService>;
-  journalVisibilityServiceToken: ApiSafeToken<JournalVisibilityService>;
-  journalDirectoryProcessorToken: ApiSafeToken<JournalDirectoryProcessor>;
-  foundryGameToken: ApiSafeToken<FoundryGame>;
-  foundryHooksToken: ApiSafeToken<FoundryHooks>;
-  foundryDocumentToken: ApiSafeToken<FoundryDocument>;
-  foundryUIToken: ApiSafeToken<FoundryUI>;
-  foundrySettingsToken: ApiSafeToken<FoundrySettings>;
-  i18nFacadeToken: ApiSafeToken<I18nFacadeService>;
-  foundryJournalFacadeToken: ApiSafeToken<FoundryJournalFacade>;
-  graphDataServiceToken: ApiSafeToken<IGraphDataService>;
-  nodeDataServiceToken: ApiSafeToken<INodeDataService>;
-  foundryUtilsToken: ApiSafeToken<FoundryUtils>;
-  foundryUtilsUuidToken: ApiSafeToken<FoundryUtilsUuidPort>;
-  foundryUtilsObjectToken: ApiSafeToken<FoundryUtilsObjectPort>;
-  foundryUtilsHtmlToken: ApiSafeToken<FoundryUtilsHtmlPort>;
-  foundryUtilsAsyncToken: ApiSafeToken<FoundryUtilsAsyncPort>;
+  platformContainerPortToken: ApiSafeToken<PlatformContainerPort>;
+  platformLoggingPortToken: ApiSafeToken<PlatformLoggingPort>;
+  platformMetricsSnapshotPortToken: ApiSafeToken<PlatformMetricsSnapshotPort>;
+  platformSettingsPortToken: ApiSafeToken<PlatformSettingsPort>;
+  platformSettingsRegistrationPortToken: ApiSafeToken<PlatformSettingsRegistrationPort>;
+  platformI18nPortToken: ApiSafeToken<PlatformI18nPort>;
+  platformNotificationPortToken: ApiSafeToken<PlatformNotificationPort>;
+  platformUIPortToken: ApiSafeToken<PlatformUIPort>;
+  platformJournalDirectoryUiPortToken: ApiSafeToken<PlatformJournalDirectoryUiPort>;
+  platformUINotificationPortToken: ApiSafeToken<PlatformUINotificationPort>;
+  platformValidationPortToken: ApiSafeToken<PlatformValidationPort>;
+  platformContextMenuRegistrationPortToken: ApiSafeToken<PlatformContextMenuRegistrationPort>;
+  platformJournalCollectionPortToken: ApiSafeToken<PlatformJournalCollectionPort>;
+  platformUuidUtilsPortToken: ApiSafeToken<PlatformUuidUtilsPort>;
+  platformObjectUtilsPortToken: ApiSafeToken<PlatformObjectUtilsPort>;
+  platformHtmlUtilsPortToken: ApiSafeToken<PlatformHtmlUtilsPort>;
+  platformAsyncUtilsPortToken: ApiSafeToken<PlatformAsyncUtilsPort>;
 }
 
 /**
@@ -127,7 +131,7 @@ export interface ServiceResolutionApi {
    * const api = game.modules.get('fvtt_relationship_app_module').api;
    *
    * try {
-   *   const notifications = api.resolve(api.tokens.notificationCenterToken);
+   *   const notifications = api.resolve(api.tokens.platformNotificationPortToken);
    *   notifications.error("Success", { code: "TEST", message: "It works" });
    * } catch (error) {
    *   console.error("Failed:", error);
@@ -144,7 +148,7 @@ export interface ServiceResolutionApi {
    * - When explicit error handling is required
    * - When you want to avoid try-catch blocks
    *
-   * **Well-known tokens** (notificationCenterToken, foundryGameToken, etc.) are guaranteed to resolve successfully.
+   * **Well-known tokens** (platformNotificationPortToken, platformI18nPortToken, etc.) are guaranteed to resolve successfully.
    *
    * @param token - API-safe injection token (marked via markAsApiSafe)
    * @returns Result with service instance or error details
@@ -152,7 +156,7 @@ export interface ServiceResolutionApi {
    * @example Safe Resolution with Error Handling
    * ```typescript
    * const api = game.modules.get('fvtt_relationship_app_module').api;
-   * const result = api.resolveWithError(api.tokens.notificationCenterToken);
+   * const result = api.resolveWithError(api.tokens.platformNotificationPortToken);
    *
    * if (result.ok) {
    *   result.value.error('Notifications available');
@@ -187,13 +191,12 @@ export interface ServiceResolutionApi {
    * ```typescript
    * const api = game.modules.get('fvtt_relationship_app_module').api;
    *
-   * // notifications has type NotificationCenter (not unknown)
-   * const notifications = api.resolve(api.tokens.notificationCenterToken);
+   * // notifications has type PlatformNotificationPort (not unknown)
+   * const notifications = api.resolve(api.tokens.platformNotificationPortToken);
    * notifications.error("Hello users", { code: "DEMO", message: "Type-safe notifications!" });
    *
-   * // game has type FoundryGame (not unknown)
-   * const game = api.resolve(api.tokens.foundryGameToken);
-   * const journals = game.getJournalEntries();
+   * // ui has type PlatformUIPort
+   * const ui = api.resolve(api.tokens.platformUIPortToken);
    * ```
    */
   tokens: ModuleApiTokens;
@@ -300,7 +303,7 @@ export interface DiagnosticsApi {
  * console.log(`Module status: ${health.status}`);
  *
  * // Option 1: Use exported tokens
- * const notifications = api.resolve(api.tokens.notificationCenterToken);
+ * const notifications = api.resolve(api.tokens.platformNotificationPortToken);
  *
  * // Option 2: Discover available tokens
  * const tokens = api.getAvailableTokens();

@@ -2,9 +2,9 @@ import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import { moduleEventRegistrarToken } from "@/application/tokens/event.tokens";
-import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { ModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 import { windowHooksServiceToken } from "@/application/windows/tokens/window.tokens";
+import type { WindowHooksService } from "@/application/windows/services/window-hooks-service";
 
 /**
  * Orchestrator for registering event listeners during bootstrap.
@@ -22,13 +22,14 @@ export class EventsBootstrapper {
    * @returns Result indicating success or error
    */
   static registerEvents(container: PlatformContainerPort): Result<void, string> {
-    const eventRegistrarResult = container.resolveWithError(moduleEventRegistrarToken);
+    const eventRegistrarResult =
+      container.resolveWithError<ModuleEventRegistrar>(moduleEventRegistrarToken);
     if (!eventRegistrarResult.ok) {
       return err(`Failed to resolve ModuleEventRegistrar: ${eventRegistrarResult.error.message}`);
     }
 
     // Container parameter removed - all dependencies injected via constructor
-    const eventRegistrar = castResolvedService<ModuleEventRegistrar>(eventRegistrarResult.value);
+    const eventRegistrar = eventRegistrarResult.value;
     const eventRegistrationResult = eventRegistrar.registerAll();
     if (!eventRegistrationResult.ok) {
       const errorMessages = eventRegistrationResult.error.map((e: Error) => e.message).join(", ");
@@ -36,11 +37,10 @@ export class EventsBootstrapper {
     }
 
     // Register WindowHooksService (if available)
-    const windowHooksResult = container.resolveWithError(windowHooksServiceToken);
+    const windowHooksResult =
+      container.resolveWithError<WindowHooksService>(windowHooksServiceToken);
     if (windowHooksResult.ok) {
-      const windowHooksService = castResolvedService<
-        import("@/application/windows/services/window-hooks-service").WindowHooksService
-      >(windowHooksResult.value);
+      const windowHooksService = windowHooksResult.value;
       windowHooksService.register();
     }
     // If WindowHooksService is not registered, silently continue (optional feature)

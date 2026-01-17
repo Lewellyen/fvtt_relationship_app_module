@@ -2,7 +2,8 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import { platformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/ports/platform-bootstrap-event-port.token";
+import { platformBootstrapEventPortToken } from "@/application/tokens/domain-ports.tokens";
+import { platformBootstrapEventPortToken as legacyPlatformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/ports/platform-bootstrap-event-port.token";
 import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
 import { metricsRecorderToken } from "@/infrastructure/shared/tokens/observability/metrics-recorder.token";
 import { metricsSamplerToken } from "@/infrastructure/shared/tokens/observability/metrics-sampler.token";
@@ -12,13 +13,17 @@ import { metricsStorageToken } from "@/infrastructure/shared/tokens/observabilit
 import { metricsAggregatorToken } from "@/infrastructure/shared/tokens/observability/metrics-aggregator.token";
 import { metricsPersistenceManagerToken } from "@/infrastructure/shared/tokens/observability/metrics-persistence-manager.token";
 import { metricsStateManagerToken } from "@/infrastructure/shared/tokens/observability/metrics-state-manager.token";
-import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
+import { moduleApiInitializerToken as legacyModuleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
+import { frameworkModuleApiInitializerToken } from "@/framework/tokens/module-api-initializer.token";
 import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
-import { moduleHealthServiceToken } from "@/infrastructure/shared/tokens/core/module-health-service.token";
+import { moduleHealthServiceToken } from "@/application/tokens/application.tokens";
+import { moduleHealthServiceToken as legacyModuleHealthServiceToken } from "@/infrastructure/shared/tokens/core/module-health-service.token";
 import { healthCheckRegistryToken } from "@/application/tokens/health-check-registry.token";
 import { runtimeConfigToken } from "@/application/tokens/runtime-config.token";
-import { bootstrapInitHookServiceToken } from "@/infrastructure/shared/tokens/core/bootstrap-init-hook-service.token";
-import { bootstrapReadyHookServiceToken } from "@/infrastructure/shared/tokens/core/bootstrap-ready-hook-service.token";
+import { bootstrapInitHookServiceToken as legacyBootstrapInitHookServiceToken } from "@/infrastructure/shared/tokens/core/bootstrap-init-hook-service.token";
+import { bootstrapReadyHookServiceToken as legacyBootstrapReadyHookServiceToken } from "@/infrastructure/shared/tokens/core/bootstrap-ready-hook-service.token";
+import { frameworkBootstrapInitHookServiceToken } from "@/framework/tokens/bootstrap-init-hook-service.token";
+import { frameworkBootstrapReadyHookServiceToken } from "@/framework/tokens/bootstrap-ready-hook-service.token";
 import { DIMetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import { DIPersistentMetricsCollector } from "@/infrastructure/observability/metrics-persistence/persistent-metrics-collector";
 import { MetricsAggregator } from "@/infrastructure/observability/metrics-aggregator";
@@ -41,6 +46,8 @@ import {
 } from "@/application/services/module-ready-service";
 import { platformModuleReadyPortToken } from "@/application/tokens/domain-ports.tokens";
 import { DIFoundryModuleReadyPort } from "@/infrastructure/adapters/foundry/services/FoundryModuleReadyPort";
+import { platformMetricsInitializationPortToken } from "@/application/tokens/domain-ports.tokens";
+import { DIMetricsInitializationAdapter } from "@/infrastructure/observability/metrics-initialization-adapter";
 
 /**
  * Registers core infrastructure services.
@@ -212,16 +219,20 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
   if (isErr(healthResult)) {
     return err(`Failed to register ModuleHealthService: ${healthResult.error.message}`);
   }
+  container.registerAlias(legacyModuleHealthServiceToken, moduleHealthServiceToken);
 
   // Register ModuleApiInitializer (no dependencies, handles API exposition)
   const apiInitResult = container.registerClass(
-    moduleApiInitializerToken,
+    frameworkModuleApiInitializerToken,
     DIModuleApiInitializer,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(apiInitResult)) {
     return err(`Failed to register ModuleApiInitializer: ${apiInitResult.error.message}`);
   }
+
+  // Backward compatibility: keep legacy infrastructure token as alias
+  container.registerAlias(legacyModuleApiInitializerToken, frameworkModuleApiInitializerToken);
 
   // Register PlatformBootstrapEventPort (no dependencies, uses direct platform API)
   // Must be registered before Bootstrap services that depend on it
@@ -235,16 +246,33 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
       `Failed to register PlatformBootstrapEventPort: ${bootstrapEventsResult.error.message}`
     );
   }
+  container.registerAlias(legacyPlatformBootstrapEventPortToken, platformBootstrapEventPortToken);
+
+  // Register PlatformMetricsInitializationPort (adapter around MetricsCollector initialize())
+  const metricsInitResult = container.registerClass(
+    platformMetricsInitializationPortToken,
+    DIMetricsInitializationAdapter,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(metricsInitResult)) {
+    return err(
+      `Failed to register PlatformMetricsInitializationPort: ${metricsInitResult.error.message}`
+    );
+  }
 
   // Register BootstrapInitHookService (deps: [loggerToken, serviceContainerToken, platformBootstrapEventPortToken])
   const initHookResult = container.registerClass(
-    bootstrapInitHookServiceToken,
+    frameworkBootstrapInitHookServiceToken,
     DIBootstrapInitHookService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(initHookResult)) {
     return err(`Failed to register BootstrapInitHookService: ${initHookResult.error.message}`);
   }
+  container.registerAlias(
+    legacyBootstrapInitHookServiceToken,
+    frameworkBootstrapInitHookServiceToken
+  );
 
   // Register PlatformModuleReadyPort (must be before ModuleReadyService)
   // NOTE: This is a Foundry-specific port, but we register it here because ModuleReadyService needs it
@@ -272,13 +300,17 @@ export function registerCoreServices(container: ServiceContainer): Result<void, 
 
   // Register BootstrapReadyHookService (deps: [loggerToken, platformBootstrapEventPortToken, moduleReadyServiceToken])
   const readyHookResult = container.registerClass(
-    bootstrapReadyHookServiceToken,
+    frameworkBootstrapReadyHookServiceToken,
     DIBootstrapReadyHookService,
     ServiceLifecycle.SINGLETON
   );
   if (isErr(readyHookResult)) {
     return err(`Failed to register BootstrapReadyHookService: ${readyHookResult.error.message}`);
   }
+  container.registerAlias(
+    legacyBootstrapReadyHookServiceToken,
+    frameworkBootstrapReadyHookServiceToken
+  );
 
   return ok(undefined);
 }

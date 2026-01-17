@@ -4,7 +4,7 @@ import { ok, err, isErr } from "@/domain/utils/result";
 import { dependencyRegistry } from "@/framework/config/dependency-registry";
 import { windowRegistryToken } from "@/application/windows/tokens/window.tokens";
 import { createJournalOverviewWindowDefinition } from "@/application/windows/definitions/journal-overview-window.definition";
-import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
+import type { IWindowRegistry } from "@/domain/windows/ports/window-registry-port.interface";
 import JournalOverviewWindow from "@/infrastructure/ui/svelte/JournalOverviewWindow.svelte";
 
 /**
@@ -18,14 +18,12 @@ import JournalOverviewWindow from "@/infrastructure/ui/svelte/JournalOverviewWin
  */
 export function registerJournalOverviewWindow(container: ServiceContainer): Result<void, string> {
   // Get WindowRegistry (container must be validated at this point)
-  const registryResult = container.resolveWithError(windowRegistryToken);
+  const registryResult = container.resolveWithError<IWindowRegistry>(windowRegistryToken);
   if (!registryResult.ok) {
     return err(`Failed to resolve WindowRegistry: ${registryResult.error.message}`);
   }
 
-  const registry = castResolvedService<
-    import("@/domain/windows/ports/window-registry-port.interface").IWindowRegistry
-  >(registryResult.value);
+  const registry = registryResult.value;
 
   // Create window definition with Svelte component (provided by framework layer)
   const definition = createJournalOverviewWindowDefinition(JournalOverviewWindow);

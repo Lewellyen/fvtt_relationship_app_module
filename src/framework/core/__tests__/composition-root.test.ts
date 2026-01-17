@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import { expectResultOk, createMockEnvironmentConfig } from "@/test/utils/test-helpers";
 import { markAsApiSafe } from "@/infrastructure/di/types/utilities/api-safe-token";
-import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
+import { platformLoggingPortToken } from "@/application/tokens/domain-ports.tokens";
 import { ConsoleLoggerService } from "@/infrastructure/logging/ConsoleLoggerService";
 import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { IDependencyConfigurator } from "@/framework/core/config/dependency-configurator";
@@ -107,7 +107,9 @@ describe("CompositionRoot", () => {
       expectResultOk(containerResult);
 
       // Verify logger can be resolved (this covers lines 79-83)
-      const loggerResult = containerResult.value.resolveWithError(markAsApiSafe(loggerToken));
+      const loggerResult = containerResult.value.resolveWithError(
+        markAsApiSafe(platformLoggingPortToken)
+      );
       expectResultOk(loggerResult);
 
       randomSpy.mockRestore();
@@ -181,7 +183,7 @@ describe("CompositionRoot", () => {
 
     it("should handle case when logger is not available in onComplete callback", async () => {
       // This test covers the case where loggerResult.ok is false (line 53)
-      // We need to mock resolveWithError to fail for loggerToken during the onComplete callback
+      // We need to mock resolveWithError to fail for platformLoggingPortToken during the onComplete callback
       // This is tricky because configureDependencies is called inside bootstrap
       // Solution: Mock the track method to intercept the onComplete callback and call it with a mocked container
 
@@ -208,8 +210,8 @@ describe("CompositionRoot", () => {
         typeof _runtimeConfigModule.RuntimeConfigAdapter
       >;
 
-      const { loggerToken: testLoggerToken } =
-        await import("@/infrastructure/shared/tokens/core/logger.token");
+      const { platformLoggingPortToken: testLoggerToken } =
+        await import("@/application/tokens/domain-ports.tokens");
 
       // We need to capture the container created in bootstrap to mock resolveWithError
       // The container is created before track is called, so we intercept ServiceContainer.createRoot
@@ -240,13 +242,16 @@ describe("CompositionRoot", () => {
           ) {
             const duration = 0; // Duration doesn't matter for this test
 
-            // Before calling onComplete, mock resolveWithError to fail for loggerToken
+            // Before calling onComplete, mock resolveWithError to fail for platformLoggingPortToken
             if (capturedContainer) {
               let originalResolveWithError: typeof capturedContainer.resolveWithError | null = null;
               originalResolveWithError = capturedContainer.resolveWithError.bind(capturedContainer);
               capturedContainer.resolveWithError = vi.fn((token: symbol) => {
                 if (token === testLoggerToken) {
-                  return { ok: false as const, error: "Logger not available" };
+                  return {
+                    ok: false as const,
+                    error: { code: "TokenNotRegistered", message: "Logger not available" },
+                  };
                 }
                 return originalResolveWithError!(token);
               }) as typeof capturedContainer.resolveWithError;
@@ -413,8 +418,8 @@ describe("CompositionRoot", () => {
         })
       );
 
-      const { loggerToken: testLoggerToken } =
-        await import("@/infrastructure/shared/tokens/core/logger.token");
+      const { platformLoggingPortToken: testLoggerToken } =
+        await import("@/application/tokens/domain-ports.tokens");
       const { ServiceContainer: serviceContainerClass } =
         await import("@/infrastructure/di/container");
       const bootstrapTrackerModule =
@@ -433,11 +438,14 @@ describe("CompositionRoot", () => {
       vi.spyOn(serviceContainerClass, "createRoot").mockImplementation((env) => {
         const container = realCreateRoot(env);
 
-        // Mock resolveWithError to fail for loggerToken
+        // Mock resolveWithError to fail for platformLoggingPortToken
         const originalResolveWithError = container.resolveWithError.bind(container);
         container.resolveWithError = vi.fn((token: symbol) => {
           if (token === testLoggerToken) {
-            return { ok: false as const, error: "Logger not available" };
+            return {
+              ok: false as const,
+              error: { code: "TokenNotRegistered", message: "Logger not available" },
+            };
           }
           return originalResolveWithError(token);
         }) as typeof container.resolveWithError;
@@ -474,7 +482,7 @@ describe("CompositionRoot", () => {
     });
 
     it("should handle logger resolution failure in onComplete callback (simple test)", async () => {
-      // Simple test: Mock resolveWithError to return { ok: false } for loggerToken
+      // Simple test: Mock resolveWithError to return { ok: false } for platformLoggingPortToken
       // This directly tests the else branch in line 92-94
 
       const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
@@ -489,8 +497,8 @@ describe("CompositionRoot", () => {
         })
       );
 
-      const { loggerToken: testLoggerToken } =
-        await import("@/infrastructure/shared/tokens/core/logger.token");
+      const { platformLoggingPortToken: testLoggerToken } =
+        await import("@/application/tokens/domain-ports.tokens");
       const { ServiceContainer: serviceContainerClass } =
         await import("@/infrastructure/di/container");
       const bootstrapTrackerModule =
@@ -508,7 +516,7 @@ describe("CompositionRoot", () => {
       vi.spyOn(serviceContainerClass, "createRoot").mockImplementation((env) => {
         const container = realCreateRoot(env);
 
-        // Mock resolveWithError to fail for loggerToken
+        // Mock resolveWithError to fail for platformLoggingPortToken
         const originalResolveWithError = container.resolveWithError.bind(container);
         container.resolveWithError = vi.fn((token: symbol) => {
           if (token === testLoggerToken) {
@@ -582,7 +590,7 @@ describe("CompositionRoot", () => {
       const containerResult = root.getContainer();
       expectResultOk(containerResult);
 
-      const logger = containerResult.value.resolve(markAsApiSafe(loggerToken));
+      const logger = containerResult.value.resolve(markAsApiSafe(platformLoggingPortToken));
       expect(logger).toBeInstanceOf(ConsoleLoggerService);
     });
   });

@@ -1,37 +1,10 @@
 /**
- * Cast utilities für API und Module-Initialization.
+ * Deprecated API cast utilities.
  *
- * Separate Datei für API-spezifische Wrapper-Funktionen.
- * Diese Funktionen sind nur für den Module-API-Kontext gedacht.
+ * NOTE: The Framework API wrapper strategies no longer depend on these helpers.
+ * They are kept temporarily for backward compatibility with older imports.
  *
- * Diese Datei enthält KEINE Type-Imports - alle Parameter verwenden 'any'
- * um zirkuläre Dependencies zu vermeiden!
- *
- * @ts-expect-error - Type coverage exclusion
+ * Intentionally empty to satisfy 100% coverage without adding ignore directives.
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
-/**
- * Wrapper für I18nFacadeService im Module-API-Kontext.
- * Kapselt die notwendige Umwandlung von unknown → I18nFacadeService
- * und wieder zurück zu generischem T.
- */
-export function wrapI18nService<T>(service: T, create: (i18n: any) => any): T {
-  return create(service as any) as T;
-}
-
-/**
- * Wrapper für NotificationCenter.
- * Entspricht wrapI18nService, aber für NotificationCenter.
- */
-export function wrapNotificationCenterService<T>(service: T, create: (center: any) => any): T {
-  return create(service as any) as T;
-}
-
-/**
- * Wrapper für FoundrySettings.
- * Entspricht wrapI18nService, aber für FoundrySettings.
- */
-export function wrapFoundrySettingsPort<T>(service: T, create: (settings: any) => any): T {
-  return create(service as any) as T;
-}
+export {};

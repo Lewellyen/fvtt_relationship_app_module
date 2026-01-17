@@ -11,9 +11,8 @@ export class JournalEntryPageSheetInitPhase implements InitPhase {
   readonly criticality = InitPhaseCriticality.WARN_AND_CONTINUE; // Sheets can fail without breaking the module
 
   execute(
-    _ctx: InitPhaseContext
+    ctx: InitPhaseContext
   ): ReturnType<typeof JournalEntryPageSheetBootstrapper.registerSheetsAndDataModels> {
-    // Context not used - registration has no dependencies
-    return JournalEntryPageSheetBootstrapper.registerSheetsAndDataModels();
+    return JournalEntryPageSheetBootstrapper.registerSheetsAndDataModels(ctx.container);
   }
 }

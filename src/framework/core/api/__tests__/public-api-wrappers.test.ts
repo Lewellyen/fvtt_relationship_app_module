@@ -3,18 +3,18 @@ import {
   createPublicLogger,
   createPublicI18n,
   createPublicNotificationCenter,
-  createPublicFoundrySettings,
+  createPublicSettingsRegistrationPort,
 } from "@/framework/core/api/public-api-wrappers";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
-import type { NotificationCenter } from "@/application/services/NotificationCenter";
-import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
+import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import { ok } from "@/domain/utils/result";
 
 describe("public-api-wrappers", () => {
   describe("createPublicLogger", () => {
     it("should allow logging methods", () => {
-      const mockLogger: Logger = {
+      const mockLogger: PlatformLoggingPort = {
         log: vi.fn(),
         debug: vi.fn(),
         info: vi.fn(),
@@ -41,7 +41,7 @@ describe("public-api-wrappers", () => {
     });
 
     it("should allow withTraceId decorator", () => {
-      const mockLogger: Logger = {
+      const mockLogger: PlatformLoggingPort = {
         log: vi.fn(),
         debug: vi.fn(),
         info: vi.fn(),
@@ -58,7 +58,7 @@ describe("public-api-wrappers", () => {
     });
 
     it("should block setMinLevel configuration method", () => {
-      const mockLogger: Logger = {
+      const mockLogger: PlatformLoggingPort = {
         log: vi.fn(),
         debug: vi.fn(),
         info: vi.fn(),
@@ -76,7 +76,7 @@ describe("public-api-wrappers", () => {
     });
 
     it("should block property access", () => {
-      const mockLogger: Logger = {
+      const mockLogger: PlatformLoggingPort = {
         log: vi.fn(),
         debug: vi.fn(),
         info: vi.fn(),
@@ -101,7 +101,7 @@ describe("public-api-wrappers", () => {
         translate: vi.fn(() => ok("translated")),
         format: vi.fn(() => ok("formatted")),
         has: vi.fn(() => ok(true)),
-      } as Partial<I18nFacadeService> as I18nFacadeService;
+      } as Partial<PlatformI18nPort> as PlatformI18nPort;
 
       const publicI18n = createPublicI18n(mockI18n);
 
@@ -120,7 +120,7 @@ describe("public-api-wrappers", () => {
         format: vi.fn(() => ok("formatted")),
         has: vi.fn(() => ok(true)),
         internalMethod: vi.fn(),
-      } as any as I18nFacadeService;
+      } as any as PlatformI18nPort;
 
       const publicI18n = createPublicI18n(mockI18n);
 
@@ -134,7 +134,7 @@ describe("public-api-wrappers", () => {
         translate: vi.fn(() => ok("translated")),
         format: vi.fn(() => ok("formatted")),
         has: vi.fn(() => ok(true)),
-      } as Partial<I18nFacadeService> as I18nFacadeService;
+      } as Partial<PlatformI18nPort> as PlatformI18nPort;
 
       const publicI18n = createPublicI18n(mockI18n);
 
@@ -145,7 +145,7 @@ describe("public-api-wrappers", () => {
   });
 
   describe("createPublicNotificationCenter", () => {
-    const createMockNotificationCenter = (): NotificationCenter =>
+    const createMockNotificationCenter = (): PlatformNotificationPort =>
       ({
         debug: vi.fn(),
         info: vi.fn(),
@@ -153,8 +153,8 @@ describe("public-api-wrappers", () => {
         error: vi.fn(),
         addChannel: vi.fn(),
         removeChannel: vi.fn(),
-        getChannelNames: vi.fn(() => ["ConsoleChannel"]),
-      }) as unknown as NotificationCenter;
+        getChannelNames: vi.fn(() => ok(["ConsoleChannel"])),
+      }) as unknown as PlatformNotificationPort;
 
     it("should allow routing notifications", () => {
       const mockNotificationCenter = createMockNotificationCenter();
@@ -181,36 +181,37 @@ describe("public-api-wrappers", () => {
     });
   });
 
-  describe("createPublicFoundrySettings", () => {
-    const createMockSettings = (): FoundrySettings =>
+  describe("createPublicSettingsRegistrationPort", () => {
+    const createMockSettings = (): PlatformSettingsRegistrationPort =>
       ({
-        register: vi.fn(),
-        get: vi.fn(),
-        set: vi.fn(),
-        dispose: vi.fn(),
-      }) as unknown as FoundrySettings;
+        registerSetting: vi.fn(),
+        getSettingValue: vi.fn(),
+        setSettingValue: vi.fn(),
+      }) as unknown as PlatformSettingsRegistrationPort;
 
-    it("should allow get operations", () => {
+    it("should allow getSettingValue operations", () => {
       const mockSettings = createMockSettings();
-      const publicSettings = createPublicFoundrySettings(mockSettings);
+      const publicSettings = createPublicSettingsRegistrationPort(mockSettings);
 
       expect(() =>
-        publicSettings.get("module", "key", {
-          parse: vi.fn(),
-        } as unknown as Parameters<FoundrySettings["get"]>[2])
+        publicSettings.getSettingValue(
+          "module",
+          "key",
+          (v: unknown): v is string => typeof v === "string"
+        )
       ).not.toThrow();
     });
 
-    it("should block register and set operations", () => {
+    it("should block registerSetting and setSettingValue operations", () => {
       const mockSettings = createMockSettings();
-      const publicSettings = createPublicFoundrySettings(mockSettings);
+      const publicSettings = createPublicSettingsRegistrationPort(mockSettings);
 
-      expect(() => (publicSettings as unknown as { register: () => void }).register()).toThrow(
-        'Property "register" is not accessible'
-      );
-      expect(() => (publicSettings as unknown as { set: () => void }).set()).toThrow(
-        'Property "set" is not accessible'
-      );
+      expect(() =>
+        (publicSettings as unknown as { registerSetting: () => void }).registerSetting()
+      ).toThrow('Property "registerSetting" is not accessible');
+      expect(() =>
+        (publicSettings as unknown as { setSettingValue: () => void }).setSettingValue()
+      ).toThrow('Property "setSettingValue" is not accessible');
     });
   });
 });

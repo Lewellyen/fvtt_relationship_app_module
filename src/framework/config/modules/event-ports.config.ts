@@ -32,10 +32,10 @@ import { DIHideJournalContextMenuHandler } from "@/application/handlers/hide-jou
 import { DIModuleEventRegistrar } from "@/application/services/ModuleEventRegistrar";
 import { DIJournalDirectoryRerenderScheduler } from "@/application/services/JournalDirectoryRerenderScheduler";
 import type { JournalContextMenuHandler } from "@/application/handlers/journal-context-menu-handler.interface";
-import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import { journalDirectoryRerenderSchedulerToken } from "@/application/tokens/application.tokens";
 import { DefaultEventRegistrarRegistry } from "@/application/services/registries/default-event-registrar-registry";
 import type { EventRegistrar } from "@/application/use-cases/event-registrar.interface";
+import type { InjectionToken } from "@/application/di/injection-token";
 
 /**
  * Helper function to resolve multiple services and extract their values.
@@ -50,7 +50,7 @@ import type { EventRegistrar } from "@/application/use-cases/event-registrar.int
  */
 function resolveMultipleServices<T>(
   container: ServiceContainer,
-  tokens: Array<{ token: symbol; name: string }>
+  tokens: Array<{ token: InjectionToken<T>; name: string }>
 ): T[] {
   const results: T[] = [];
   for (const { token, name } of tokens) {
@@ -58,7 +58,7 @@ function resolveMultipleServices<T>(
     if (!result.ok) {
       throw new Error(`Failed to resolve ${name}: ${result.error.message}`);
     }
-    results.push(castResolvedService<T>(result.value));
+    results.push(result.value);
   }
   return results;
 }

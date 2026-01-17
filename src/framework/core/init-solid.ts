@@ -1,17 +1,15 @@
 import { MODULE_METADATA, LOG_PREFIX } from "@/application/constants/app-constants";
 import { isOk } from "@/domain/utils/result";
-import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
-import { bootstrapInitHookServiceToken } from "@/infrastructure/shared/tokens/core/bootstrap-init-hook-service.token";
-import { bootstrapReadyHookServiceToken } from "@/infrastructure/shared/tokens/core/bootstrap-ready-hook-service.token";
+import { platformLoggingPortToken } from "@/application/tokens/domain-ports.tokens";
+import { frameworkBootstrapInitHookServiceToken } from "@/framework/tokens/bootstrap-init-hook-service.token";
+import { frameworkBootstrapReadyHookServiceToken } from "@/framework/tokens/bootstrap-ready-hook-service.token";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import { tryGetFoundryVersion } from "@/infrastructure/adapters/foundry/versioning/versiondetector";
 import { BootstrapErrorHandler } from "@/framework/core/bootstrap-error-handler";
 import type { Result } from "@/domain/types/result";
 import type { ServiceContainer } from "@/infrastructure/di/container";
-import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { BootstrapInitHookService } from "@/framework/core/bootstrap-init-hook";
-import type { BootstrapReadyHookService } from "@/framework/core/bootstrap-ready-hook";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
+import type { BootstrapHookService } from "@/framework/core/bootstrap/bootstrap-hook-service.interface";
 
 /**
  * Boot-Orchestrierung für das Modul.
@@ -39,12 +37,12 @@ function initializeFoundryModule(): void {
     return;
   }
 
-  const loggerResult = containerResult.value.resolveWithError(loggerToken);
+  const loggerResult = containerResult.value.resolveWithError(platformLoggingPortToken);
   if (!loggerResult.ok) {
     console.error(`${LOG_PREFIX} Failed to resolve logger: ${loggerResult.error.message}`);
     return;
   }
-  const logger = castResolvedService<Logger>(loggerResult.value);
+  const logger: PlatformLoggingPort = loggerResult.value;
 
   // Resolve bootstrap hook services and register hooks
   // CRITICAL: Use direct Hooks.on() for init/ready hooks to avoid chicken-egg problem.
@@ -53,7 +51,7 @@ function initializeFoundryModule(): void {
   // immediately, so we use direct Foundry Hooks API here.
   // All other hooks (registered inside init) can use PlatformEventPort normally.
   const initHookServiceResult = containerResult.value.resolveWithError(
-    bootstrapInitHookServiceToken
+    frameworkBootstrapInitHookServiceToken
   );
   if (!initHookServiceResult.ok) {
     logger.error(
@@ -61,13 +59,11 @@ function initializeFoundryModule(): void {
     );
     return;
   }
-  const initHookService = castResolvedService<BootstrapInitHookService>(
-    initHookServiceResult.value
-  );
+  const initHookService: BootstrapHookService = initHookServiceResult.value;
   initHookService.register();
 
   const readyHookServiceResult = containerResult.value.resolveWithError(
-    bootstrapReadyHookServiceToken
+    frameworkBootstrapReadyHookServiceToken
   );
   if (!readyHookServiceResult.ok) {
     logger.error(
@@ -75,9 +71,7 @@ function initializeFoundryModule(): void {
     );
     return;
   }
-  const readyHookService = castResolvedService<BootstrapReadyHookService>(
-    readyHookServiceResult.value
-  );
+  const readyHookService: BootstrapHookService = readyHookServiceResult.value;
   readyHookService.register();
 }
 

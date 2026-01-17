@@ -1,3 +1,4 @@
+import type { Result } from "@/domain/types/result";
 import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-journal-ui-event-port.interface";
 
 /**
@@ -21,6 +22,13 @@ import type { JournalContextMenuEvent } from "@/domain/ports/events/platform-jou
  * ```
  */
 export interface PlatformContextMenuRegistrationPort {
+  /**
+   * Performs one-time platform-specific registration (e.g. libWrapper installation).
+   *
+   * Platforms that don't require an explicit registration can return ok without doing anything.
+   */
+  register(): Result<void, string>;
+
   /**
    * Add a callback that will be called when a journal context menu is rendered.
    *

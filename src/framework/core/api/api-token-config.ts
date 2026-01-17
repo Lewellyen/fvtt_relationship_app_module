@@ -1,23 +1,23 @@
 import { markAsApiSafe } from "@/infrastructure/di/types/utilities/api-safe-token";
-import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
 import {
-  journalVisibilityServiceToken,
-  journalDirectoryProcessorToken,
-  graphDataServiceToken,
-  nodeDataServiceToken,
-} from "@/application/tokens/application.tokens";
-import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n/i18n-facade.token";
-import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
-import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";
-import { foundryDocumentToken } from "@/infrastructure/shared/tokens/foundry/foundry-document.token";
-import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry/foundry-ui.token";
-import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
-import { foundryJournalFacadeToken } from "@/infrastructure/shared/tokens/foundry/foundry-journal-facade.token";
-import { foundryUtilsToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils.token";
-import { foundryUtilsUuidToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-uuid.token";
-import { foundryUtilsObjectToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-object.token";
-import { foundryUtilsHtmlToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-html.token";
-import { foundryUtilsAsyncToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-async.token";
+  platformContainerPortToken,
+  platformLoggingPortToken,
+  platformMetricsSnapshotPortToken,
+  platformSettingsPortToken,
+  platformSettingsRegistrationPortToken,
+  platformI18nPortToken,
+  platformNotificationPortToken,
+  platformUIPortToken,
+  platformJournalDirectoryUiPortToken,
+  platformJournalCollectionPortToken,
+  platformUINotificationPortToken,
+  platformValidationPortToken,
+  platformContextMenuRegistrationPortToken,
+  platformUuidUtilsPortToken,
+  platformObjectUtilsPortToken,
+  platformHtmlUtilsPortToken,
+  platformAsyncUtilsPortToken,
+} from "@/application/tokens/domain-ports.tokens";
 import type { ModuleApiTokens } from "@/framework/core/api/module-api";
 
 /**
@@ -30,22 +30,24 @@ import type { ModuleApiTokens } from "@/framework/core/api/module-api";
  */
 export function createApiTokens(): ModuleApiTokens {
   return {
-    notificationCenterToken: markAsApiSafe(notificationCenterToken),
-    journalVisibilityServiceToken: markAsApiSafe(journalVisibilityServiceToken),
-    journalDirectoryProcessorToken: markAsApiSafe(journalDirectoryProcessorToken),
-    foundryGameToken: markAsApiSafe(foundryGameToken),
-    foundryHooksToken: markAsApiSafe(foundryHooksToken),
-    foundryDocumentToken: markAsApiSafe(foundryDocumentToken),
-    foundryUIToken: markAsApiSafe(foundryUIToken),
-    foundrySettingsToken: markAsApiSafe(foundrySettingsToken),
-    i18nFacadeToken: markAsApiSafe(i18nFacadeToken),
-    foundryJournalFacadeToken: markAsApiSafe(foundryJournalFacadeToken),
-    graphDataServiceToken: markAsApiSafe(graphDataServiceToken),
-    nodeDataServiceToken: markAsApiSafe(nodeDataServiceToken),
-    foundryUtilsToken: markAsApiSafe(foundryUtilsToken),
-    foundryUtilsUuidToken: markAsApiSafe(foundryUtilsUuidToken),
-    foundryUtilsObjectToken: markAsApiSafe(foundryUtilsObjectToken),
-    foundryUtilsHtmlToken: markAsApiSafe(foundryUtilsHtmlToken),
-    foundryUtilsAsyncToken: markAsApiSafe(foundryUtilsAsyncToken),
+    platformContainerPortToken: markAsApiSafe(platformContainerPortToken),
+    platformLoggingPortToken: markAsApiSafe(platformLoggingPortToken),
+    platformMetricsSnapshotPortToken: markAsApiSafe(platformMetricsSnapshotPortToken),
+    platformSettingsPortToken: markAsApiSafe(platformSettingsPortToken),
+    platformSettingsRegistrationPortToken: markAsApiSafe(platformSettingsRegistrationPortToken),
+    platformI18nPortToken: markAsApiSafe(platformI18nPortToken),
+    platformNotificationPortToken: markAsApiSafe(platformNotificationPortToken),
+    platformUIPortToken: markAsApiSafe(platformUIPortToken),
+    platformJournalDirectoryUiPortToken: markAsApiSafe(platformJournalDirectoryUiPortToken),
+    platformJournalCollectionPortToken: markAsApiSafe(platformJournalCollectionPortToken),
+    platformUINotificationPortToken: markAsApiSafe(platformUINotificationPortToken),
+    platformValidationPortToken: markAsApiSafe(platformValidationPortToken),
+    platformContextMenuRegistrationPortToken: markAsApiSafe(
+      platformContextMenuRegistrationPortToken
+    ),
+    platformUuidUtilsPortToken: markAsApiSafe(platformUuidUtilsPortToken),
+    platformObjectUtilsPortToken: markAsApiSafe(platformObjectUtilsPortToken),
+    platformHtmlUtilsPortToken: markAsApiSafe(platformHtmlUtilsPortToken),
+    platformAsyncUtilsPortToken: markAsApiSafe(platformAsyncUtilsPortToken),
   };
 }

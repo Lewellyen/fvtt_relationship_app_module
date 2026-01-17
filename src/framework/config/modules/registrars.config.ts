@@ -2,14 +2,15 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
-import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core/module-settings-registrar.token";
 import {
   runtimeConfigSyncToken,
   runtimeConfigSettingsSyncToken,
   settingRegistrationErrorMapperToken,
   settingDefinitionRegistryToken,
   runtimeConfigBindingRegistryToken,
+  moduleSettingsRegistrarToken,
 } from "@/application/tokens/application.tokens";
+import { moduleSettingsRegistrarToken as legacyModuleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core/module-settings-registrar.token";
 import { DIModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
 import { DIRuntimeConfigSync } from "@/application/services/RuntimeConfigSync";
 import { DIRuntimeConfigSettingsSync } from "@/application/services/runtime-config-settings-sync";
@@ -103,6 +104,17 @@ export function registerRegistrars(container: ServiceContainer): Result<void, st
   if (isErr(settingsRegistrarResult)) {
     return err(
       `Failed to register ModuleSettingsRegistrar: ${settingsRegistrarResult.error.message}`
+    );
+  }
+
+  // Backward compatibility: keep legacy infrastructure token as alias
+  const legacyAliasResult = container.registerAlias(
+    legacyModuleSettingsRegistrarToken,
+    moduleSettingsRegistrarToken
+  );
+  if (isErr(legacyAliasResult)) {
+    return err(
+      `Failed to register legacy ModuleSettingsRegistrar token alias: ${legacyAliasResult.error.message}`
     );
   }
 

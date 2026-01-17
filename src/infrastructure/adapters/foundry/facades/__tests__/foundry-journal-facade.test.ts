@@ -208,5 +208,11 @@ describe("FoundryJournalFacade", () => {
       ]);
       expect(DIFoundryJournalFacade.dependencies).toHaveLength(4);
     });
+
+    it("should be constructible (DI wrapper)", () => {
+      expect(
+        new DIFoundryJournalFacade(mockGame, mockDocument, mockUI, MODULE_METADATA.ID)
+      ).toBeDefined();
+    });
   });
 });

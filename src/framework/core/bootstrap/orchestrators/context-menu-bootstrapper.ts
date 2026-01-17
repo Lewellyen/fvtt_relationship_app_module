@@ -1,10 +1,9 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import { journalContextMenuLibWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry/journal-context-menu-lib-wrapper-service.token";
 import { registerContextMenuUseCaseToken } from "@/application/tokens/event.tokens";
-import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
-import type { JournalContextMenuLibWrapperService } from "@/infrastructure/adapters/foundry/services/JournalContextMenuLibWrapperService";
+import { platformContextMenuRegistrationPortToken } from "@/application/tokens/domain-ports.tokens";
+import type { PlatformContextMenuRegistrationPort } from "@/domain/ports/platform-context-menu-registration-port.interface";
 import type { RegisterContextMenuUseCase } from "@/application/use-cases/register-context-menu.use-case";
 
 /**
@@ -23,27 +22,27 @@ export class ContextMenuBootstrapper {
    * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
    */
   static registerContextMenu(container: PlatformContainerPort): Result<void, string> {
-    const contextMenuLibWrapperResult = container.resolveWithError(
-      journalContextMenuLibWrapperServiceToken
+    const contextMenuPortResult = container.resolveWithError<PlatformContextMenuRegistrationPort>(
+      platformContextMenuRegistrationPortToken
     );
-    if (!contextMenuLibWrapperResult.ok) {
-      // Context menu is optional - return error so orchestrator can log warning
+    if (!contextMenuPortResult.ok) {
       return err(
-        `JournalContextMenuLibWrapperService could not be resolved: ${contextMenuLibWrapperResult.error.message}`
+        `PlatformContextMenuRegistrationPort could not be resolved: ${contextMenuPortResult.error.message}`
       );
     }
 
-    const contextMenuLibWrapper = castResolvedService<JournalContextMenuLibWrapperService>(
-      contextMenuLibWrapperResult.value
-    );
-    const registerResult = contextMenuLibWrapper.register();
+    const contextMenuPort = contextMenuPortResult.value;
+
+    const registerResult = contextMenuPort.register();
     if (!registerResult.ok) {
       // Registration failure - return error so orchestrator can log warning
-      return err(`Context menu libWrapper registration failed: ${registerResult.error.message}`);
+      return err(`Context menu registration failed: ${registerResult.error}`);
     }
 
     // Register context menu callbacks (after libWrapper is registered)
-    const contextMenuUseCaseResult = container.resolveWithError(registerContextMenuUseCaseToken);
+    const contextMenuUseCaseResult = container.resolveWithError<RegisterContextMenuUseCase>(
+      registerContextMenuUseCaseToken
+    );
     if (!contextMenuUseCaseResult.ok) {
       // Use case resolution failure - return error so orchestrator can log warning
       return err(
@@ -51,9 +50,7 @@ export class ContextMenuBootstrapper {
       );
     }
 
-    const contextMenuUseCase = castResolvedService<RegisterContextMenuUseCase>(
-      contextMenuUseCaseResult.value
-    );
+    const contextMenuUseCase = contextMenuUseCaseResult.value;
     const callbackRegisterResult = contextMenuUseCase.register();
     if (!callbackRegisterResult.ok) {
       // Callback registration failure - return error so orchestrator can log warning

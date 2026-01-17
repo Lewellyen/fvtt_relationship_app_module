@@ -3,7 +3,9 @@ import type { Result } from "@/domain/types/result";
 import { ok, err, isErr } from "@/domain/utils/result";
 import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycle";
 import { dependencyRegistry } from "@/framework/config/dependency-registry";
-import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
+import type { IFoundryWindowAdapter } from "@/domain/windows/ports/foundry-window-adapter.interface";
+import type { IWindowRegistry } from "@/domain/windows/ports/window-registry-port.interface";
 
 // Window Framework Tokens
 import {
@@ -245,34 +247,31 @@ export function registerWindowServices(container: ServiceContainer): Result<void
     windowFactoryToken,
     () => {
       // Use resolveWithError() instead of resolve() to avoid API boundary violations
-      const registryResult = container.resolveWithError(windowRegistryToken);
+      const registryResult = container.resolveWithError<IWindowRegistry>(windowRegistryToken);
       if (!registryResult.ok) {
         throw new Error(`Failed to resolve WindowRegistry: ${registryResult.error.message}`);
       }
-      const registry = castResolvedService<
-        import("@/domain/windows/ports/window-registry-port.interface").IWindowRegistry
-      >(registryResult.value);
+      const registry = registryResult.value;
 
-      const foundryAdapterResult = container.resolveWithError(foundryWindowAdapterToken);
+      const foundryAdapterResult =
+        container.resolveWithError<IFoundryWindowAdapter>(foundryWindowAdapterToken);
       if (!foundryAdapterResult.ok) {
         throw new Error(
           `Failed to resolve FoundryWindowAdapter: ${foundryAdapterResult.error.message}`
         );
       }
-      const foundryAdapter = castResolvedService<
-        import("@/domain/windows/ports/foundry-window-adapter.interface").IFoundryWindowAdapter
-      >(foundryAdapterResult.value);
+      const foundryAdapter = foundryAdapterResult.value;
 
       // Pass container as PlatformContainerPort for resolving WindowController dependencies
-      const containerPortResult = container.resolveWithError(platformContainerPortToken);
+      const containerPortResult = container.resolveWithError<PlatformContainerPort>(
+        platformContainerPortToken
+      );
       if (!containerPortResult.ok) {
         throw new Error(
           `Failed to resolve PlatformContainerPort: ${containerPortResult.error.message}`
         );
       }
-      const containerPort = castResolvedService<
-        import("@/domain/ports/platform-container-port.interface").PlatformContainerPort
-      >(containerPortResult.value);
+      const containerPort = containerPortResult.value;
 
       return new WindowFactory(registry, foundryAdapter, containerPort);
     },

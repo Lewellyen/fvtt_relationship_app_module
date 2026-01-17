@@ -71,7 +71,7 @@ export class JournalContextMenuLibWrapperService implements PlatformContextMenuR
    *
    * @returns Success or error if registration failed
    */
-  register(): Result<void, Error> {
+  register(): Result<void, string> {
     if (this.libWrapperRegistered) {
       return ok(undefined);
     }
@@ -79,7 +79,7 @@ export class JournalContextMenuLibWrapperService implements PlatformContextMenuR
     // Prüfe ContextMenu Verfügbarkeit
     const contextMenuClass = globalThis.foundry?.applications?.ux?.ContextMenu?.implementation;
     if (!contextMenuClass) {
-      return err(new Error("ContextMenu is not available"));
+      return err("ContextMenu is not available");
     }
 
     // Erstelle Wrapper-Funktion
@@ -93,7 +93,7 @@ export class JournalContextMenuLibWrapperService implements PlatformContextMenuR
     );
 
     if (!result.ok) {
-      return err(new Error(result.error.message));
+      return err(result.error.message);
     }
 
     this.registrationId = result.value;

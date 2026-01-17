@@ -4,26 +4,26 @@ import type { InjectionToken } from "@/application/di/injection-token";
 import type { ModuleApi, TokenInfo, ModuleApiTokens } from "@/framework/core/api/module-api";
 import type { IModuleApiBuilder } from "../interfaces/api-component-interfaces";
 import { createApiTokens } from "../api-token-config";
-import { getRegistrationStatus } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
+import { getRegistrationStatus } from "@/framework/core/utils/get-registration-status";
 import {
-  journalVisibilityServiceToken,
-  journalDirectoryProcessorToken,
-  graphDataServiceToken,
-  nodeDataServiceToken,
-} from "@/application/tokens/application.tokens";
-import { foundryGameToken } from "@/infrastructure/shared/tokens/foundry/foundry-game.token";
-import { foundryHooksToken } from "@/infrastructure/shared/tokens/foundry/foundry-hooks.token";
-import { foundryDocumentToken } from "@/infrastructure/shared/tokens/foundry/foundry-document.token";
-import { foundryUIToken } from "@/infrastructure/shared/tokens/foundry/foundry-ui.token";
-import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
-import { i18nFacadeToken } from "@/infrastructure/shared/tokens/i18n/i18n-facade.token";
-import { foundryJournalFacadeToken } from "@/infrastructure/shared/tokens/foundry/foundry-journal-facade.token";
-import { foundryUtilsToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils.token";
-import { foundryUtilsUuidToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-uuid.token";
-import { foundryUtilsObjectToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-object.token";
-import { foundryUtilsHtmlToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-html.token";
-import { foundryUtilsAsyncToken } from "@/infrastructure/shared/tokens/foundry/foundry-utils-async.token";
-import { notificationCenterToken } from "@/application/tokens/notifications/notification-center.token";
+  platformContainerPortToken,
+  platformLoggingPortToken,
+  platformMetricsSnapshotPortToken,
+  platformSettingsPortToken,
+  platformSettingsRegistrationPortToken,
+  platformI18nPortToken,
+  platformNotificationPortToken,
+  platformUIPortToken,
+  platformJournalDirectoryUiPortToken,
+  platformJournalCollectionPortToken,
+  platformUINotificationPortToken,
+  platformValidationPortToken,
+  platformContextMenuRegistrationPortToken,
+  platformUuidUtilsPortToken,
+  platformObjectUtilsPortToken,
+  platformHtmlUtilsPortToken,
+  platformAsyncUtilsPortToken,
+} from "@/application/tokens/domain-ports.tokens";
 import type { IApiServiceResolver } from "../interfaces/api-component-interfaces";
 import type { IApiHealthMetricsProvider } from "../interfaces/api-component-interfaces";
 
@@ -73,23 +73,23 @@ export class ModuleApiBuilder implements IModuleApiBuilder {
 
         // Add well-known tokens with their registration status
         const tokenEntries: Array<[string, InjectionToken<unknown>]> = [
-          ["journalVisibilityServiceToken", journalVisibilityServiceToken],
-          ["journalDirectoryProcessorToken", journalDirectoryProcessorToken],
-          ["foundryGameToken", foundryGameToken],
-          ["foundryHooksToken", foundryHooksToken],
-          ["foundryDocumentToken", foundryDocumentToken],
-          ["foundryUIToken", foundryUIToken],
-          ["foundrySettingsToken", foundrySettingsToken],
-          ["i18nFacadeToken", i18nFacadeToken],
-          ["foundryJournalFacadeToken", foundryJournalFacadeToken],
-          ["notificationCenterToken", notificationCenterToken],
-          ["graphDataServiceToken", graphDataServiceToken],
-          ["nodeDataServiceToken", nodeDataServiceToken],
-          ["foundryUtilsToken", foundryUtilsToken],
-          ["foundryUtilsUuidToken", foundryUtilsUuidToken],
-          ["foundryUtilsObjectToken", foundryUtilsObjectToken],
-          ["foundryUtilsHtmlToken", foundryUtilsHtmlToken],
-          ["foundryUtilsAsyncToken", foundryUtilsAsyncToken],
+          ["platformContainerPortToken", platformContainerPortToken],
+          ["platformLoggingPortToken", platformLoggingPortToken],
+          ["platformMetricsSnapshotPortToken", platformMetricsSnapshotPortToken],
+          ["platformSettingsPortToken", platformSettingsPortToken],
+          ["platformSettingsRegistrationPortToken", platformSettingsRegistrationPortToken],
+          ["platformI18nPortToken", platformI18nPortToken],
+          ["platformNotificationPortToken", platformNotificationPortToken],
+          ["platformUIPortToken", platformUIPortToken],
+          ["platformJournalDirectoryUiPortToken", platformJournalDirectoryUiPortToken],
+          ["platformJournalCollectionPortToken", platformJournalCollectionPortToken],
+          ["platformUINotificationPortToken", platformUINotificationPortToken],
+          ["platformValidationPortToken", platformValidationPortToken],
+          ["platformContextMenuRegistrationPortToken", platformContextMenuRegistrationPortToken],
+          ["platformUuidUtilsPortToken", platformUuidUtilsPortToken],
+          ["platformObjectUtilsPortToken", platformObjectUtilsPortToken],
+          ["platformHtmlUtilsPortToken", platformHtmlUtilsPortToken],
+          ["platformAsyncUtilsPortToken", platformAsyncUtilsPortToken],
         ];
 
         for (const [, token] of tokenEntries) {

@@ -36,9 +36,15 @@ import type { ContainerError } from "@/infrastructure/di/interfaces";
 import type { ComponentDescriptor } from "@/domain/windows/types/component-descriptor.interface";
 import type { IWindowState } from "@/domain/windows/types/view-model.interface";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
+import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import { SvelteRenderer } from "@/infrastructure/windows/renderers/svelte-renderer";
 import type { SvelteComponentInstance } from "@/domain/windows/types/component-instance.interface";
 import type { ViewModel } from "@/domain/windows/types/view-model.interface";
+import {
+  graphDataServiceToken,
+  nodeDataServiceToken,
+} from "@/application/tokens/application.tokens";
 
 /**
  * ModuleApi - Lokale Type-Definition für Infrastructure-Layer
@@ -56,9 +62,8 @@ interface ServiceResolutionApi {
   ) => Result<TServiceType, ContainerError>;
   tokens: {
     [key: string]: ApiSafeToken<unknown>;
-    notificationCenterToken: ApiSafeToken<unknown>;
-    graphDataServiceToken: ApiSafeToken<unknown>;
-    nodeDataServiceToken: ApiSafeToken<unknown>;
+    platformContainerPortToken: ApiSafeToken<PlatformContainerPort>;
+    platformNotificationPortToken: ApiSafeToken<PlatformNotificationPort>;
   };
 }
 
@@ -328,24 +333,35 @@ export function JournalEntryPageWindowSystemBridgeMixin<
       // 5. Services über Public API auflösen (für beide Sheet-Typen)
       let graphDataService: unknown = null;
       let nodeDataService: unknown = null;
-      let notificationCenter: unknown = null;
+      let notificationCenter: PlatformNotificationPort | null = null;
+
+      // Sheets werden von Foundry instanziiert → Zugriff erfolgt wie bei Drittmodulen über die Public API.
+      // Wichtig: Interne Services (Node/GraphDataService) sind NICHT API-safe Tokens und werden daher
+      // über den PlatformContainerPort mit resolveWithError() bezogen (Result-Pattern).
+      const containerPort = this.resolveService(this.api.tokens.platformContainerPortToken);
 
       try {
-        graphDataService = this.resolveService(this.api.tokens.graphDataServiceToken);
-        this.cachedGraphDataService = graphDataService;
-      } catch (_error) {
-        // GraphDataService nur für Graph-Sheet nötig, daher optional
+        const graphResult = containerPort.resolveWithError<unknown>(graphDataServiceToken);
+        if (graphResult.ok) {
+          graphDataService = graphResult.value;
+          this.cachedGraphDataService = graphDataService;
+        }
+      } catch {
+        // optional
       }
 
       try {
-        nodeDataService = this.resolveService(this.api.tokens.nodeDataServiceToken);
-        this.cachedNodeDataService = nodeDataService;
-      } catch (_error) {
-        // NodeDataService nur für Node-Sheet nötig, daher optional
+        const nodeResult = containerPort.resolveWithError<unknown>(nodeDataServiceToken);
+        if (nodeResult.ok) {
+          nodeDataService = nodeResult.value;
+          this.cachedNodeDataService = nodeDataService;
+        }
+      } catch {
+        // optional
       }
 
       try {
-        notificationCenter = this.resolveService(this.api.tokens.notificationCenterToken);
+        notificationCenter = this.resolveService(this.api.tokens.platformNotificationPortToken);
       } catch (error) {
         console.warn("Failed to resolve notificationCenter:", error);
       }
@@ -451,12 +467,14 @@ export function JournalEntryPageWindowSystemBridgeMixin<
       } else {
         // Fehler beim Mounten - Fehlermeldung anzeigen
         try {
-          const notificationCenter = this.resolveService(this.api.tokens.notificationCenterToken);
-          // type-coverage:ignore-next-line -- Notification Center Type: resolveService returns unknown, but we know it's NotificationCenter
-          (notificationCenter as { error: (message: string, error?: unknown) => void }).error(
-            `Failed to mount component: ${mountResult.error.message}`,
-            mountResult.error
+          const notificationPort = this.resolveService(
+            this.api.tokens.platformNotificationPortToken
           );
+          notificationPort.error("Failed to mount component", {
+            code: "MOUNT_FAILED",
+            message: mountResult.error.message,
+            details: mountResult.error,
+          });
         } catch (_error) {
           // NotificationCenter nicht verfügbar - logge nur in Konsole
           console.error("Failed to mount component:", mountResult.error);

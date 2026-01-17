@@ -94,8 +94,8 @@ describe("Integration: Module Lifecycle", () => {
     expect(mod.api).toBeDefined();
 
     // Container sollte funktionieren (kann Services resolven)
-    // Verwende API-safe Token (journalVisibilityServiceToken)
-    const journalService = mod.api.resolve(mod.api.tokens.journalVisibilityServiceToken);
-    expect(journalService).toBeDefined();
+    // Verwende API-safe Token (platformNotificationPortToken)
+    const notifications = mod.api.resolve(mod.api.tokens.platformNotificationPortToken);
+    expect(notifications).toBeDefined();
   });
 });

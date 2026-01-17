@@ -8,16 +8,18 @@ import type { PlatformBootstrapEventPort } from "@/domain/ports/platform-bootstr
 import { createMockGame, createMockUI } from "@/test/mocks/foundry";
 import { withFoundryGlobals } from "@/test/utils/test-helpers";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
-import { foundrySettingsToken } from "@/infrastructure/shared/tokens/foundry/foundry-settings.token";
-import { journalContextMenuLibWrapperServiceToken } from "@/infrastructure/shared/tokens/foundry/journal-context-menu-lib-wrapper-service.token";
 import { notificationChannelRegistryToken } from "@/application/tokens/notifications/notification-channel-registry.token";
 import { queuedUIChannelToken } from "@/application/tokens/notifications/queued-ui-channel.token";
-import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core/module-settings-registrar.token";
-import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
+import { moduleSettingsRegistrarToken } from "@/application/tokens/application.tokens";
+import { frameworkModuleApiInitializerToken } from "@/framework/tokens/module-api-initializer.token";
 import {
   moduleEventRegistrarToken,
   registerContextMenuUseCaseToken,
 } from "@/application/tokens/event.tokens";
+import {
+  platformContextMenuRegistrationPortToken,
+  platformSettingsRegistrationPortToken,
+} from "@/application/tokens/domain-ports.tokens";
 import { ok, err } from "@/domain/utils/result";
 
 describe("BootstrapInitHookService", () => {
@@ -119,7 +121,7 @@ describe("BootstrapInitHookService", () => {
       };
 
       (mockContainer.resolveWithError as any).mockImplementation((token: symbol) => {
-        if (token === moduleApiInitializerToken) {
+        if (token === frameworkModuleApiInitializerToken) {
           return ok(mockApiInitializer);
         }
         if (token === moduleSettingsRegistrarToken) {
@@ -128,7 +130,7 @@ describe("BootstrapInitHookService", () => {
         if (token === moduleEventRegistrarToken) {
           return ok(mockEventRegistrar);
         }
-        if (token === foundrySettingsToken) {
+        if (token === platformSettingsRegistrationPortToken) {
           return err({ code: "NotFound", message: "Settings not available" });
         }
         return err({ code: "NotFound", message: "Token not found" });
@@ -149,7 +151,7 @@ describe("BootstrapInitHookService", () => {
 
     it("should handle ModuleApiInitializer resolution failure", async () => {
       (mockContainer.resolveWithError as any).mockImplementation((token: symbol) => {
-        if (token === moduleApiInitializerToken) {
+        if (token === frameworkModuleApiInitializerToken) {
           return err({
             code: "DependencyResolveFailed" as const,
             message: "ModuleApiInitializer not found",
@@ -201,7 +203,7 @@ describe("BootstrapInitHookService", () => {
         if (token === queuedUIChannelToken) {
           return ok(mockQueuedUIChannel);
         }
-        if (token === moduleApiInitializerToken) {
+        if (token === frameworkModuleApiInitializerToken) {
           return ok(mockApiInitializer);
         }
         if (token === moduleSettingsRegistrarToken) {
@@ -210,7 +212,7 @@ describe("BootstrapInitHookService", () => {
         if (token === moduleEventRegistrarToken) {
           return ok(mockEventRegistrar);
         }
-        if (token === foundrySettingsToken) {
+        if (token === platformSettingsRegistrationPortToken) {
           return err({ code: "NotFound", message: "Settings not available" });
         }
         return err({ code: "NotFound", message: "Token not found" });
@@ -245,7 +247,7 @@ describe("BootstrapInitHookService", () => {
             message: "NotificationChannelRegistry not found",
           });
         }
-        if (token === moduleApiInitializerToken) {
+        if (token === frameworkModuleApiInitializerToken) {
           return ok(mockApiInitializer);
         }
         if (token === moduleSettingsRegistrarToken) {
@@ -254,7 +256,7 @@ describe("BootstrapInitHookService", () => {
         if (token === moduleEventRegistrarToken) {
           return ok(mockEventRegistrar);
         }
-        if (token === foundrySettingsToken) {
+        if (token === platformSettingsRegistrationPortToken) {
           return err({ code: "NotFound", message: "Settings not available" });
         }
         return err({ code: "NotFound", message: "Token not found" });
@@ -293,7 +295,7 @@ describe("BootstrapInitHookService", () => {
       };
 
       (mockContainer.resolveWithError as any).mockImplementation((token: symbol) => {
-        if (token === moduleApiInitializerToken) {
+        if (token === frameworkModuleApiInitializerToken) {
           return ok(mockApiInitializer);
         }
         if (token === moduleSettingsRegistrarToken) {
@@ -302,13 +304,13 @@ describe("BootstrapInitHookService", () => {
         if (token === moduleEventRegistrarToken) {
           return ok(mockEventRegistrar);
         }
-        if (token === journalContextMenuLibWrapperServiceToken) {
+        if (token === platformContextMenuRegistrationPortToken) {
           return ok(mockContextMenuLibWrapperService);
         }
         if (token === registerContextMenuUseCaseToken) {
           return ok(mockContextMenuUseCase);
         }
-        if (token === foundrySettingsToken) {
+        if (token === platformSettingsRegistrationPortToken) {
           return err({ code: "NotFound", message: "Settings not available" });
         }
         return err({ code: "NotFound", message: "Token not found" });
@@ -348,7 +350,7 @@ describe("BootstrapInitHookService", () => {
       };
 
       (mockContainer.resolveWithError as any).mockImplementation((token: symbol) => {
-        if (token === moduleApiInitializerToken) {
+        if (token === frameworkModuleApiInitializerToken) {
           return ok(mockApiInitializer);
         }
         if (token === moduleSettingsRegistrarToken) {
@@ -357,13 +359,13 @@ describe("BootstrapInitHookService", () => {
         if (token === moduleEventRegistrarToken) {
           return ok(mockEventRegistrar);
         }
-        if (token === journalContextMenuLibWrapperServiceToken) {
+        if (token === platformContextMenuRegistrationPortToken) {
           return ok(mockContextMenuLibWrapperService);
         }
         if (token === registerContextMenuUseCaseToken) {
           return ok(mockContextMenuUseCase);
         }
-        if (token === foundrySettingsToken) {
+        if (token === platformSettingsRegistrationPortToken) {
           return err({ code: "NotFound", message: "Settings not available" });
         }
         return err({ code: "NotFound", message: "Token not found" });
@@ -400,7 +402,7 @@ describe("BootstrapInitHookService", () => {
       };
 
       (mockContainer.resolveWithError as any).mockImplementation((token: symbol) => {
-        if (token === moduleApiInitializerToken) {
+        if (token === frameworkModuleApiInitializerToken) {
           return ok(mockApiInitializer);
         }
         if (token === moduleSettingsRegistrarToken) {
@@ -409,7 +411,7 @@ describe("BootstrapInitHookService", () => {
         if (token === moduleEventRegistrarToken) {
           return ok(mockEventRegistrar);
         }
-        if (token === journalContextMenuLibWrapperServiceToken) {
+        if (token === platformContextMenuRegistrationPortToken) {
           return ok(mockContextMenuLibWrapperService);
         }
         if (token === registerContextMenuUseCaseToken) {
@@ -418,7 +420,7 @@ describe("BootstrapInitHookService", () => {
             message: "RegisterContextMenuUseCase not found",
           });
         }
-        if (token === foundrySettingsToken) {
+        if (token === platformSettingsRegistrationPortToken) {
           return err({ code: "NotFound", message: "Settings not available" });
         }
         return err({ code: "NotFound", message: "Token not found" });

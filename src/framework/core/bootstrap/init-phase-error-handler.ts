@@ -1,4 +1,4 @@
-import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import type { InitPhase } from "./init-phase.interface";
 import { InitPhaseCriticality } from "./init-phase.interface";
 import type { InitError } from "./init-error";
@@ -23,7 +23,12 @@ export class InitPhaseErrorHandler {
    * @param errors - Array to collect critical errors (mutated if phase is critical)
    * @param logger - Logger for error reporting
    */
-  handlePhaseError(phase: InitPhase, error: string, errors: InitError[], logger: Logger): void {
+  handlePhaseError(
+    phase: InitPhase,
+    error: string,
+    errors: InitError[],
+    logger: PlatformLoggingPort
+  ): void {
     if (phase.criticality === InitPhaseCriticality.HALT_ON_ERROR) {
       errors.push({
         phase: phase.id,

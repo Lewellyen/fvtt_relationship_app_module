@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { SettingsBootstrapper } from "../settings-bootstrapper";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import { moduleSettingsRegistrarToken } from "@/infrastructure/shared/tokens/core/module-settings-registrar.token";
+import { moduleSettingsRegistrarToken } from "@/application/tokens/application.tokens";
 import { ok, err } from "@/domain/utils/result";
 import type { ModuleSettingsRegistrar } from "@/application/services/ModuleSettingsRegistrar";
 
@@ -32,7 +32,6 @@ describe("SettingsBootstrapper", () => {
       err({
         code: "TokenNotRegistered",
         message: "ModuleSettingsRegistrar not found",
-        tokenDescription: String(moduleSettingsRegistrarToken),
       })
     );
 

@@ -1,9 +1,8 @@
 import type { ApiSafeToken } from "@/infrastructure/di/types/utilities/api-safe-token";
 import type { ModuleApiTokens } from "@/framework/core/api/module-api";
 import type { ApiWrapperStrategy } from "./api-wrapper-strategy.interface";
-import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
+import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
 import { createPublicI18n } from "../../public-api-wrappers";
-import { wrapI18nService } from "@/infrastructure/di/types/utilities/api-casts";
 
 /**
  * I18nWrapperStrategy
@@ -11,17 +10,17 @@ import { wrapI18nService } from "@/infrastructure/di/types/utilities/api-casts";
  * Strategy for wrapping I18nFacadeService with read-only wrapper.
  * Only allows translate, format, and has methods.
  */
-export class I18nWrapperStrategy implements ApiWrapperStrategy<I18nFacadeService> {
-  supports(token: ApiSafeToken<I18nFacadeService>, wellKnownTokens: ModuleApiTokens): boolean {
-    return token === wellKnownTokens.i18nFacadeToken;
+export class I18nWrapperStrategy implements ApiWrapperStrategy<PlatformI18nPort> {
+  supports(token: ApiSafeToken<PlatformI18nPort>, wellKnownTokens: ModuleApiTokens): boolean {
+    return token === wellKnownTokens.platformI18nPortToken;
   }
 
   wrap(
-    service: I18nFacadeService,
-    _token: ApiSafeToken<I18nFacadeService>,
+    service: PlatformI18nPort,
+    _token: ApiSafeToken<PlatformI18nPort>,
     _wellKnownTokens: ModuleApiTokens
-  ): I18nFacadeService {
-    return wrapI18nService(service, createPublicI18n);
+  ): PlatformI18nPort {
+    return createPublicI18n(service);
   }
 
   getPriority(): number {

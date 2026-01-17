@@ -8,14 +8,16 @@
  * All other hooks (registered inside init) can use PlatformEventPort normally.
  */
 
-import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { PlatformBootstrapEventPort } from "@/domain/ports/platform-bootstrap-event-port.interface";
-import { platformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/ports/platform-bootstrap-event-port.token";
-import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
-import { platformContainerPortToken } from "@/application/tokens/domain-ports.tokens";
+import {
+  platformBootstrapEventPortToken,
+  platformContainerPortToken,
+  platformLoggingPortToken,
+} from "@/application/tokens/domain-ports.tokens";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import { InitOrchestrator } from "./bootstrap/init-orchestrator";
-import type { BootstrapInitHookService as IBootstrapInitHookService } from "@/infrastructure/shared/types/bootstrap-init-hook-service.interface";
+import type { BootstrapHookService as IBootstrapInitHookService } from "@/framework/core/bootstrap/bootstrap-hook-service.interface";
 
 /**
  * Service responsible for registering the Foundry 'init' hook.
@@ -26,7 +28,7 @@ import type { BootstrapInitHookService as IBootstrapInitHookService } from "@/in
  */
 export class BootstrapInitHookService implements IBootstrapInitHookService {
   constructor(
-    private readonly logger: Logger,
+    private readonly logger: PlatformLoggingPort,
     private readonly container: PlatformContainerPort,
     private readonly bootstrapEvents: PlatformBootstrapEventPort
   ) {}
@@ -73,13 +75,13 @@ export class BootstrapInitHookService implements IBootstrapInitHookService {
  */
 export class DIBootstrapInitHookService extends BootstrapInitHookService {
   static dependencies = [
-    loggerToken,
+    platformLoggingPortToken,
     platformContainerPortToken,
     platformBootstrapEventPortToken,
   ] as const;
 
   constructor(
-    logger: Logger,
+    logger: PlatformLoggingPort,
     container: PlatformContainerPort,
     bootstrapEvents: PlatformBootstrapEventPort
   ) {

@@ -1,6 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 
 /**
  * Error handling strategy for init phases.
@@ -21,7 +21,7 @@ export enum InitPhaseCriticality {
  */
 export interface InitPhaseContext {
   container: PlatformContainerPort;
-  logger: Logger;
+  logger: PlatformLoggingPort;
 }
 
 /**

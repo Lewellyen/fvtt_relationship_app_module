@@ -97,7 +97,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
 
     it("should return service instance on successful resolution (no exception)", () => {
       // Bei erfolgreicher Resolution sollte keine Exception geworfen werden
-      const notifications = api.resolve(api.tokens.notificationCenterToken);
+      const notifications = api.resolve(api.tokens.platformNotificationPortToken);
       expect(notifications).toBeDefined();
       expect(typeof notifications.error).toBe("function");
     });
@@ -144,7 +144,7 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
     });
 
     it("should return Result with ok: true on successful resolution", () => {
-      const result = api.resolveWithError(api.tokens.notificationCenterToken);
+      const result = api.resolveWithError(api.tokens.platformNotificationPortToken);
 
       expectResultOk(result);
       if (result.ok) {
@@ -157,8 +157,8 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
 
   describe("Consistency between both methods", () => {
     it("should return same service instance on successful resolution", () => {
-      const service1 = api.resolve(api.tokens.notificationCenterToken);
-      const result2 = api.resolveWithError(api.tokens.notificationCenterToken);
+      const service1 = api.resolve(api.tokens.platformNotificationPortToken);
+      const result2 = api.resolveWithError(api.tokens.platformNotificationPortToken);
 
       expectResultOk(result2);
       if (result2.ok) {
@@ -169,8 +169,8 @@ describe("Runtime Error: ModuleApi Error Handling", () => {
         const notifications2 = result2.value as any;
         expect(typeof notifications2.error).toBe("function");
         // Beide sollten die gleichen Methoden haben
-        expect(Array.isArray(service1.getChannelNames())).toBe(true);
-        expect(Array.isArray(notifications2.getChannelNames())).toBe(true);
+        expect(service1.getChannelNames().ok).toBe(true);
+        expect(notifications2.getChannelNames().ok).toBe(true);
       }
     });
 

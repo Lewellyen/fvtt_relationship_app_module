@@ -8,13 +8,15 @@
  * All other hooks (registered inside init) can use PlatformEventPort normally.
  */
 
-import type { Logger } from "@/infrastructure/logging/logger.interface";
 import type { PlatformBootstrapEventPort } from "@/domain/ports/platform-bootstrap-event-port.interface";
-import { platformBootstrapEventPortToken } from "@/infrastructure/shared/tokens/ports/platform-bootstrap-event-port.token";
-import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
+import {
+  platformBootstrapEventPortToken,
+  platformLoggingPortToken,
+} from "@/application/tokens/domain-ports.tokens";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import type { ModuleReadyService } from "@/application/services/module-ready-service";
 import { moduleReadyServiceToken } from "@/application/services/module-ready-service";
-import type { BootstrapReadyHookService as IBootstrapReadyHookService } from "@/infrastructure/shared/types/bootstrap-ready-hook-service.interface";
+import type { BootstrapHookService as IBootstrapReadyHookService } from "@/framework/core/bootstrap/bootstrap-hook-service.interface";
 
 /**
  * Service responsible for registering the Foundry 'ready' hook.
@@ -25,7 +27,7 @@ import type { BootstrapReadyHookService as IBootstrapReadyHookService } from "@/
  */
 export class BootstrapReadyHookService implements IBootstrapReadyHookService {
   constructor(
-    private readonly logger: Logger,
+    private readonly logger: PlatformLoggingPort,
     private readonly bootstrapEvents: PlatformBootstrapEventPort,
     private readonly moduleReadyService: ModuleReadyService
   ) {}
@@ -67,13 +69,13 @@ export class BootstrapReadyHookService implements IBootstrapReadyHookService {
  */
 export class DIBootstrapReadyHookService extends BootstrapReadyHookService {
   static dependencies = [
-    loggerToken,
+    platformLoggingPortToken,
     platformBootstrapEventPortToken,
     moduleReadyServiceToken,
   ] as const;
 
   constructor(
-    logger: Logger,
+    logger: PlatformLoggingPort,
     bootstrapEvents: PlatformBootstrapEventPort,
     moduleReadyService: ModuleReadyService
   ) {

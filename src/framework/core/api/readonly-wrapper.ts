@@ -6,9 +6,9 @@
  * @returns True if prop is a string and in the allowed list
  */
 function isAllowedKey(prop: string | symbol, allowed: readonly string[]): boolean {
-  if (typeof prop !== "string") {
-    return false;
-  }
+  // Allow symbol access for runtime tooling / inspection (e.g. util.inspect.custom)
+  // without treating it as part of the public API surface.
+  if (typeof prop !== "string") return true;
   return allowed.includes(prop);
 }
 

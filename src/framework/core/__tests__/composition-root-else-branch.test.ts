@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CompositionRoot } from "@/framework/core/composition-root";
 import type { ServiceContainer } from "@/infrastructure/di/container";
-import { loggerToken } from "@/infrastructure/shared/tokens/core/logger.token";
+import { platformLoggingPortToken } from "@/application/tokens/domain-ports.tokens";
 
 describe("CompositionRoot - else branch coverage (logger not available)", () => {
   beforeEach(() => {
@@ -23,20 +23,19 @@ describe("CompositionRoot - else branch coverage (logger not available)", () => 
 
   it("should handle logger resolution failure in tryLogBootstrapCompletion (else branch)", () => {
     // This test directly tests the tryLogBootstrapCompletion method
-    // by creating a mock container that returns { ok: false } for loggerToken
+    // by creating a mock container that returns { ok: false } for platformLoggingPortToken
 
     const root = new CompositionRoot();
 
-    // Create a mock container that returns { ok: false } for loggerToken
+    // Create a mock container that returns { ok: false } for platformLoggingPortToken
     const mockContainer = {
       resolveWithError: vi.fn((token: symbol) => {
-        if (token === loggerToken) {
+        if (token === platformLoggingPortToken) {
           return {
             ok: false as const,
             error: {
               code: "TokenNotRegistered" as const,
               message: "Logger not available",
-              tokenDescription: String(token),
             },
           };
         }
@@ -48,8 +47,8 @@ describe("CompositionRoot - else branch coverage (logger not available)", () => 
     // This tests the else branch when logger resolution fails
     root.tryLogBootstrapCompletion(mockContainer, 123.45);
 
-    // Verify that resolveWithError was called with loggerToken
-    expect(mockContainer.resolveWithError).toHaveBeenCalledWith(loggerToken);
+    // Verify that resolveWithError was called with platformLoggingPortToken
+    expect(mockContainer.resolveWithError).toHaveBeenCalledWith(platformLoggingPortToken);
 
     // The else branch was executed - no logger.debug() was called
     // (we can't easily verify this, but the coverage tool will show it)

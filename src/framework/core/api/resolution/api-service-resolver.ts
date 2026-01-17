@@ -3,14 +3,10 @@ import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { ApiSafeToken } from "@/infrastructure/di/types/utilities/api-safe-token";
 import type { ModuleApiTokens } from "@/framework/core/api/module-api";
-import type { ContainerError } from "@/infrastructure/di/interfaces";
+import type { ContainerError } from "@/domain/ports/platform-container-port.interface";
 import type { IApiServiceResolver } from "../interfaces/api-component-interfaces";
 import type { IDeprecationHandler } from "../interfaces/api-component-interfaces";
 import type { IServiceWrapperFactory } from "../interfaces/api-component-interfaces";
-import {
-  castResolvedService,
-  castContainerErrorCode,
-} from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 
 /**
  * ApiServiceResolver
@@ -66,21 +62,18 @@ export class ApiServiceResolver implements IApiServiceResolver {
       this.deprecationHandler.handleDeprecationWarning(token);
 
       // Resolve with Result-Pattern (never throws)
-      const result = container.resolveWithError(token);
+      const result = container.resolveWithError<TServiceType>(token);
 
       // Apply wrappers if resolution succeeded
       if (!result.ok) {
-        // Convert DomainContainerError to ContainerError
-        const containerError: ContainerError = {
-          code: castContainerErrorCode(result.error.code),
+        return err({
+          code: result.error.code,
           message: result.error.message,
           cause: result.error.cause,
-          tokenDescription: result.error.message,
-        };
-        return err(containerError);
+        });
       }
 
-      const service = castResolvedService<TServiceType>(result.value);
+      const service = result.value;
 
       const wrappedService = this.serviceWrapperFactory.wrapSensitiveService(
         token,

@@ -21,7 +21,6 @@ import { DITranslationHandlerChain } from "@/infrastructure/i18n/TranslationHand
 import type { TranslationHandler } from "@/infrastructure/i18n/TranslationHandler.interface";
 import type { TerminalTranslationHandler } from "@/infrastructure/i18n/TerminalTranslationHandler.interface";
 import { TerminalTranslationHandlerAdapter } from "@/infrastructure/i18n/TerminalTranslationHandlerAdapter";
-import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import { DII18nPortAdapter } from "@/infrastructure/adapters/i18n/platform-i18n-port-adapter";
 
 /**
@@ -104,31 +103,35 @@ export function registerI18nServices(container: ServiceContainer): Result<void, 
   const handlersArrayResult = container.registerFactory(
     translationHandlersToken,
     (): TranslationHandler[] => {
-      const foundryHandlerResult = container.resolveWithError(foundryTranslationHandlerToken);
+      const foundryHandlerResult = container.resolveWithError<TranslationHandler>(
+        foundryTranslationHandlerToken
+      );
       if (!foundryHandlerResult.ok) {
         throw new Error(
           `Failed to resolve FoundryTranslationHandler: ${foundryHandlerResult.error.message}`
         );
       }
-      const foundryHandler = castResolvedService<TranslationHandler>(foundryHandlerResult.value);
+      const foundryHandler = foundryHandlerResult.value;
 
-      const localHandlerResult = container.resolveWithError(localTranslationHandlerToken);
+      const localHandlerResult = container.resolveWithError<TranslationHandler>(
+        localTranslationHandlerToken
+      );
       if (!localHandlerResult.ok) {
         throw new Error(
           `Failed to resolve LocalTranslationHandler: ${localHandlerResult.error.message}`
         );
       }
-      const localHandler = castResolvedService<TranslationHandler>(localHandlerResult.value);
+      const localHandler = localHandlerResult.value;
 
-      const fallbackHandlerResult = container.resolveWithError(fallbackTranslationHandlerToken);
+      const fallbackHandlerResult = container.resolveWithError<TerminalTranslationHandler>(
+        fallbackTranslationHandlerToken
+      );
       if (!fallbackHandlerResult.ok) {
         throw new Error(
           `Failed to resolve FallbackTranslationHandler: ${fallbackHandlerResult.error.message}`
         );
       }
-      const fallbackHandler = castResolvedService<TerminalTranslationHandler>(
-        fallbackHandlerResult.value
-      );
+      const fallbackHandler = fallbackHandlerResult.value;
       // Wrap the terminal handler in an adapter to make it compatible with TranslationHandler
       const fallbackHandlerAdapter = new TerminalTranslationHandlerAdapter(fallbackHandler);
       return [foundryHandler, localHandler, fallbackHandlerAdapter];

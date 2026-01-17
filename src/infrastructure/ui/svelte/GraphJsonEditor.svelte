@@ -119,16 +119,18 @@
         return;
       }
 
-      // Get FoundryGame to access journals
-      const foundryGame = mod.api.resolve(mod.api.tokens.foundryGameToken);
-      const journalsResult = foundryGame.getJournalEntries();
+      // Get platform journal collection to access journals
+      const journalCollection = mod.api.resolve(mod.api.tokens.platformJournalCollectionPortToken);
+      const journalsResult = journalCollection.getAll();
       if (!journalsResult.ok) {
         console.error("[GraphJsonEditor] Failed to get journal entries:", journalsResult.error);
         return;
       }
 
       // Find the journal entry
-      const journal = journalsResult.value.find((j) => j.id === journalId || j._id === journalId);
+      const journal = journalsResult.value.find(
+        (j: { id?: string; _id?: string }) => j.id === journalId || j._id === journalId
+      );
       if (!journal) {
         console.error("[GraphJsonEditor] Journal not found:", journalId);
         return;

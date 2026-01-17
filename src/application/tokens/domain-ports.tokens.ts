@@ -37,6 +37,14 @@ import type { PlatformChannelPort } from "@/domain/ports/notifications/platform-
 import type { PlatformUINotificationChannelPort } from "@/domain/ports/notifications/platform-ui-notification-channel-port.interface";
 import type { PlatformConsoleChannelPort } from "@/domain/ports/notifications/platform-console-channel-port.interface";
 import type { PlatformUIAvailabilityPort } from "@/domain/ports/platform-ui-availability-port.interface";
+import type { PlatformBootstrapEventPort } from "@/domain/ports/platform-bootstrap-event-port.interface";
+import type { PlatformUuidUtilsPort } from "@/domain/ports/utils/platform-uuid-utils-port.interface";
+import type { PlatformObjectUtilsPort } from "@/domain/ports/utils/platform-object-utils-port.interface";
+import type { PlatformHtmlUtilsPort } from "@/domain/ports/utils/platform-html-utils-port.interface";
+import type { PlatformAsyncUtilsPort } from "@/domain/ports/utils/platform-async-utils-port.interface";
+import type { PlatformMetricsInitializationPort } from "@/domain/ports/bootstrap/platform-metrics-initialization-port.interface";
+import type { PlatformJournalEntryPageSheetRegistrationPort } from "@/domain/ports/bootstrap/platform-journal-entry-page-sheet-registration-port.interface";
+import type { PlatformJournalDirectoryButtonsPort } from "@/domain/ports/bootstrap/platform-journal-directory-buttons-port.interface";
 
 /**
  * DI Token for PlatformNotificationPort.
@@ -333,3 +341,56 @@ export const platformConsoleChannelPortToken = createInjectionToken<PlatformCons
 export const platformUIAvailabilityPortToken = createInjectionToken<PlatformUIAvailabilityPort>(
   "PlatformUIAvailabilityPort"
 );
+
+/**
+ * DI Token for PlatformBootstrapEventPort.
+ *
+ * Platform-agnostic bootstrap hook registration port (init/ready).
+ */
+export const platformBootstrapEventPortToken = createInjectionToken<PlatformBootstrapEventPort>(
+  "PlatformBootstrapEventPort"
+);
+
+/**
+ * DI Token for PlatformUuidUtilsPort.
+ */
+export const platformUuidUtilsPortToken =
+  createInjectionToken<PlatformUuidUtilsPort>("PlatformUuidUtilsPort");
+
+/**
+ * DI Token for PlatformObjectUtilsPort.
+ */
+export const platformObjectUtilsPortToken =
+  createInjectionToken<PlatformObjectUtilsPort>("PlatformObjectUtilsPort");
+
+/**
+ * DI Token for PlatformHtmlUtilsPort.
+ */
+export const platformHtmlUtilsPortToken =
+  createInjectionToken<PlatformHtmlUtilsPort>("PlatformHtmlUtilsPort");
+
+/**
+ * DI Token for PlatformAsyncUtilsPort.
+ */
+export const platformAsyncUtilsPortToken =
+  createInjectionToken<PlatformAsyncUtilsPort>("PlatformAsyncUtilsPort");
+
+/**
+ * DI Token for PlatformMetricsInitializationPort.
+ */
+export const platformMetricsInitializationPortToken =
+  createInjectionToken<PlatformMetricsInitializationPort>("PlatformMetricsInitializationPort");
+
+/**
+ * DI Token for PlatformJournalEntryPageSheetRegistrationPort.
+ */
+export const platformJournalEntryPageSheetRegistrationPortToken =
+  createInjectionToken<PlatformJournalEntryPageSheetRegistrationPort>(
+    "PlatformJournalEntryPageSheetRegistrationPort"
+  );
+
+/**
+ * DI Token for PlatformJournalDirectoryButtonsPort.
+ */
+export const platformJournalDirectoryButtonsPortToken =
+  createInjectionToken<PlatformJournalDirectoryButtonsPort>("PlatformJournalDirectoryButtonsPort");

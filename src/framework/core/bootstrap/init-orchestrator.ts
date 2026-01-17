@@ -1,7 +1,7 @@
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import type { Logger } from "@/infrastructure/logging/logger.interface";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import type { InitPhaseContext } from "./init-phase.interface";
 import { InitPhaseRegistry } from "./init-phase-registry";
 import { createDefaultInitPhaseRegistry } from "./default-init-phase-registry";
@@ -47,7 +47,10 @@ export class InitOrchestrator {
    * @param logger - Logger for error reporting
    * @returns Result indicating success or aggregated errors
    */
-  execute(container: PlatformContainerPort, logger: Logger): Result<void, InitError[]> {
+  execute(
+    container: PlatformContainerPort,
+    logger: PlatformLoggingPort
+  ): Result<void, InitError[]> {
     const errors: InitError[] = [];
     const phases = this.registry.getAll();
     const ctx: InitPhaseContext = { container, logger };
@@ -78,7 +81,10 @@ export class InitOrchestrator {
    * @param logger - Logger for error reporting
    * @returns Result indicating success or aggregated errors
    */
-  static execute(container: PlatformContainerPort, logger: Logger): Result<void, InitError[]> {
+  static execute(
+    container: PlatformContainerPort,
+    logger: PlatformLoggingPort
+  ): Result<void, InitError[]> {
     const orchestrator = new InitOrchestrator();
     return orchestrator.execute(container, logger);
   }

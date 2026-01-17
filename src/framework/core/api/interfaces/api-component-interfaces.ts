@@ -2,8 +2,8 @@ import type { PlatformContainerPort } from "@/domain/ports/platform-container-po
 import type { ApiSafeToken } from "@/infrastructure/di/types/utilities/api-safe-token";
 import type { ModuleApi, ModuleApiTokens } from "@/framework/core/api/module-api";
 import type { Result } from "@/domain/types/result";
-import type { ContainerError } from "@/infrastructure/di/interfaces";
-import type { MetricsSnapshot } from "@/infrastructure/observability/metrics-types";
+import type { ContainerError } from "@/domain/ports/platform-container-port.interface";
+import type { MetricsSnapshot } from "@/domain/ports/platform-metrics-snapshot-port.interface";
 import type { HealthStatus } from "@/domain/types/health-status";
 import type { DeprecationInfo } from "@/framework/core/api/module-api";
 

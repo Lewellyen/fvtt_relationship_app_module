@@ -1,12 +1,13 @@
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { HealthStatus } from "@/domain/types/health-status";
-import type { MetricsSnapshot } from "@/infrastructure/observability/metrics-types";
 import type { IApiHealthMetricsProvider } from "../interfaces/api-component-interfaces";
-import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
-import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 import type { ModuleHealthService } from "@/application/services/ModuleHealthService";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
-import { moduleHealthServiceToken } from "@/infrastructure/shared/tokens/core/module-health-service.token";
+import type {
+  PlatformMetricsSnapshotPort,
+  MetricsSnapshot,
+} from "@/domain/ports/platform-metrics-snapshot-port.interface";
+import { platformMetricsSnapshotPortToken } from "@/application/tokens/domain-ports.tokens";
+import { moduleHealthServiceToken } from "@/application/tokens/application.tokens";
 
 /**
  * ApiHealthMetricsProvider
@@ -22,7 +23,9 @@ export class ApiHealthMetricsProvider implements IApiHealthMetricsProvider {
    * @returns Current metrics snapshot
    */
   getMetrics(container: PlatformContainerPort): MetricsSnapshot {
-    const metricsResult = container.resolveWithError(metricsCollectorToken);
+    const metricsResult = container.resolveWithError<PlatformMetricsSnapshotPort>(
+      platformMetricsSnapshotPortToken
+    );
     if (!metricsResult.ok) {
       return {
         containerResolutions: 0,
@@ -33,8 +36,8 @@ export class ApiHealthMetricsProvider implements IApiHealthMetricsProvider {
         cacheHitRate: 0,
       };
     }
-    const metricsCollector = castResolvedService<MetricsCollector>(metricsResult.value);
-    return metricsCollector.getSnapshot();
+    const metricsPort = metricsResult.value;
+    return metricsPort.getSnapshot();
   }
 
   /**
@@ -45,7 +48,8 @@ export class ApiHealthMetricsProvider implements IApiHealthMetricsProvider {
    */
   getHealth(container: PlatformContainerPort): HealthStatus {
     // Delegate to ModuleHealthService for health checks
-    const healthServiceResult = container.resolveWithError(moduleHealthServiceToken);
+    const healthServiceResult =
+      container.resolveWithError<ModuleHealthService>(moduleHealthServiceToken);
     if (!healthServiceResult.ok) {
       // Fallback health status if service cannot be resolved
       return {
@@ -58,7 +62,7 @@ export class ApiHealthMetricsProvider implements IApiHealthMetricsProvider {
         timestamp: new Date().toISOString(),
       };
     }
-    const healthService = castResolvedService<ModuleHealthService>(healthServiceResult.value);
+    const healthService = healthServiceResult.value;
     return healthService.getHealth();
   }
 }

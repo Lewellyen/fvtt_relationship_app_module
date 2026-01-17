@@ -1,7 +1,7 @@
-import type { Logger } from "@/infrastructure/logging/logger.interface";
-import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
-import type { NotificationService } from "@/application/services/notification-center.interface";
-import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
+import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
 import { createReadOnlyWrapper } from "./readonly-wrapper";
 
 /**
@@ -20,7 +20,7 @@ import { createReadOnlyWrapper } from "./readonly-wrapper";
  * publicLogger.setMinLevel(0); // ❌ Error
  * ```
  */
-export function createPublicLogger(logger: Logger): Logger {
+export function createPublicLogger(logger: PlatformLoggingPort): PlatformLoggingPort {
   return createReadOnlyWrapper(logger, [
     "log",
     "debug",
@@ -47,7 +47,7 @@ export function createPublicLogger(logger: Logger): Logger {
  * publicI18n.internalState = {}; // ❌ Error
  * ```
  */
-export function createPublicI18n(i18n: I18nFacadeService): I18nFacadeService {
+export function createPublicI18n(i18n: PlatformI18nPort): PlatformI18nPort {
   return createReadOnlyWrapper(i18n, ["translate", "format", "has"]);
 }
 
@@ -61,9 +61,9 @@ export function createPublicI18n(i18n: I18nFacadeService): I18nFacadeService {
  * @returns Read-only notification proxy
  */
 export function createPublicNotificationCenter(
-  notificationCenter: NotificationService
-): NotificationService {
-  return createReadOnlyWrapper(notificationCenter, [
+  notificationPort: PlatformNotificationPort
+): PlatformNotificationPort {
+  return createReadOnlyWrapper(notificationPort, [
     "debug",
     "info",
     "warn",
@@ -81,6 +81,8 @@ export function createPublicNotificationCenter(
  * @param foundrySettings - FoundrySettings service instance
  * @returns Read-only settings proxy
  */
-export function createPublicFoundrySettings(foundrySettings: FoundrySettings): FoundrySettings {
-  return createReadOnlyWrapper(foundrySettings, ["get"]);
+export function createPublicSettingsRegistrationPort(
+  settings: PlatformSettingsRegistrationPort
+): PlatformSettingsRegistrationPort {
+  return createReadOnlyWrapper(settings, ["getSettingValue"]);
 }

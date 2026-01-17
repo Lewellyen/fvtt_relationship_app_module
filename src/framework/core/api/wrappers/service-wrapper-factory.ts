@@ -5,6 +5,7 @@ import { ApiWrapperStrategyRegistry } from "./strategies/api-wrapper-strategy-re
 import { I18nWrapperStrategy } from "./strategies/i18n-wrapper-strategy";
 import { NotificationWrapperStrategy } from "./strategies/notification-wrapper-strategy";
 import { SettingsWrapperStrategy } from "./strategies/settings-wrapper-strategy";
+import { LoggingWrapperStrategy } from "./strategies/logging-wrapper-strategy";
 import { NoopWrapperStrategy } from "./strategies/noop-wrapper-strategy";
 
 /**
@@ -32,6 +33,7 @@ export class ServiceWrapperFactory implements IServiceWrapperFactory {
   private createDefaultRegistry(): ApiWrapperStrategyRegistry {
     const registry = new ApiWrapperStrategyRegistry();
     registry.registerAll([
+      new LoggingWrapperStrategy(),
       new I18nWrapperStrategy(),
       new NotificationWrapperStrategy(),
       new SettingsWrapperStrategy(),

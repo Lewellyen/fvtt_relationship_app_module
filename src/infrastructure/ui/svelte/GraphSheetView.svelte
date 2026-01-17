@@ -334,7 +334,7 @@
       if (typeof game !== "undefined" && game?.modules) {
         const mod = game.modules.get("fvtt_relationship_app_module");
         if (mod?.api?.resolve) {
-          const utilsUuid = mod.api.resolve(mod.api.tokens.foundryUtilsUuidToken);
+          const utilsUuid = mod.api.resolve(mod.api.tokens.platformUuidUtilsPortToken);
           uuid = utilsUuid.randomID();
         } else {
           // Fallback: direkter Aufruf wenn API nicht verfügbar

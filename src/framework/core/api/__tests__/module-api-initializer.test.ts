@@ -7,7 +7,6 @@ import type { ServiceContainer } from "@/infrastructure/di/container";
 import { createTestContainer } from "@/test/utils/test-helpers";
 import { configureDependencies } from "@/framework/config/dependencyconfig";
 import { expectResultOk } from "@/test/utils/test-helpers";
-import { castResolvedService } from "@/infrastructure/di/types/utilities/runtime-safe-cast";
 import type { MetricsCollector } from "@/infrastructure/observability/metrics-collector";
 
 describe("ModuleApiInitializer", () => {
@@ -104,37 +103,40 @@ describe("ModuleApiInitializer", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
       const { tokens } = mod.api;
 
-      expect(tokens.notificationCenterToken).toBeDefined();
-      expect(tokens.journalVisibilityServiceToken).toBeDefined();
-      expect(tokens.foundryGameToken).toBeDefined();
-      expect(tokens.foundryHooksToken).toBeDefined();
-      expect(tokens.foundryDocumentToken).toBeDefined();
-      expect(tokens.foundryUIToken).toBeDefined();
-      expect(tokens.foundrySettingsToken).toBeDefined();
-      expect(tokens.i18nFacadeToken).toBeDefined();
-      expect(tokens.foundryJournalFacadeToken).toBeDefined();
+      expect(tokens.platformContainerPortToken).toBeDefined();
+      expect(tokens.platformLoggingPortToken).toBeDefined();
+      expect(tokens.platformMetricsSnapshotPortToken).toBeDefined();
+      expect(tokens.platformSettingsPortToken).toBeDefined();
+      expect(tokens.platformSettingsRegistrationPortToken).toBeDefined();
+      expect(tokens.platformI18nPortToken).toBeDefined();
+      expect(tokens.platformNotificationPortToken).toBeDefined();
+      expect(tokens.platformUIPortToken).toBeDefined();
+      expect(tokens.platformJournalDirectoryUiPortToken).toBeDefined();
+      expect(tokens.platformUINotificationPortToken).toBeDefined();
+      expect(tokens.platformValidationPortToken).toBeDefined();
+      expect(tokens.platformContextMenuRegistrationPortToken).toBeDefined();
+      expect(tokens.platformUuidUtilsPortToken).toBeDefined();
+      expect(tokens.platformObjectUtilsPortToken).toBeDefined();
+      expect(tokens.platformHtmlUtilsPortToken).toBeDefined();
+      expect(tokens.platformAsyncUtilsPortToken).toBeDefined();
     });
 
     it("should resolve services via tokens", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      // Resolve notification center
-      const notifications = mod.api.resolve(mod.api.tokens.notificationCenterToken);
+      // Resolve notification port
+      const notifications = mod.api.resolve(mod.api.tokens.platformNotificationPortToken);
       expect(notifications).toBeDefined();
       expect(typeof notifications.error).toBe("function");
 
       // Resolve i18n
-      const i18n = mod.api.resolve(mod.api.tokens.i18nFacadeToken);
+      const i18n = mod.api.resolve(mod.api.tokens.platformI18nPortToken);
       expect(i18n).toBeDefined();
-
-      // Resolve journal facade
-      const journalFacade = mod.api.resolve(mod.api.tokens.foundryJournalFacadeToken);
-      expect(journalFacade).toBeDefined();
     });
 
-    it("should prevent channel mutations on public NotificationCenter", () => {
+    it("should prevent channel mutations on public PlatformNotificationPort", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
-      const notifications = mod.api.resolve(mod.api.tokens.notificationCenterToken);
+      const notifications = mod.api.resolve(mod.api.tokens.platformNotificationPortToken);
 
       expect(() => (notifications as unknown as { addChannel: () => void }).addChannel()).toThrow(
         'Property "addChannel" is not accessible via Public API'
@@ -144,16 +146,16 @@ describe("ModuleApiInitializer", () => {
       ).toThrow('Property "removeChannel" is not accessible via Public API');
     });
 
-    it("should prevent settings mutations via public FoundrySettings service", () => {
+    it("should prevent settings mutations via public PlatformSettingsRegistrationPort", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
-      const settings = mod.api.resolve(mod.api.tokens.foundrySettingsToken);
+      const settings = mod.api.resolve(mod.api.tokens.platformSettingsRegistrationPortToken);
 
-      expect(() => (settings as unknown as { register: () => void }).register()).toThrow(
-        'Property "register" is not accessible via Public API'
-      );
-      expect(() => (settings as unknown as { set: () => void }).set()).toThrow(
-        'Property "set" is not accessible via Public API'
-      );
+      expect(() =>
+        (settings as unknown as { registerSetting: () => void }).registerSetting()
+      ).toThrow('Property "registerSetting" is not accessible via Public API');
+      expect(() =>
+        (settings as unknown as { setSettingValue: () => void }).setSettingValue()
+      ).toThrow('Property "setSettingValue" is not accessible via Public API');
     });
   });
 
@@ -175,9 +177,9 @@ describe("ModuleApiInitializer", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
       const tokens = mod.api.getAvailableTokens();
 
-      // Verify notification center token is available and registered
+      // Verify notification port token is available and registered
       const notificationInfo = Array.from(tokens.values()).find((info: any) =>
-        info.description.includes("NotificationCenter")
+        info.description.includes("PlatformNotificationPort")
       );
       expect(notificationInfo).toBeDefined();
       if (notificationInfo) {
@@ -256,10 +258,10 @@ describe("ModuleApiInitializer", () => {
       const { metricsCollectorToken } =
         await import("@/infrastructure/shared/tokens/observability/metrics-collector.token");
       const tokensModule = await import("@/infrastructure/di/token-factory");
-      const metricsResult = container.resolveWithError(metricsCollectorToken);
+      const metricsResult = container.resolveWithError<MetricsCollector>(metricsCollectorToken);
       if (!metricsResult.ok) throw new Error("MetricsCollector not resolved");
       const token = tokensModule.createInjectionToken("TestError");
-      const metricsCollector = castResolvedService<MetricsCollector>(metricsResult.value);
+      const metricsCollector = metricsResult.value;
       metricsCollector.recordResolution(token, 0, false);
 
       const health = mod.api.getHealth();
@@ -277,9 +279,9 @@ describe("ModuleApiInitializer", () => {
         await import("@/infrastructure/shared/tokens/observability/metrics-collector.token");
 
       // Simulate port selection failure
-      const metricsResult = container.resolveWithError(metricsCollectorToken);
+      const metricsResult = container.resolveWithError<MetricsCollector>(metricsCollectorToken);
       if (!metricsResult.ok) throw new Error("MetricsCollector not resolved");
-      const metricsCollector = castResolvedService<MetricsCollector>(metricsResult.value);
+      const metricsCollector = metricsResult.value;
       metricsCollector.recordPortSelectionFailure(12.331);
 
       const health = mod.api.getHealth();
@@ -329,8 +331,8 @@ describe("ModuleApiInitializer", () => {
         await import("@/infrastructure/di/types/utilities/deprecated-token");
       const { getDeprecationInfo } =
         await import("@/infrastructure/di/types/utilities/deprecated-token");
-      const { notificationCenterToken: notificationTokenImport } =
-        await import("@/application/tokens/notifications/notification-center.token");
+      const { platformNotificationPortToken: notificationTokenImport } =
+        await import("@/application/tokens/domain-ports.tokens");
 
       const existingInfo = getDeprecationInfo(notificationTokenImport);
       if (existingInfo) {
@@ -369,10 +371,10 @@ describe("ModuleApiInitializer", () => {
     it("should resolve deprecated token normally", async () => {
       const { markAsDeprecated } =
         await import("@/infrastructure/di/types/utilities/deprecated-token");
-      const { notificationCenterToken } =
-        await import("@/application/tokens/notifications/notification-center.token");
+      const { platformNotificationPortToken } =
+        await import("@/application/tokens/domain-ports.tokens");
       const deprecatedNotificationToken = markAsDeprecated(
-        notificationCenterToken,
+        platformNotificationPortToken,
         "Test",
         null,
         "2.0.0"
@@ -395,30 +397,27 @@ describe("ModuleApiInitializer", () => {
 
     it("should expose notification center with read-only surface", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
-      const notifications = mod.api.resolve(mod.api.tokens.notificationCenterToken);
+      const notifications = mod.api.resolve(mod.api.tokens.platformNotificationPortToken);
 
       expect(() =>
         notifications.error("test", { code: "API_DEBUG", message: "Triggered from test" })
       ).not.toThrow();
 
-      const tempChannel = {
-        name: "TestChannel",
-        canHandle: () => true,
-        send: () => ({ ok: true, value: undefined }) as const,
-      };
-
-      expect(() => notifications.addChannel(tempChannel)).toThrow(
+      expect(() => (notifications as any).addChannel("TestChannel")).toThrow(
         'Property "addChannel" is not accessible via Public API'
       );
-      expect(notifications.getChannelNames()).not.toContain("TestChannel");
-      expect(() => notifications.removeChannel("TestChannel")).toThrow(
+
+      const channelNamesResult = notifications.getChannelNames();
+      expect(channelNamesResult.ok).toBe(true);
+
+      expect(() => (notifications as any).removeChannel("TestChannel")).toThrow(
         'Property "removeChannel" is not accessible via Public API'
       );
     });
 
     it("should apply readonly wrapper to i18n", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
-      const i18n = mod.api.resolve(mod.api.tokens.i18nFacadeToken);
+      const i18n = mod.api.resolve(mod.api.tokens.platformI18nPortToken);
 
       // Read methods should work
       expect(() => i18n.translate("test")).not.toThrow();
@@ -440,7 +439,9 @@ describe("ModuleApiInitializer", () => {
     it("should resolve services with Result pattern", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      const notificationsResult = mod.api.resolveWithError(mod.api.tokens.notificationCenterToken);
+      const notificationsResult = mod.api.resolveWithError(
+        mod.api.tokens.platformNotificationPortToken
+      );
       expect(notificationsResult.ok).toBe(true);
       if (notificationsResult.ok) {
         expect(notificationsResult.value).toBeDefined();
@@ -451,7 +452,9 @@ describe("ModuleApiInitializer", () => {
     it("should provide usable notification center via resolveWithError", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      const notificationsResult = mod.api.resolveWithError(mod.api.tokens.notificationCenterToken);
+      const notificationsResult = mod.api.resolveWithError(
+        mod.api.tokens.platformNotificationPortToken
+      );
       expect(notificationsResult.ok).toBe(true);
 
       if (notificationsResult.ok) {
@@ -465,7 +468,7 @@ describe("ModuleApiInitializer", () => {
     it("should apply readonly wrapper to i18n via resolveWithError", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      const i18nResult = mod.api.resolveWithError(mod.api.tokens.i18nFacadeToken);
+      const i18nResult = mod.api.resolveWithError(mod.api.tokens.platformI18nPortToken);
       expect(i18nResult.ok).toBe(true);
 
       if (i18nResult.ok) {
@@ -500,7 +503,7 @@ describe("ModuleApiInitializer", () => {
 
     it("should expose notification center with read-only surface", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
-      const notifications = mod.api.resolve(mod.api.tokens.notificationCenterToken);
+      const notifications = mod.api.resolve(mod.api.tokens.platformNotificationPortToken);
 
       expect(() =>
         notifications.error("test", { code: "API_DEBUG", message: "Triggered from test" })
@@ -523,7 +526,7 @@ describe("ModuleApiInitializer", () => {
 
     it("should apply readonly wrapper to i18n", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
-      const i18n = mod.api.resolve(mod.api.tokens.i18nFacadeToken);
+      const i18n = mod.api.resolve(mod.api.tokens.platformI18nPortToken);
 
       // Read methods should work
       expect(() => i18n.translate("test")).not.toThrow();
@@ -545,7 +548,9 @@ describe("ModuleApiInitializer", () => {
     it("should resolve services with Result pattern", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      const notificationsResult = mod.api.resolveWithError(mod.api.tokens.notificationCenterToken);
+      const notificationsResult = mod.api.resolveWithError(
+        mod.api.tokens.platformNotificationPortToken
+      );
       expect(notificationsResult.ok).toBe(true);
       if (notificationsResult.ok) {
         expect(notificationsResult.value).toBeDefined();
@@ -556,7 +561,9 @@ describe("ModuleApiInitializer", () => {
     it("should provide usable notification center via resolveWithError", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      const notificationsResult = mod.api.resolveWithError(mod.api.tokens.notificationCenterToken);
+      const notificationsResult = mod.api.resolveWithError(
+        mod.api.tokens.platformNotificationPortToken
+      );
       expect(notificationsResult.ok).toBe(true);
 
       if (notificationsResult.ok) {
@@ -570,7 +577,7 @@ describe("ModuleApiInitializer", () => {
     it("should apply readonly wrapper to i18n via resolveWithError", () => {
       const mod = game.modules?.get("fvtt_relationship_app_module") as { id: string; api: any };
 
-      const i18nResult = mod.api.resolveWithError(mod.api.tokens.i18nFacadeToken);
+      const i18nResult = mod.api.resolveWithError(mod.api.tokens.platformI18nPortToken);
       expect(i18nResult.ok).toBe(true);
 
       if (i18nResult.ok) {

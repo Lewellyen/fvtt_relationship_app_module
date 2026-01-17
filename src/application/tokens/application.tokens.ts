@@ -123,6 +123,24 @@ export const runtimeConfigBindingRegistryToken = createInjectionToken<any>(
 );
 
 /**
+ * Injection token for the ModuleSettingsRegistrar.
+ *
+ * Registers module settings during bootstrap.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const moduleSettingsRegistrarToken = createInjectionToken<any>("ModuleSettingsRegistrar");
+
+/**
+ * Injection token for the ModuleHealthService.
+ *
+ * Provides aggregated health status for the module.
+ *
+ * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
+ */
+export const moduleHealthServiceToken = createInjectionToken<any>("ModuleHealthService");
+
+/**
  * Injection token for the BatchUpdateContextService.
  *
  * Service for tracking journal IDs during batch update operations.

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ApiBootstrapper } from "../api-bootstrapper";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import { moduleApiInitializerToken } from "@/infrastructure/shared/tokens/infrastructure/module-api-initializer.token";
+import { frameworkModuleApiInitializerToken } from "@/framework/tokens/module-api-initializer.token";
 import { ok, err } from "@/domain/utils/result";
 import type { ModuleApiInitializer } from "@/framework/core/api/module-api-initializer";
 
@@ -23,7 +23,7 @@ describe("ApiBootstrapper", () => {
     const result = ApiBootstrapper.exposeApi(mockContainer);
 
     expect(result.ok).toBe(true);
-    expect(mockContainer.resolveWithError).toHaveBeenCalledWith(moduleApiInitializerToken);
+    expect(mockContainer.resolveWithError).toHaveBeenCalledWith(frameworkModuleApiInitializerToken);
     expect(mockApiInitializer.expose).toHaveBeenCalledWith(mockContainer);
   });
 
@@ -32,7 +32,6 @@ describe("ApiBootstrapper", () => {
       err({
         code: "TokenNotRegistered",
         message: "ModuleApiInitializer not found",
-        tokenDescription: String(moduleApiInitializerToken),
       })
     );
 

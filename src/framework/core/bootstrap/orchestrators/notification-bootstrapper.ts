@@ -3,7 +3,6 @@ import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import { notificationChannelRegistryToken } from "@/application/tokens/notifications/notification-channel-registry.token";
 import { queuedUIChannelToken } from "@/application/tokens/notifications/queued-ui-channel.token";
-import { castResolvedService } from "@/infrastructure/di/types/utilities/bootstrap-casts";
 import type { NotificationChannelRegistry } from "@/application/services/notification-center.interface";
 import type { PlatformChannelPort } from "@/domain/ports/notifications/platform-channel-port.interface";
 
@@ -28,7 +27,9 @@ export class NotificationBootstrapper {
    * @returns Result indicating success or error (errors are logged as warnings but don't fail bootstrap)
    */
   static attachNotificationChannels(container: PlatformContainerPort): Result<void, string> {
-    const channelRegistryResult = container.resolveWithError(notificationChannelRegistryToken);
+    const channelRegistryResult = container.resolveWithError<NotificationChannelRegistry>(
+      notificationChannelRegistryToken
+    );
     if (!channelRegistryResult.ok) {
       // NotificationChannelRegistry resolution failure - return error so orchestrator can log warning
       return err(
@@ -36,16 +37,15 @@ export class NotificationBootstrapper {
       );
     }
 
-    const queuedUIChannelResult = container.resolveWithError(queuedUIChannelToken);
+    const queuedUIChannelResult =
+      container.resolveWithError<PlatformChannelPort>(queuedUIChannelToken);
     if (!queuedUIChannelResult.ok) {
       // UI channel is optional - return error so orchestrator can log warning
       return err(`QueuedUIChannel could not be resolved: ${queuedUIChannelResult.error.message}`);
     }
 
-    const channelRegistry = castResolvedService<NotificationChannelRegistry>(
-      channelRegistryResult.value
-    );
-    const queuedUIChannel = castResolvedService<PlatformChannelPort>(queuedUIChannelResult.value);
+    const channelRegistry = channelRegistryResult.value;
+    const queuedUIChannel = queuedUIChannelResult.value;
     channelRegistry.addChannel(queuedUIChannel);
     return ok(undefined);
   }

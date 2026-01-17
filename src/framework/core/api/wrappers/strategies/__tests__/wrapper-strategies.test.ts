@@ -2,18 +2,53 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { I18nWrapperStrategy } from "../i18n-wrapper-strategy";
 import { NotificationWrapperStrategy } from "../notification-wrapper-strategy";
 import { SettingsWrapperStrategy } from "../settings-wrapper-strategy";
+import { LoggingWrapperStrategy } from "../logging-wrapper-strategy";
 import { NoopWrapperStrategy } from "../noop-wrapper-strategy";
-import type { I18nFacadeService } from "@/infrastructure/i18n/I18nFacadeService";
-import type { NotificationService } from "@/application/services/notification-center.interface";
-import type { FoundrySettings } from "@/infrastructure/adapters/foundry/interfaces/FoundrySettings";
+import type { PlatformI18nPort } from "@/domain/ports/platform-i18n-port.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
+import type { PlatformSettingsRegistrationPort } from "@/domain/ports/platform-settings-registration-port.interface";
+import type { PlatformLoggingPort } from "@/domain/ports/platform-logging-port.interface";
 import { createApiTokens } from "../../../api-token-config";
 
 describe("Wrapper Strategies", () => {
   const wellKnownTokens = createApiTokens();
 
+  describe("LoggingWrapperStrategy", () => {
+    let strategy: LoggingWrapperStrategy;
+    let mockLogger: PlatformLoggingPort;
+
+    beforeEach(() => {
+      strategy = new LoggingWrapperStrategy();
+      mockLogger = {
+        log: vi.fn(),
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      } as unknown as PlatformLoggingPort;
+    });
+
+    it("should support platformLoggingPortToken", () => {
+      const supports = strategy.supports(wellKnownTokens.platformLoggingPortToken, wellKnownTokens);
+      expect(supports).toBe(true);
+    });
+
+    it("should wrap logger", () => {
+      const wrapped = strategy.wrap(
+        mockLogger,
+        wellKnownTokens.platformLoggingPortToken,
+        wellKnownTokens
+      );
+      expect(wrapped).toBeDefined();
+      // Ensure proxy wrapping occurred
+      expect(() => wrapped.info("test")).not.toThrow();
+      // Don't do deep equality / structural checks here; proxy traps can be triggered by test utilities.
+    });
+  });
+
   describe("I18nWrapperStrategy", () => {
     let strategy: I18nWrapperStrategy;
-    let mockI18n: I18nFacadeService;
+    let mockI18n: PlatformI18nPort;
 
     beforeEach(() => {
       strategy = new I18nWrapperStrategy();
@@ -21,24 +56,28 @@ describe("Wrapper Strategies", () => {
         translate: vi.fn(),
         format: vi.fn(),
         has: vi.fn(),
-      } as unknown as I18nFacadeService;
+      } as unknown as PlatformI18nPort;
     });
 
-    it("should support i18nFacadeToken", () => {
-      const supports = strategy.supports(wellKnownTokens.i18nFacadeToken, wellKnownTokens);
+    it("should support platformI18nPortToken", () => {
+      const supports = strategy.supports(wellKnownTokens.platformI18nPortToken, wellKnownTokens);
       expect(supports).toBe(true);
     });
 
     it("should not support other tokens", () => {
       const supports = strategy.supports(
-        wellKnownTokens.notificationCenterToken as any,
+        wellKnownTokens.platformNotificationPortToken as any,
         wellKnownTokens
       );
       expect(supports).toBe(false);
     });
 
     it("should wrap i18n service", () => {
-      const wrapped = strategy.wrap(mockI18n, wellKnownTokens.i18nFacadeToken, wellKnownTokens);
+      const wrapped = strategy.wrap(
+        mockI18n,
+        wellKnownTokens.platformI18nPortToken,
+        wellKnownTokens
+      );
 
       expect(wrapped).toBeDefined();
       // Verify wrapping occurred by checking reference inequality
@@ -53,7 +92,7 @@ describe("Wrapper Strategies", () => {
 
   describe("NotificationWrapperStrategy", () => {
     let strategy: NotificationWrapperStrategy;
-    let mockNotification: NotificationService;
+    let mockNotification: PlatformNotificationPort;
 
     beforeEach(() => {
       strategy = new NotificationWrapperStrategy();
@@ -62,24 +101,30 @@ describe("Wrapper Strategies", () => {
         info: vi.fn(),
         warn: vi.fn(),
         error: vi.fn(),
-        getChannelNames: vi.fn().mockReturnValue([]),
-      } as unknown as NotificationService;
+        getChannelNames: vi.fn().mockReturnValue({ ok: true, value: [] }),
+      } as unknown as PlatformNotificationPort;
     });
 
-    it("should support notificationCenterToken", () => {
-      const supports = strategy.supports(wellKnownTokens.notificationCenterToken, wellKnownTokens);
+    it("should support platformNotificationPortToken", () => {
+      const supports = strategy.supports(
+        wellKnownTokens.platformNotificationPortToken,
+        wellKnownTokens
+      );
       expect(supports).toBe(true);
     });
 
     it("should not support other tokens", () => {
-      const supports = strategy.supports(wellKnownTokens.i18nFacadeToken as any, wellKnownTokens);
+      const supports = strategy.supports(
+        wellKnownTokens.platformI18nPortToken as any,
+        wellKnownTokens
+      );
       expect(supports).toBe(false);
     });
 
     it("should wrap notification service", () => {
       const wrapped = strategy.wrap(
         mockNotification,
-        wellKnownTokens.notificationCenterToken,
+        wellKnownTokens.platformNotificationPortToken,
         wellKnownTokens
       );
 
@@ -96,29 +141,35 @@ describe("Wrapper Strategies", () => {
 
   describe("SettingsWrapperStrategy", () => {
     let strategy: SettingsWrapperStrategy;
-    let mockSettings: FoundrySettings;
+    let mockSettings: PlatformSettingsRegistrationPort;
 
     beforeEach(() => {
       strategy = new SettingsWrapperStrategy();
       mockSettings = {
-        get: vi.fn(),
-      } as unknown as FoundrySettings;
+        getSettingValue: vi.fn(),
+      } as unknown as PlatformSettingsRegistrationPort;
     });
 
-    it("should support foundrySettingsToken", () => {
-      const supports = strategy.supports(wellKnownTokens.foundrySettingsToken, wellKnownTokens);
+    it("should support platformSettingsRegistrationPortToken", () => {
+      const supports = strategy.supports(
+        wellKnownTokens.platformSettingsRegistrationPortToken,
+        wellKnownTokens
+      );
       expect(supports).toBe(true);
     });
 
     it("should not support other tokens", () => {
-      const supports = strategy.supports(wellKnownTokens.i18nFacadeToken as any, wellKnownTokens);
+      const supports = strategy.supports(
+        wellKnownTokens.platformI18nPortToken as any,
+        wellKnownTokens
+      );
       expect(supports).toBe(false);
     });
 
     it("should wrap settings service", () => {
       const wrapped = strategy.wrap(
         mockSettings,
-        wellKnownTokens.foundrySettingsToken,
+        wellKnownTokens.platformSettingsRegistrationPortToken,
         wellKnownTokens
       );
 
@@ -141,8 +192,11 @@ describe("Wrapper Strategies", () => {
     });
 
     it("should always support any token", () => {
-      const supports1 = strategy.supports(wellKnownTokens.i18nFacadeToken, wellKnownTokens);
-      const supports2 = strategy.supports(wellKnownTokens.notificationCenterToken, wellKnownTokens);
+      const supports1 = strategy.supports(wellKnownTokens.platformI18nPortToken, wellKnownTokens);
+      const supports2 = strategy.supports(
+        wellKnownTokens.platformNotificationPortToken,
+        wellKnownTokens
+      );
       const unknownToken = Symbol("Unknown") as any;
 
       expect(supports1).toBe(true);

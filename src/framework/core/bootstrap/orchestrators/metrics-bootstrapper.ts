@@ -1,8 +1,8 @@
 import type { Result } from "@/domain/types/result";
 import { ok } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observability/metrics-collector.token";
-import { isInitializable } from "@/infrastructure/shared/utils/type-guards";
+import { platformMetricsInitializationPortToken } from "@/application/tokens/domain-ports.tokens";
+import type { PlatformMetricsInitializationPort } from "@/domain/ports/bootstrap/platform-metrics-initialization-port.interface";
 
 /**
  * Orchestrator for initializing metrics persistence during bootstrap.
@@ -23,22 +23,17 @@ export class MetricsBootstrapper {
    * @returns Result indicating success (warnings logged but don't fail bootstrap)
    */
   static initializeMetrics(container: PlatformContainerPort): Result<void, string> {
-    const metricsResult = container.resolveWithError(metricsCollectorToken);
-    if (!metricsResult.ok) {
-      // Metrics collector not available - return success (optional)
+    const initPortResult = container.resolveWithError<PlatformMetricsInitializationPort>(
+      platformMetricsInitializationPortToken
+    );
+    if (!initPortResult.ok) {
+      // Optional feature - continue silently
       return ok(undefined);
     }
 
-    // Check if collector implements Initializable interface
-    const collector = metricsResult.value;
-    if (isInitializable(collector)) {
-      const initResult = collector.initialize();
-      if (!initResult.ok) {
-        // Log warning but don't fail bootstrap
-        return ok(undefined);
-      }
-    }
-
-    return ok(undefined);
+    const initPort = initPortResult.value;
+    const result = initPort.initialize();
+    // Warnings are handled by caller; this phase is optional
+    return result.ok ? ok(undefined) : ok(undefined);
   }
 }

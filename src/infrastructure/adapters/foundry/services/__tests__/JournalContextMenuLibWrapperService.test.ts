@@ -79,7 +79,7 @@ describe("JournalContextMenuLibWrapperService", () => {
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error.message).toContain("ContextMenu is not available");
+        expect(result.error).toContain("ContextMenu is not available");
       }
     });
 
@@ -92,7 +92,7 @@ describe("JournalContextMenuLibWrapperService", () => {
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error.message).toBe("Registration failed");
+        expect(result.error).toBe("Registration failed");
       }
     });
   });

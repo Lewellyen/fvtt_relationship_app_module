@@ -1,9 +1,8 @@
 import type { ApiSafeToken } from "@/infrastructure/di/types/utilities/api-safe-token";
 import type { ModuleApiTokens } from "@/framework/core/api/module-api";
 import type { ApiWrapperStrategy } from "./api-wrapper-strategy.interface";
-import type { NotificationService } from "@/application/services/notification-center.interface";
+import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import { createPublicNotificationCenter } from "../../public-api-wrappers";
-import { wrapNotificationCenterService } from "@/infrastructure/di/types/utilities/api-casts";
 
 /**
  * NotificationWrapperStrategy
@@ -11,17 +10,20 @@ import { wrapNotificationCenterService } from "@/infrastructure/di/types/utiliti
  * Strategy for wrapping NotificationCenter with read-only wrapper.
  * Only allows debug, info, warn, error, and getChannelNames methods.
  */
-export class NotificationWrapperStrategy implements ApiWrapperStrategy<NotificationService> {
-  supports(token: ApiSafeToken<NotificationService>, wellKnownTokens: ModuleApiTokens): boolean {
-    return token === wellKnownTokens.notificationCenterToken;
+export class NotificationWrapperStrategy implements ApiWrapperStrategy<PlatformNotificationPort> {
+  supports(
+    token: ApiSafeToken<PlatformNotificationPort>,
+    wellKnownTokens: ModuleApiTokens
+  ): boolean {
+    return token === wellKnownTokens.platformNotificationPortToken;
   }
 
   wrap(
-    service: NotificationService,
-    _token: ApiSafeToken<NotificationService>,
+    service: PlatformNotificationPort,
+    _token: ApiSafeToken<PlatformNotificationPort>,
     _wellKnownTokens: ModuleApiTokens
-  ): NotificationService {
-    return wrapNotificationCenterService(service, createPublicNotificationCenter);
+  ): PlatformNotificationPort {
+    return createPublicNotificationCenter(service);
   }
 
   getPriority(): number {

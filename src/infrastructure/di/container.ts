@@ -389,8 +389,8 @@ export class ServiceContainer implements Container, PlatformContainerPort {
    * Implements both Container.resolveWithError and PlatformContainerPort.resolveWithError.
    * PlatformContainerPort uses generic `symbol`, which is compatible with InjectionToken<T> (which extends symbol).
    */
-  resolveWithError<T>(token: symbol): Result<T, DomainContainerError>;
   resolveWithError<T>(token: InjectionToken<T>): Result<T, ContainerError>;
+  resolveWithError<T>(token: symbol): Result<T, DomainContainerError>;
   resolveWithError<T>(
     token: InjectionToken<T> | symbol
   ): Result<T, ContainerError> | Result<T, DomainContainerError> {

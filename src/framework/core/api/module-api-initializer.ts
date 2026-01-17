@@ -2,7 +2,7 @@ import { MODULE_METADATA } from "@/application/constants/app-constants";
 import type { Result } from "@/domain/types/result";
 import { ok, err } from "@/domain/utils/result";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
-import type { ModuleApiInitializer as IModuleApiInitializer } from "@/infrastructure/shared/types/module-api-initializer.interface";
+import type { ModuleApiInitializerPort as IModuleApiInitializer } from "@/framework/core/api/module-api-initializer.interface";
 import { ModuleApiBuilder } from "./builder/module-api-builder";
 import { ServiceWrapperFactory } from "./wrappers/service-wrapper-factory";
 import { DeprecationHandler } from "./deprecation/deprecation-handler";
