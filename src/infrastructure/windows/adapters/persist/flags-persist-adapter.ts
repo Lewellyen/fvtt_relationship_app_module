@@ -154,17 +154,16 @@ export class FlagsPersistAdapter implements IPersistAdapter {
 
       // Fallback: access flags directly from document
       if (!flags) {
-        // Defensive: treat document as a record and validate the flags shape at runtime
-        if (doc !== null && doc !== undefined && typeof doc === "object") {
-          const docRecord = castToRecord(doc);
-          const flagsValue = docRecord.flags;
-          if (isRecord(flagsValue)) {
-            const namespaceValue = flagsValue[config.namespace];
-            if (isRecord(namespaceValue) && config.key in namespaceValue) {
-              const flagValue = namespaceValue[config.key];
-              if (isRecord(flagValue)) {
-                flags = flagValue;
-              }
+        // doc is guaranteed to be non-null/non-undefined after the check at line 131
+        // and Foundry documents are always objects, so no defensive check needed
+        const docRecord = castToRecord(doc);
+        const flagsValue = docRecord.flags;
+        if (isRecord(flagsValue)) {
+          const namespaceValue = flagsValue[config.namespace];
+          if (isRecord(namespaceValue) && config.key in namespaceValue) {
+            const flagValue = namespaceValue[config.key];
+            if (isRecord(flagValue)) {
+              flags = flagValue;
             }
           }
         }

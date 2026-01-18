@@ -12,6 +12,22 @@
 
 ### Upgrade-Hinweise
 
+## [0.59.8] - 2026-01-18
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **CodeQL Security-Alerts**: Redundanten defensive Guard in `FlagsPersistAdapter.load()` entfernt (CodeQL #32, #33). Der Guard `doc !== null && doc !== undefined && typeof doc === "object"` war nach vorheriger Null-Prüfung immer `true` und daher überflüssig. ([Details](src/infrastructure/windows/adapters/persist/flags-persist-adapter.ts))
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.59.7] - 2026-01-18
 ### Hinzugefügt
 - Keine Einträge
