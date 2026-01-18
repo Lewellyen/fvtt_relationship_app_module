@@ -7,9 +7,6 @@
  * SettingDefinition und RuntimeConfigBinding sind invariant aufgrund
  * von Callbacks, aber zur Laufzeit sind die Werte kompatibel mit
  * den generischen Typen (unknown, RuntimeConfigKey).
- *
- * @ts-expect-error - Type coverage exclusion: This file intentionally uses type assertions
- * for runtime-safe casts that are necessary for registry type variance handling.
  */
 
 import type { SettingDefinition } from "@/application/settings/setting-definition.interface";
@@ -49,8 +46,7 @@ export function castSettingDefinitionToUnknown<T>(
  * @returns The binding as RuntimeConfigBinding<unknown, RuntimeConfigKey>
  */
 export function castBindingToUnknown(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  binding: any
+  binding: unknown
 ): RuntimeConfigBinding<unknown, RuntimeConfigKey> {
   return binding as RuntimeConfigBinding<unknown, RuntimeConfigKey>;
 }

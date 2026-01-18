@@ -16,16 +16,13 @@ import { metricsCollectorToken } from "@/infrastructure/shared/tokens/observabil
 /**
  * Table data structure for console.table() output in logSummary().
  * Uses string keys to match console.table() expectations.
- * Naming convention disabled for console.table() compatibility.
  */
-/* eslint-disable @typescript-eslint/naming-convention */
 interface MetricsTableData {
-  "Total Resolutions": number;
-  Errors: number;
-  "Avg Time (ms)": string;
-  "Cache Hit Rate": string;
+  totalResolutions: number;
+  errors: number;
+  avgTimeMs: string;
+  cacheHitRatePercent: string;
 }
-/* eslint-enable @typescript-eslint/naming-convention */
 
 /**
  * Metrics reporter for formatting and logging metrics.
@@ -53,14 +50,12 @@ export class MetricsReporter {
   logSummary(): void {
     const snapshot = this.collector.getSnapshot();
 
-    /* eslint-disable @typescript-eslint/naming-convention */
     const tableData: MetricsTableData = {
-      "Total Resolutions": snapshot.containerResolutions,
-      Errors: snapshot.resolutionErrors,
-      "Avg Time (ms)": snapshot.avgResolutionTimeMs.toFixed(2),
-      "Cache Hit Rate": `${snapshot.cacheHitRate.toFixed(1)}%`,
+      totalResolutions: snapshot.containerResolutions,
+      errors: snapshot.resolutionErrors,
+      avgTimeMs: snapshot.avgResolutionTimeMs.toFixed(2),
+      cacheHitRatePercent: `${snapshot.cacheHitRate.toFixed(1)}%`,
     };
-    /* eslint-enable @typescript-eslint/naming-convention */
     console.table(tableData);
   }
 

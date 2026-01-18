@@ -485,12 +485,12 @@ const _RuntimeConfigEventEmitter = class _RuntimeConfigEventEmitter {
    * Registers a listener for the given key. Returns an unsubscribe function.
    */
   onChange(key2, listener) {
-    const existing = this.getListenersForKey(key2);
+    const existing = this.listeners.get(key2);
     const listeners = existing ?? /* @__PURE__ */ new Set();
     listeners.add(listener);
-    this.setListenersForKey(key2, listeners);
+    this.listeners.set(key2, listeners);
     return () => {
-      const activeListeners = this.getListenersForKey(key2);
+      const activeListeners = this.listeners.get(key2);
       activeListeners?.delete(listener);
       if (!activeListeners || activeListeners.size === 0) {
         this.listeners.delete(key2);
@@ -508,19 +508,6 @@ const _RuntimeConfigEventEmitter = class _RuntimeConfigEventEmitter {
     for (const listener of listeners) {
       listener(value2);
     }
-  }
-  /**
-   * Type-safe helper to get listeners for a specific key.
-   * @ts-expect-error - Type coverage exclusion for generic Set cast
-   */
-  getListenersForKey(key2) {
-    return this.listeners.get(key2);
-  }
-  /**
-   * Type-safe helper to set listeners for a specific key.
-   */
-  setListenersForKey(key2, listeners) {
-    this.listeners.set(key2, listeners);
   }
 };
 __name(_RuntimeConfigEventEmitter, "RuntimeConfigEventEmitter");
@@ -9450,9 +9437,15 @@ function createFoundryV13HooksPort() {
   });
 }
 __name(createFoundryV13HooksPort, "createFoundryV13HooksPort");
+function isRecord$2(value2) {
+  return value2 !== null && value2 !== void 0 && typeof value2 === "object";
+}
+__name(isRecord$2, "isRecord$2");
 function hasMethod(obj, methodName) {
-  return obj !== null && obj !== void 0 && typeof obj === "object" && methodName in obj && // type-coverage:ignore-next-line - Runtime type guard requires cast to check method type
-  typeof obj[methodName] === "function";
+  if (!isRecord$2(obj) || !(methodName in obj)) {
+    return false;
+  }
+  return typeof obj[methodName] === "function";
 }
 __name(hasMethod, "hasMethod");
 function hasProperty(obj, propertyName) {
@@ -9463,7 +9456,7 @@ function hasOwnProperty$1(obj, propertyName) {
   if (obj === null || obj === void 0 || typeof obj !== "object") {
     return false;
   }
-  return Object.prototype.hasOwnProperty.call(obj, propertyName);
+  return Object.getOwnPropertyDescriptor(obj, propertyName) !== void 0;
 }
 __name(hasOwnProperty$1, "hasOwnProperty$1");
 function isObjectWithMethods(obj, methodNames) {
@@ -11864,51 +11857,55 @@ const moduleApiInitializerToken = createInjectionToken("ModuleApiInitializer");
 const frameworkModuleApiInitializerToken = createInjectionToken(
   "FrameworkModuleApiInitializer"
 );
-const journalVisibilityServiceToken = createInjectionToken("JournalVisibilityService");
-const journalVisibilityConfigToken = createInjectionToken("JournalVisibilityConfig");
-const hideJournalContextMenuHandlerToken = createInjectionToken(
+function createUnsafeInjectionToken(description2) {
+  return createInjectionToken(description2);
+}
+__name(createUnsafeInjectionToken, "createUnsafeInjectionToken");
+const journalVisibilityServiceToken = createUnsafeInjectionToken("JournalVisibilityService");
+const journalVisibilityConfigToken = createUnsafeInjectionToken("JournalVisibilityConfig");
+const hideJournalContextMenuHandlerToken = createUnsafeInjectionToken(
   "HideJournalContextMenuHandler"
 );
-const journalContextMenuHandlersToken = createInjectionToken(
+const journalContextMenuHandlersToken = createUnsafeInjectionToken(
   "JournalContextMenuHandlers"
 );
-const journalDirectoryProcessorToken = createInjectionToken(
+const journalDirectoryProcessorToken = createUnsafeInjectionToken(
   "JournalDirectoryProcessor"
 );
-const runtimeConfigSyncToken = createInjectionToken("RuntimeConfigSync");
-const runtimeConfigSettingsSyncToken = createInjectionToken(
+const runtimeConfigSyncToken = createUnsafeInjectionToken("RuntimeConfigSync");
+const runtimeConfigSettingsSyncToken = createUnsafeInjectionToken(
   "RuntimeConfigSettingsSync"
 );
-const settingRegistrationErrorMapperToken = createInjectionToken(
+const settingRegistrationErrorMapperToken = createUnsafeInjectionToken(
   "SettingRegistrationErrorMapper"
 );
-const settingDefinitionRegistryToken = createInjectionToken(
+const settingDefinitionRegistryToken = createUnsafeInjectionToken(
   "SettingDefinitionRegistry"
 );
-const runtimeConfigBindingRegistryToken = createInjectionToken(
+const runtimeConfigBindingRegistryToken = createUnsafeInjectionToken(
   "RuntimeConfigBindingRegistry"
 );
-const moduleSettingsRegistrarToken$1 = createInjectionToken("ModuleSettingsRegistrar");
-const moduleHealthServiceToken$1 = createInjectionToken("ModuleHealthService");
-const batchUpdateContextServiceToken = createInjectionToken(
+const moduleSettingsRegistrarToken$1 = createUnsafeInjectionToken("ModuleSettingsRegistrar");
+const moduleHealthServiceToken$1 = createUnsafeInjectionToken("ModuleHealthService");
+const batchUpdateContextServiceToken = createUnsafeInjectionToken(
   "BatchUpdateContextService"
 );
-const journalDirectoryRerenderSchedulerToken = createInjectionToken(
+const journalDirectoryRerenderSchedulerToken = createUnsafeInjectionToken(
   "JournalDirectoryRerenderScheduler"
 );
-const eventRegistrarRegistryToken = createInjectionToken("EventRegistrarRegistry");
-const journalOverviewServiceToken = createInjectionToken("JournalOverviewService");
-const migrationServiceToken = createInjectionToken("MigrationService");
-const nodeDataServiceToken = createInjectionToken("NodeDataService");
-const graphDataServiceToken = createInjectionToken("GraphDataService");
-const createNodePageUseCaseToken = createInjectionToken("CreateNodePageUseCase");
-const createGraphPageUseCaseToken = createInjectionToken("CreateGraphPageUseCase");
-const addNodeToGraphUseCaseToken = createInjectionToken("AddNodeToGraphUseCase");
-const removeNodeFromGraphUseCaseToken = createInjectionToken(
+const eventRegistrarRegistryToken = createUnsafeInjectionToken("EventRegistrarRegistry");
+const journalOverviewServiceToken = createUnsafeInjectionToken("JournalOverviewService");
+const migrationServiceToken = createUnsafeInjectionToken("MigrationService");
+const nodeDataServiceToken = createUnsafeInjectionToken("NodeDataService");
+const graphDataServiceToken = createUnsafeInjectionToken("GraphDataService");
+const createNodePageUseCaseToken = createUnsafeInjectionToken("CreateNodePageUseCase");
+const createGraphPageUseCaseToken = createUnsafeInjectionToken("CreateGraphPageUseCase");
+const addNodeToGraphUseCaseToken = createUnsafeInjectionToken("AddNodeToGraphUseCase");
+const removeNodeFromGraphUseCaseToken = createUnsafeInjectionToken(
   "RemoveNodeFromGraphUseCase"
 );
-const upsertEdgeUseCaseToken = createInjectionToken("UpsertEdgeUseCase");
-const removeEdgeUseCaseToken = createInjectionToken("RemoveEdgeUseCase");
+const upsertEdgeUseCaseToken = createUnsafeInjectionToken("UpsertEdgeUseCase");
+const removeEdgeUseCaseToken = createUnsafeInjectionToken("RemoveEdgeUseCase");
 const moduleHealthServiceToken = createInjectionToken("ModuleHealthService");
 const bootstrapInitHookServiceToken = createInjectionToken(
   "BootstrapInitHookService"
@@ -12696,10 +12693,10 @@ const _MetricsReporter = class _MetricsReporter {
   logSummary() {
     const snapshot2 = this.collector.getSnapshot();
     const tableData = {
-      "Total Resolutions": snapshot2.containerResolutions,
-      Errors: snapshot2.resolutionErrors,
-      "Avg Time (ms)": snapshot2.avgResolutionTimeMs.toFixed(2),
-      "Cache Hit Rate": `${snapshot2.cacheHitRate.toFixed(1)}%`
+      totalResolutions: snapshot2.containerResolutions,
+      errors: snapshot2.resolutionErrors,
+      avgTimeMs: snapshot2.avgResolutionTimeMs.toFixed(2),
+      cacheHitRatePercent: `${snapshot2.cacheHitRate.toFixed(1)}%`
     };
     console.table(tableData);
   }
@@ -14104,25 +14101,25 @@ const _LoggingInitPhase = class _LoggingInitPhase {
 };
 __name(_LoggingInitPhase, "LoggingInitPhase");
 let LoggingInitPhase = _LoggingInitPhase;
-const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken(
+const invalidateJournalCacheOnChangeUseCaseToken = createUnsafeInjectionToken(
   "InvalidateJournalCacheOnChangeUseCase"
 );
-const processJournalDirectoryOnRenderUseCaseToken = createInjectionToken(
+const processJournalDirectoryOnRenderUseCaseToken = createUnsafeInjectionToken(
   "ProcessJournalDirectoryOnRenderUseCase"
 );
-const triggerJournalDirectoryReRenderUseCaseToken = createInjectionToken(
+const triggerJournalDirectoryReRenderUseCaseToken = createUnsafeInjectionToken(
   "TriggerJournalDirectoryReRenderUseCase"
 );
-const registerContextMenuUseCaseToken = createInjectionToken(
+const registerContextMenuUseCaseToken = createUnsafeInjectionToken(
   "RegisterContextMenuUseCase"
 );
-const showAllHiddenJournalsUseCaseToken = createInjectionToken(
+const showAllHiddenJournalsUseCaseToken = createUnsafeInjectionToken(
   "ShowAllHiddenJournalsUseCase"
 );
-const sidebarButtonBootstrapperToken = createInjectionToken(
+const sidebarButtonBootstrapperToken = createUnsafeInjectionToken(
   "SidebarButtonBootstrapper"
 );
-const moduleEventRegistrarToken = createInjectionToken("ModuleEventRegistrar");
+const moduleEventRegistrarToken = createUnsafeInjectionToken("ModuleEventRegistrar");
 const windowFactoryToken = createInjectionToken("WindowFactory");
 const windowRegistryToken = createInjectionToken("WindowRegistry");
 const windowControllerToken = createInjectionToken("WindowController");
@@ -27311,9 +27308,32 @@ function hasOwnProperty(obj, propertyName) {
   if (obj === null || obj === void 0 || typeof obj !== "object") {
     return false;
   }
-  return Object.prototype.hasOwnProperty.call(obj, propertyName);
+  return Object.getOwnPropertyDescriptor(obj, propertyName) !== void 0;
 }
 __name(hasOwnProperty, "hasOwnProperty");
+function castResolvedService(value2) {
+  return value2;
+}
+__name(castResolvedService, "castResolvedService");
+function castWindowController(value2) {
+  return value2;
+}
+__name(castWindowController, "castWindowController");
+function castPlatformContainerPort(value2) {
+  return value2;
+}
+__name(castPlatformContainerPort, "castPlatformContainerPort");
+function castEventHandlerForSet$1(handler) {
+  return handler;
+}
+__name(castEventHandlerForSet$1, "castEventHandlerForSet$1");
+function castSvelteComponent$1(component3) {
+  if (typeof component3 !== "function") {
+    return null;
+  }
+  return component3;
+}
+__name(castSvelteComponent$1, "castSvelteComponent$1");
 function getMapValueOrCreate(map3, key2, factory) {
   let value2 = map3.get(key2);
   if (value2 === void 0) {
@@ -27352,8 +27372,8 @@ function createNestedObject(path, value2) {
   for (let i = 0; i < keys.length - 1; i++) {
     const key2 = keys[i];
     if (key2) {
-      current[key2] = {};
-      const next2 = current[key2];
+      const next2 = {};
+      current[key2] = next2;
       current = next2;
     }
   }
@@ -27365,7 +27385,7 @@ function createNestedObject(path, value2) {
 }
 __name(createNestedObject, "createNestedObject");
 function castEventHandlerForSet(handler) {
-  return handler;
+  return castEventHandlerForSet$1(handler);
 }
 __name(castEventHandlerForSet, "castEventHandlerForSet");
 function extractPersistMeta(options2, key2) {
@@ -27384,10 +27404,7 @@ function extractPersistMeta(options2, key2) {
 }
 __name(extractPersistMeta, "extractPersistMeta");
 function castSvelteComponent(component3) {
-  if (typeof component3 === "function") {
-    return component3;
-  }
-  return null;
+  return castSvelteComponent$1(component3);
 }
 __name(castSvelteComponent, "castSvelteComponent");
 const _SvelteRenderer = class _SvelteRenderer {
@@ -32217,6 +32234,12 @@ const _FoundryJournalUiEventAdapter = class _FoundryJournalUiEventAdapter {
     this.registrations = /* @__PURE__ */ new Map();
     this.nextId = 1;
   }
+  isArrayOfUnknown(value2) {
+    return Array.isArray(value2);
+  }
+  isCallable(value2) {
+    return typeof value2 === "function";
+  }
   // ===== UI Event Methods =====
   onJournalDirectoryRendered(callback) {
     return this.registerFoundryHook("renderJournalDirectory", (app, html2) => {
@@ -32262,28 +32285,35 @@ const _FoundryJournalUiEventAdapter = class _FoundryJournalUiEventAdapter {
         timestamp: typeof record2.timestamp === "number" ? record2.timestamp : Date.now()
       };
     }
-    if ("journalId" in record2 && typeof record2.journalId === "string" && "options" in record2 && Array.isArray(record2.options)) {
+    if ("journalId" in record2 && typeof record2.journalId === "string" && "options" in record2 && this.isArrayOfUnknown(record2.options)) {
       const options2 = [];
       const typedRecord = {
         journalId: record2.journalId,
-        /* type-coverage:ignore-next-line -- Runtime type check: record.options validated as array above */
         options: record2.options,
         timestamp: typeof record2.timestamp === "number" ? record2.timestamp : void 0
       };
       for (const item of typedRecord.options) {
-        if (typeof item === "object" && item !== null && "name" in item && typeof item.name === "string" && "icon" in item && typeof item.icon === "string" && "callback" in item && typeof item.callback === "function") {
-          const typedItem = {
-            name: item.name,
-            icon: item.icon,
-            /* type-coverage:ignore-next-line -- Runtime type check: item.callback validated as function above */
-            callback: item.callback
-          };
-          options2.push({
-            name: typedItem.name,
-            icon: typedItem.icon,
-            callback: typedItem.callback
-          });
-        }
+        if (typeof item !== "object" || item === null) continue;
+        const itemRecord = castToRecord(item);
+        const name = itemRecord.name;
+        const icon = itemRecord.icon;
+        const callbackValue = itemRecord.callback;
+        if (typeof name !== "string") continue;
+        if (typeof icon !== "string") continue;
+        if (!this.isCallable(callbackValue)) continue;
+        const callback = /* @__PURE__ */ __name(async (journalId) => {
+          await callbackValue(journalId);
+        }, "callback");
+        const typedItem = {
+          name,
+          icon,
+          callback
+        };
+        options2.push({
+          name: typedItem.name,
+          icon: typedItem.icon,
+          callback: typedItem.callback
+        });
       }
       return {
         journalId: typedRecord.journalId,
@@ -35589,12 +35619,17 @@ const _FlagsPersistAdapter = class _FlagsPersistAdapter {
         }
       }
       if (!flags2) {
-        const typedDoc = doc;
-        const docFlags = typedDoc.flags?.[config2.namespace];
-        if (docFlags && config2.key in docFlags) {
-          const flagValue = docFlags[config2.key];
-          if (isRecord$1(flagValue)) {
-            flags2 = flagValue;
+        if (doc !== null && doc !== void 0 && typeof doc === "object") {
+          const docRecord = castToRecord(doc);
+          const flagsValue = docRecord.flags;
+          if (isRecord$1(flagsValue)) {
+            const namespaceValue = flagsValue[config2.namespace];
+            if (isRecord$1(namespaceValue) && config2.key in namespaceValue) {
+              const flagValue = namespaceValue[config2.key];
+              if (isRecord$1(flagValue)) {
+                flags2 = flagValue;
+              }
+            }
           }
         }
       }
@@ -35695,10 +35730,6 @@ const _CompositePersistAdapter = class _CompositePersistAdapter {
 __name(_CompositePersistAdapter, "CompositePersistAdapter");
 _CompositePersistAdapter.dependencies = [platformSettingsPortToken];
 let CompositePersistAdapter = _CompositePersistAdapter;
-function castResolvedService(value2) {
-  return value2;
-}
-__name(castResolvedService, "castResolvedService");
 const _WindowController = class _WindowController {
   constructor(instanceId, definitionId, definition, registry, stateStore, statePortFactory, actionDispatcher, bindingEngine, viewModelBuilder, eventBus, remoteSyncGate, stateInitializer, rendererCoordinator, persistenceCoordinator, container2) {
     this.registry = registry;
@@ -36739,11 +36770,13 @@ dependencyRegistry.register({
   execute: registerWindowServices
 });
 function getControllerFromContext(context) {
-  return context.metadata?.controller;
+  const controller = context.metadata?.controller;
+  return castWindowController(controller);
 }
 __name(getControllerFromContext, "getControllerFromContext");
 function getContainerFromContext(context) {
-  return context.metadata?.container;
+  const container2 = context.metadata?.container;
+  return castPlatformContainerPort(container2);
 }
 __name(getContainerFromContext, "getContainerFromContext");
 function createJournalSortComparator(sortColumn, sortDirection) {
@@ -38284,6 +38317,70 @@ registerDependencyStep({
 });
 const nodeDataMigrations = [];
 const graphDataMigrations = [];
+function parseJSON(input) {
+  return tryCatch(
+    () => JSON.parse(input),
+    (error3) => {
+      const errorMessage = error3 instanceof Error ? error3.message : String(error3);
+      return {
+        code: "PARSE_ERROR",
+        message: `Failed to parse JSON: ${errorMessage}`,
+        details: {
+          input,
+          cause: error3
+        }
+      };
+    }
+  );
+}
+__name(parseJSON, "parseJSON");
+function validateSchema(data4, schema) {
+  const parseResult = /* @__PURE__ */ safeParse(schema, data4);
+  if (parseResult.success) {
+    return ok(parseResult.output);
+  }
+  return err({
+    code: "VALIDATION_ERROR",
+    message: "Schema validation failed",
+    details: {
+      issues: parseResult.issues
+    }
+  });
+}
+__name(validateSchema, "validateSchema");
+function parseAndValidate(input, schema) {
+  const parseResult = parseJSON(input);
+  if (!parseResult.ok) {
+    return parseResult;
+  }
+  return validateSchema(parseResult.value, schema);
+}
+__name(parseAndValidate, "parseAndValidate");
+function parseWithSchema(schema, data4) {
+  const result = /* @__PURE__ */ safeParse(schema, data4);
+  if (result.success) {
+    return result.output;
+  }
+  throw result.issues;
+}
+__name(parseWithSchema, "parseWithSchema");
+function serializeJSON(data4, space) {
+  return tryCatch(
+    () => JSON.stringify(data4, null, space),
+    (error3) => {
+      const errorMessage = error3 instanceof Error ? error3.message : String(error3);
+      return {
+        code: "SERIALIZE_ERROR",
+        message: `Failed to serialize to JSON: ${errorMessage}`,
+        details: {
+          data: data4,
+          cause: error3
+        }
+      };
+    }
+  );
+}
+__name(serializeJSON, "serializeJSON");
 const nodeRevealSchema = /* @__PURE__ */ object$1({
   public: /* @__PURE__ */ boolean(),
   hidden: /* @__PURE__ */ boolean()
@@ -38320,7 +38417,7 @@ const relationshipNodeDataSchema = /* @__PURE__ */ object$1({
   lastVersion: nodeDataLastVersionSchema
 });
 function parseRelationshipNodeData(data4) {
-  return parse$2(relationshipNodeDataSchema, data4);
+  return parseWithSchema(relationshipNodeDataSchema, data4);
 }
 __name(parseRelationshipNodeData, "parseRelationshipNodeData");
 function safeParseRelationshipNodeData(data4) {
@@ -38363,7 +38460,7 @@ const relationshipGraphDataSchema = /* @__PURE__ */ object$1({
   lastVersion: graphDataLastVersionSchema
 });
 function parseRelationshipGraphData(data4) {
-  return parse$2(relationshipGraphDataSchema, data4);
+  return parseWithSchema(relationshipGraphDataSchema, data4);
 }
 __name(parseRelationshipGraphData, "parseRelationshipGraphData");
 function safeParseRelationshipGraphData(data4) {

@@ -10,9 +10,6 @@
  *
  * WICHTIG: CacheKey wird hier inline definiert, um Zyklus mit cache.interface.ts zu vermeiden!
  * cache.interface.ts re-exportiert dann CacheKey von hier.
- *
- * @ts-expect-error - Type coverage exclusion: This file intentionally uses type assertions
- * for runtime-safe casts that are necessary for infrastructure code.
  */
 
 /**

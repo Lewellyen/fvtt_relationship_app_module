@@ -4,8 +4,7 @@
  * These tokens define injection points for event use cases,
  * keeping the Application layer decoupled from Infrastructure-specific implementations.
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { createInjectionToken } from "@/application/utils/token-factory";
+import { createUnsafeInjectionToken } from "@/application/di/unsafe-token-factory";
 
 /**
  * DI Token for InvalidateJournalCacheOnChangeUseCase.
@@ -14,7 +13,7 @@ import { createInjectionToken } from "@/application/utils/token-factory";
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken<any>(
+export const invalidateJournalCacheOnChangeUseCaseToken = createUnsafeInjectionToken(
   "InvalidateJournalCacheOnChangeUseCase"
 );
 
@@ -25,7 +24,7 @@ export const invalidateJournalCacheOnChangeUseCaseToken = createInjectionToken<a
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const processJournalDirectoryOnRenderUseCaseToken = createInjectionToken<any>(
+export const processJournalDirectoryOnRenderUseCaseToken = createUnsafeInjectionToken(
   "ProcessJournalDirectoryOnRenderUseCase"
 );
 
@@ -36,7 +35,7 @@ export const processJournalDirectoryOnRenderUseCaseToken = createInjectionToken<
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const triggerJournalDirectoryReRenderUseCaseToken = createInjectionToken<any>(
+export const triggerJournalDirectoryReRenderUseCaseToken = createUnsafeInjectionToken(
   "TriggerJournalDirectoryReRenderUseCase"
 );
 
@@ -47,7 +46,7 @@ export const triggerJournalDirectoryReRenderUseCaseToken = createInjectionToken<
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const registerContextMenuUseCaseToken = createInjectionToken<any>(
+export const registerContextMenuUseCaseToken = createUnsafeInjectionToken(
   "RegisterContextMenuUseCase"
 );
 
@@ -58,7 +57,7 @@ export const registerContextMenuUseCaseToken = createInjectionToken<any>(
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const showAllHiddenJournalsUseCaseToken = createInjectionToken<any>(
+export const showAllHiddenJournalsUseCaseToken = createUnsafeInjectionToken(
   "ShowAllHiddenJournalsUseCase"
 );
 
@@ -69,7 +68,7 @@ export const showAllHiddenJournalsUseCaseToken = createInjectionToken<any>(
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const sidebarButtonBootstrapperToken = createInjectionToken<any>(
+export const sidebarButtonBootstrapperToken = createUnsafeInjectionToken(
   "SidebarButtonBootstrapper"
 );
 
@@ -80,4 +79,4 @@ export const sidebarButtonBootstrapperToken = createInjectionToken<any>(
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const moduleEventRegistrarToken = createInjectionToken<any>("ModuleEventRegistrar");
+export const moduleEventRegistrarToken = createUnsafeInjectionToken("ModuleEventRegistrar");

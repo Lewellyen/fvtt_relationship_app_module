@@ -1,6 +1,14 @@
 import type { RuntimeConfigKey, RuntimeConfigValues } from "@/domain/types/runtime-config";
 
-type RuntimeConfigListener<K extends RuntimeConfigKey> = (value: RuntimeConfigValues[K]) => void;
+/**
+ * Bivariance helper for callback parameter types.
+ *
+ * This avoids unsafe type assertions when storing key-specific listeners in a shared collection.
+ * It mirrors the common "bivarianceHack" pattern used in libraries like React typings.
+ */
+type BivariantCallback<T> = { bivarianceHack(value: T): void }["bivarianceHack"];
+
+type RuntimeConfigListener<K extends RuntimeConfigKey> = BivariantCallback<RuntimeConfigValues[K]>;
 
 /**
  * Interface for runtime configuration event emission.
@@ -27,15 +35,14 @@ export class RuntimeConfigEventEmitter implements IRuntimeConfigEventEmitter {
    * Registers a listener for the given key. Returns an unsubscribe function.
    */
   onChange<K extends RuntimeConfigKey>(key: K, listener: RuntimeConfigListener<K>): () => void {
-    const existing = this.getListenersForKey<K>(key);
-    const listeners: Set<RuntimeConfigListener<K>> =
-      existing ?? new Set<RuntimeConfigListener<K>>();
+    const existing = this.listeners.get(key);
+    const listeners: Set<RuntimeConfigListener<RuntimeConfigKey>> =
+      existing ?? new Set<RuntimeConfigListener<RuntimeConfigKey>>();
     listeners.add(listener);
-
-    this.setListenersForKey(key, listeners);
+    this.listeners.set(key, listeners);
 
     return () => {
-      const activeListeners = this.getListenersForKey<K>(key);
+      const activeListeners = this.listeners.get(key);
       activeListeners?.delete(listener);
       if (!activeListeners || activeListeners.size === 0) {
         this.listeners.delete(key);
@@ -47,7 +54,7 @@ export class RuntimeConfigEventEmitter implements IRuntimeConfigEventEmitter {
    * Notifies all listeners for the given key with the new value.
    */
   notify<K extends RuntimeConfigKey>(key: K, value: RuntimeConfigValues[K]): void {
-    const listeners = this.listeners.get(key) as Set<RuntimeConfigListener<K>> | undefined;
+    const listeners = this.listeners.get(key);
     if (!listeners || listeners.size === 0) {
       return;
     }
@@ -55,30 +62,5 @@ export class RuntimeConfigEventEmitter implements IRuntimeConfigEventEmitter {
     for (const listener of listeners) {
       listener(value);
     }
-  }
-
-  /**
-   * Type-safe helper to get listeners for a specific key.
-   * @ts-expect-error - Type coverage exclusion for generic Set cast
-   */
-  private getListenersForKey<K extends RuntimeConfigKey>(
-    key: K
-  ): Set<RuntimeConfigListener<K>> | undefined {
-    return this.listeners.get(key) as Set<RuntimeConfigListener<K>> | undefined;
-  }
-
-  /**
-   * Type-safe helper to set listeners for a specific key.
-   */
-  private setListenersForKey<K extends RuntimeConfigKey>(
-    key: K,
-    listeners: Set<RuntimeConfigListener<K>>
-  ): void {
-    // Generic Set cast required for type-safe listener management with type variance
-    // TypeScript cannot prove that Set<RuntimeConfigListener<K>> is compatible with
-    // Set<RuntimeConfigListener<RuntimeConfigKey>>, even though it's safe at runtime
-    type ListenersType = Set<RuntimeConfigListener<RuntimeConfigKey>>;
-    /* type-coverage:ignore-next-line -- Type variance: Set<RuntimeConfigListener<K>> is compatible with Set<RuntimeConfigListener<RuntimeConfigKey>> at runtime */
-    this.listeners.set(key, listeners as ListenersType);
   }
 }

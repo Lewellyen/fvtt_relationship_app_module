@@ -8,6 +8,7 @@
 import * as v from "valibot";
 import type { RelationshipGraphData } from "@/domain/types/relationship-graph-data.interface";
 import { RELATIONSHIP_GRAPH_SCHEMA_VERSION } from "@/domain/types/relationship-graph-data.interface";
+import { parseWithSchema } from "@/domain/utils/json-parser";
 
 /**
  * Schema for position coordinates.
@@ -82,8 +83,7 @@ export type RelationshipGraphDataFromSchema = v.InferInput<typeof relationshipGr
  * @throws Valibot error if validation fails
  */
 export function parseRelationshipGraphData(data: unknown): RelationshipGraphData {
-  // type-coverage:ignore-next-line
-  return v.parse(relationshipGraphDataSchema, data) as RelationshipGraphData;
+  return parseWithSchema(relationshipGraphDataSchema, data);
 }
 
 /**

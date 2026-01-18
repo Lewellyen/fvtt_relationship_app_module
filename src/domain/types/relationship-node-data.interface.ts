@@ -34,18 +34,18 @@ export interface NodeReveal {
  * Description texts with visibility levels.
  */
 export interface NodeDescriptions {
-  public?: string;
-  hidden?: string;
-  gm?: string;
+  public?: string | undefined;
+  hidden?: string | undefined;
+  gm?: string | undefined;
 }
 
 /**
  * Effects based on relation type.
  */
 export interface NodeEffects {
-  friend?: string;
-  enemy?: string;
-  neutral?: string;
+  friend?: string | undefined;
+  enemy?: string | undefined;
+  neutral?: string | undefined;
 }
 
 /**
@@ -67,15 +67,15 @@ export interface RelationshipNodeData {
   nodeKey: string; // Foundry Page.uuid
   name: string;
   kind: NodeKind;
-  factionId?: string;
+  factionId?: string | undefined;
   relation: RelationType;
-  icon?: string;
+  icon?: string | undefined;
   descriptions: NodeDescriptions;
   reveal: NodeReveal;
-  effects?: NodeEffects;
-  linkedEntityUuid?: string;
+  effects?: NodeEffects | undefined;
+  linkedEntityUuid?: string | undefined;
   // Backup für Migration (wird in Phase 3 verwendet)
-  lastVersion?: NodeDataLastVersion;
+  lastVersion?: NodeDataLastVersion | undefined;
 }
 
 type NodeDescriptionsField = foundry.data.fields.SchemaField<{

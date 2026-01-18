@@ -85,18 +85,7 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['type-coverage:ignore-next-line', 'ts-ignore'],
     reason: 'Nominal Branding: Return-Type-Assertion für Compile-Time-Brand-Marker (Type-Cast für Brand-Assertion)',
   },
-  {
-    file: 'src/infrastructure/di/types/utilities/api-casts.ts',
-    allowed: ['eslint-disable'],
-    reason: 'API Cast Utilities: any ist notwendig für API-Wrapper-Funktionen, um zirkuläre Dependencies zu vermeiden (API-spezifische Type-Casts)',
-  },
-
-  // Runtime-Casts (bereits global in type-coverage.json ausgenommen)
-  {
-    file: 'src/infrastructure/di/types/utilities/runtime-safe-cast.ts',
-    allowed: ['type-coverage:ignore'],
-    reason: 'Runtime-Casts: Zentralisierte Runtime-Cast-Helpers (bereits global in type-coverage.json ausgenommen)',
-  },
+  // (Removed) api-casts.ts: legacy shim file contains no ignore markers anymore, no whitelist needed.
   {
     file: 'src/infrastructure/adapters/foundry/runtime-casts.ts',
     allowed: ['type-coverage:ignore', 'eslint-disable'],
@@ -107,11 +96,7 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
     reason: 'Foundry API: Foundry utils API (parseUuid, buildUuid) benötigt Type-Casts, da Foundry-Typen komplexe Overloads haben. eslint-disable und type-coverage:ignore für any-Type-Casts notwendig.',
   },
-  {
-    file: 'src/application/utils/registry-casts.ts',
-    allowed: ['type-coverage:ignore', 'eslint-disable'],
-    reason: 'Registry-Casts: Zentralisierte Registry-Type-Cast-Helpers für Type-Varianz (bereits global in type-coverage.json ausgenommen, eslint-disable für any-Parameter in castBindingToUnknown notwendig)',
-  },
+  // (Removed) registry-casts.ts: file contains no ignore markers anymore, no whitelist needed.
   {
     file: 'src/infrastructure/observability/metrics-definition/metric-casts.ts',
     allowed: ['type-coverage:ignore'],
@@ -122,11 +107,7 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['type-coverage:ignore'],
     reason: 'Service-Casts: Zentralisierte Service-Type-Cast-Helpers für DI-Container-Resolution (bereits global in type-coverage.json ausgenommen)',
   },
-  {
-    file: 'src/infrastructure/shared/utils/type-guards.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Runtime Type Guards: Type-Cast für Runtime-Validierung von Methoden-Existenz (notwendig für type-safe Runtime-Checks)',
-  },
+  // (Removed) infrastructure/shared/utils/type-guards.ts: file contains no ignore markers anymore, no whitelist needed.
   {
     file: 'src/framework/core/api/wrappers/strategies/api-wrapper-strategy-registry.ts',
     allowed: ['type-coverage:ignore-next-line'],
@@ -144,21 +125,7 @@ const ALLOWED_WITH_MARKERS = [
   },
 
   // Domain Port Interfaces: Leere Interface-Erweiterungen
-  {
-    file: 'src/domain/ports/collections/platform-journal-collection-port.interface.ts',
-    allowed: ['eslint-disable-next-line'],
-    reason: 'Type-Placeholder: Leere Interface-Erweiterung für zukünftige journal-spezifische Methoden (no-empty-object-type ist hier beabsichtigt für Extension-Point)',
-  },
-  {
-    file: 'src/domain/ports/repositories/platform-entity-read-repository.interface.ts',
-    allowed: ['eslint-disable-next-line'],
-    reason: 'Interface-Segregation: Leere Interface-Erweiterung für Read-Only-Repository (no-empty-object-type ist hier beabsichtigt, da alle Methoden von PlatformEntityCollectionPort geerbt werden)',
-  },
-  {
-    file: 'src/domain/ports/repositories/platform-journal-repository.interface.ts',
-    allowed: ['eslint-disable-next-line'],
-    reason: 'Type-Placeholder: Leere Interface-Erweiterung für zukünftige journal-spezifische Methoden (no-empty-object-type ist hier beabsichtigt für Extension-Point)',
-  },
+  // (Removed) formerly-empty port interfaces were converted to type-aliases; no ignore markers needed.
 
   {
     file: 'src/infrastructure/adapters/foundry/repository-adapters/foundry-journal-repository-adapter.ts',
@@ -197,104 +164,28 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
     reason: 'Naming-Convention: PascalCase für namespace-ähnliches Objekt (SettingValidators) ist beabsichtigt für konsistente API-Nutzung. Proxy Pattern: Type-Casts für dynamische Property-Zugriffe und Generic Type Narrowing im Proxy-Handler sind notwendig für Type-Safety.',
   },
-  {
-    file: 'src/application/di/container-types.ts',
-    allowed: ['eslint-disable-next-line'],
-    reason: 'Type-Parameter: T wird als Type-Parameter für generische Type-Constraints verwendet (DomainInjectionToken<T>), auch wenn er im Type-Body nicht direkt referenziert wird. Diese Datei wurde von src/domain/types/container-types.ts verschoben (DIP-001 Refactoring).',
-  },
+  // (Removed) application/di/container-types.ts: generic is now carried via phantom type, no eslint-disable needed.
 
   // DI Token Files: eslint-disable für @typescript-eslint/no-explicit-any
   {
-    file: 'src/application/tokens/application.tokens.ts',
+    file: 'src/application/di/unsafe-token-factory.ts',
     allowed: ['eslint-disable'],
-    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
+    reason: 'DI Boundary: Zentralisierte Ausnahme für createInjectionToken<any> in Token-Definitionen. Ziel ist, Marker-Sprawl zu vermeiden; Token-Dateien selbst bleiben marker-frei.',
   },
-  {
-    file: 'src/application/tokens/domain-ports.tokens.ts',
-    allowed: ['eslint-disable'],
-    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
-  },
-  {
-    file: 'src/application/tokens/event.tokens.ts',
-    allowed: ['eslint-disable'],
-    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
-  },
-  {
-    file: 'src/infrastructure/shared/tokens/core.tokens.ts',
-    allowed: ['eslint-disable'],
-    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
-  },
-  {
-    file: 'src/infrastructure/shared/tokens/event.tokens.ts',
-    allowed: ['eslint-disable'],
-    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
-  },
-  {
-    file: 'src/infrastructure/shared/tokens/foundry.tokens.ts',
-    allowed: ['eslint-disable'],
-    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
-  },
-  {
-    file: 'src/infrastructure/shared/tokens/i18n.tokens.ts',
-    allowed: ['eslint-disable'],
-    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
-  },
-  {
-    file: 'src/infrastructure/shared/tokens/infrastructure.tokens.ts',
-    allowed: ['eslint-disable'],
-    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
-  },
-  {
-    file: 'src/infrastructure/shared/tokens/observability.tokens.ts',
-    allowed: ['eslint-disable'],
-    reason: 'DI Token Definitions: any ist notwendig für InjectionToken-Generics in DI-Container (Service-Type-Tokens mit variadischen Typen)',
-  },
-  {
-    file: 'src/infrastructure/observability/metrics-reporter.ts',
-    allowed: ['eslint-disable'],
-    reason: 'Console Table Output: Property-Namen müssen mit Leerzeichen sein für console.table() Ausgabe (Naming-Convention für Tabellen-Header)',
-  },
+  // (Removed) infrastructure/observability/metrics-reporter.ts: uses eslint-conform keys for console.table(), no eslint-disable needed.
 
   // Application Services: Generic Type Casts für Listener-Management
-  {
-    file: 'src/application/services/RuntimeConfigEventEmitter.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Type variance: Set<RuntimeConfigListener<K>> is compatible with Set<RuntimeConfigListener<RuntimeConfigKey>> at runtime',
-  },
+  // (Removed) application/services/RuntimeConfigEventEmitter.ts: file contains no ignore markers anymore, no whitelist needed.
 
   // Foundry Event Adapters: Generic Event Type Guards
-  {
-    file: 'src/infrastructure/adapters/foundry/event-adapters/foundry-journal-ui-event-adapter.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Runtime type checks: record.options validated as array, item.callback validated as function above',
-  },
+  // (Removed) infrastructure/adapters/foundry/event-adapters/foundry-journal-ui-event-adapter.ts: file contains no ignore markers anymore, no whitelist needed.
 
   // Window Framework: Foundry API Integration
-  {
-    file: 'src/application/windows/utils/window-state-casts.ts',
-    allowed: ['type-coverage:ignore-next-line', 'v8 ignore'],
-    reason: 'Type variance and runtime type checks: handler and component validated above. Type narrowing: current[key] is guaranteed to be Record<string, unknown> because we just assigned {} to it. Defensive check: else branch fallback in createNestedObject - should not happen, but TypeScript needs this.',
-  },
-  {
-    file: 'src/application/windows/utils/window-casts.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Type narrowing: WindowController contract guarantees controller and container in metadata',
-  },
-  {
-    file: 'src/application/windows/utils/patch-utils.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Type narrowing: key validated as keyof T above, updates[typedKey] is T[keyof T]',
-  },
-  {
-    file: 'src/infrastructure/windows/adapters/persist/flags-persist-adapter.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Runtime type check: doc validated as Foundry document with flags property',
-  },
-  {
-    file: 'src/domain/utils/type-guards.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Runtime Type Guards: Object.prototype.hasOwnProperty is a standard JavaScript method with known signature',
-  },
+  // (Removed) application/windows/utils/window-state-casts.ts: marker-free after consolidating boundary casts into service-casts.ts.
+  // (Removed) application/windows/utils/window-casts.ts: uses runtime guards instead of type assertions, marker-free.
+  // (Removed) application/windows/utils/patch-utils.ts: marker-free after simplifying Partial<T> indexing.
+  // (Removed) infrastructure/windows/adapters/persist/flags-persist-adapter.ts: runtime checks now avoid ignore markers, no whitelist needed.
+  // (Removed) domain/utils/type-guards.ts: uses Object.hasOwn(), no type-coverage ignore needed.
   {
     file: 'src/infrastructure/windows/state/global-document-cache.svelte.ts',
     allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
@@ -326,29 +217,8 @@ const ALLOWED_WITH_MARKERS = [
     allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
     reason: 'Phase 1 Stub: TypeDataModel requires 2-4 type arguments, but for Phase 1 stubs we use type assertion (as any). Full type safety will be implemented in Phase 4.',
   },
-  // Phase 1: JSON Parser Utilities
-  {
-    file: 'src/domain/utils/json-parser.ts',
-    allowed: ['eslint-disable-next-line', 'type-coverage:ignore-next-line'],
-    reason: 'Valibot Schema Types: Type assertions needed due to complex generic constraints in Valibot BaseSchema types. Valibot 1.x safeParse API requires any-type casts for generic schema validation.',
-  },
-  // Phase 1: Schema Parse Functions
-  {
-    file: 'src/domain/schemas/node-data.schema.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Valibot Parse Result: Type assertion for v.parse() return type. Valibot parse() returns validated data but TypeScript inference requires explicit type assertion.',
-  },
-  {
-    file: 'src/domain/schemas/graph-data.schema.ts',
-    allowed: ['type-coverage:ignore-next-line'],
-    reason: 'Valibot Parse Result: Type assertion for v.parse() return type. Valibot parse() returns validated data but TypeScript inference requires explicit type assertion.',
-  },
+  // (Removed) json-parser.ts: file contains no ignore markers anymore, no whitelist needed.
   // Phase 4: UI Sheets - WindowSystemBridgeMixin
-  {
-    file: 'src/infrastructure/ui/window-system/WindowSystemBridgeMixin.ts',
-    allowed: ['eslint-disable'],
-    reason: 'Mixin Pattern: TypeScript Mixin-Limitationen erfordern eslint-disable für Naming-Convention (Mixin-Funktion und Klasse) und no-explicit-any (Mixin-Konstruktor mit any[]). Mixin-Pattern ist notwendig für Foundry Sheet-Integration mit DI-Services.',
-  },
   // Phase 4: UI Sheets - JournalEntryPageWindowSystemBridgeMixin
   {
     file: 'src/infrastructure/ui/window-system/JournalEntryPageWindowSystemBridgeMixin.ts',

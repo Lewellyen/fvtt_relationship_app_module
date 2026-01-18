@@ -46,6 +46,5 @@ export function hasOwnProperty(obj: unknown, propertyName: string): boolean {
   if (obj === null || obj === undefined || typeof obj !== "object") {
     return false;
   }
-  /* type-coverage:ignore-next-line -- Object.prototype.hasOwnProperty is a standard JavaScript method with known signature */
-  return Object.prototype.hasOwnProperty.call(obj, propertyName);
+  return Object.getOwnPropertyDescriptor(obj, propertyName) !== undefined;
 }

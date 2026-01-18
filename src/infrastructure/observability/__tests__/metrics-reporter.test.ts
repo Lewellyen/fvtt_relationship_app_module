@@ -66,14 +66,12 @@ describe("MetricsReporter", () => {
       reporter.logSummary();
 
       expect(consoleTableSpy).toHaveBeenCalledOnce();
-      /* eslint-disable @typescript-eslint/naming-convention */
       expect(consoleTableSpy).toHaveBeenCalledWith({
-        "Total Resolutions": 2,
-        Errors: 1,
-        "Avg Time (ms)": "3.00",
-        "Cache Hit Rate": "50.0%",
+        totalResolutions: 2,
+        errors: 1,
+        avgTimeMs: "3.00",
+        cacheHitRatePercent: "50.0%",
       });
-      /* eslint-enable @typescript-eslint/naming-convention */
 
       consoleTableSpy.mockRestore();
     });
@@ -83,14 +81,12 @@ describe("MetricsReporter", () => {
 
       reporter.logSummary();
 
-      /* eslint-disable @typescript-eslint/naming-convention */
       expect(consoleTableSpy).toHaveBeenCalledWith({
-        "Total Resolutions": 0,
-        Errors: 0,
-        "Avg Time (ms)": "0.00",
-        "Cache Hit Rate": "0.0%",
+        totalResolutions: 0,
+        errors: 0,
+        avgTimeMs: "0.00",
+        cacheHitRatePercent: "0.0%",
       });
-      /* eslint-enable @typescript-eslint/naming-convention */
 
       consoleTableSpy.mockRestore();
     });
@@ -109,14 +105,12 @@ describe("MetricsReporter", () => {
 
       reporter.logSummary();
 
-      /* eslint-disable @typescript-eslint/naming-convention */
       expect(consoleTableSpy).toHaveBeenCalledWith({
-        "Total Resolutions": 3,
-        Errors: 0,
-        "Avg Time (ms)": "2.50",
-        "Cache Hit Rate": "75.0%",
+        totalResolutions: 3,
+        errors: 0,
+        avgTimeMs: "2.50",
+        cacheHitRatePercent: "75.0%",
       });
-      /* eslint-enable @typescript-eslint/naming-convention */
 
       consoleTableSpy.mockRestore();
     });

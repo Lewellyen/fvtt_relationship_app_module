@@ -290,6 +290,23 @@ describe("FlagsPersistAdapter", () => {
       expect(result.value).toEqual({ value: "test" });
     });
 
+    it("should return empty object when document is not an object (covers flags fallback guard)", async () => {
+      delete mockDocument.getFlag;
+      mockCollection.set("Actor.123", "not-an-object");
+
+      const config: PersistConfig = {
+        type: "flag",
+        documentId: "Actor.123",
+        namespace: "testNamespace",
+        key: "testKey",
+      };
+
+      const result = await adapter.load(config);
+
+      expectResultOk(result);
+      expect(result.value).toEqual({});
+    });
+
     it("should return empty object if flag not found", async () => {
       mockDocument.getFlag = vi.fn().mockReturnValue(undefined);
       mockDocument.flags = {};

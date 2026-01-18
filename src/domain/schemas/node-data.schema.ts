@@ -8,6 +8,7 @@
 import * as v from "valibot";
 import type { RelationshipNodeData } from "@/domain/types/relationship-node-data.interface";
 import { RELATIONSHIP_NODE_SCHEMA_VERSION } from "@/domain/types/relationship-node-data.interface";
+import { parseWithSchema } from "@/domain/utils/json-parser";
 
 /**
  * Schema for node reveal visibility settings.
@@ -78,8 +79,7 @@ export type RelationshipNodeDataFromSchema = v.InferInput<typeof relationshipNod
  * @throws Valibot error if validation fails
  */
 export function parseRelationshipNodeData(data: unknown): RelationshipNodeData {
-  // type-coverage:ignore-next-line
-  return v.parse(relationshipNodeDataSchema, data) as RelationshipNodeData;
+  return parseWithSchema(relationshipNodeDataSchema, data);
 }
 
 /**

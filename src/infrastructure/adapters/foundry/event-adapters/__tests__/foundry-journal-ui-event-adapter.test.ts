@@ -190,16 +190,17 @@ describe("FoundryJournalUiEventAdapter", () => {
       });
     });
 
-    it("should handle JournalContextMenuEvent-like object in registerListener", () => {
+    it("should handle JournalContextMenuEvent-like object in registerListener", async () => {
       const callback = vi.fn();
       adapter.registerListener("customEvent", callback);
 
       const foundryCallback = mockFoundryHooksPort.getStoredCallback("customEvent");
       expect(foundryCallback).toBeDefined();
 
+      const innerCallback = vi.fn().mockResolvedValue(undefined);
       const eventObject = {
         journalId: "journal-123",
-        options: [{ name: "Test", icon: "<i></i>", callback: vi.fn() }],
+        options: [{ name: "Test", icon: "<i></i>", callback: innerCallback }],
         timestamp: Date.now(),
       };
       foundryCallback!([eventObject]);
@@ -209,6 +210,23 @@ describe("FoundryJournalUiEventAdapter", () => {
         options: expect.any(Array),
         timestamp: expect.any(Number),
       });
+
+      // Ensure wrapped callback is executable (covers callback wrapper implementation)
+      const firstCall = callback.mock.calls[0]?.[0] as { options?: unknown[] } | undefined;
+      const options = firstCall?.options;
+      expect(Array.isArray(options)).toBe(true);
+
+      const typedOptions = options as { callback?: unknown }[];
+      expect(typedOptions.length).toBeGreaterThan(0);
+
+      const firstOption = typedOptions[0];
+      if (!firstOption) {
+        throw new Error("Expected at least one context menu option");
+      }
+      expect(typeof firstOption.callback).toBe("function");
+
+      await (firstOption.callback as (journalId: string) => Promise<void>)("journal-123");
+      expect(innerCallback).toHaveBeenCalledWith("journal-123");
     });
 
     it("should skip when event object cannot be converted", () => {

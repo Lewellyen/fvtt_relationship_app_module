@@ -25,7 +25,7 @@ export interface RelationshipEdge {
   source: string; // nodeKey
   target: string; // nodeKey
   knowledge: EdgeKnowledge;
-  label?: string;
+  label?: string | undefined;
 }
 
 /**
@@ -48,9 +48,9 @@ export interface Pan {
  * Layout information for graph visualization.
  */
 export interface GraphLayout {
-  positions?: Record<string, Position>;
-  zoom?: number;
-  pan?: Pan;
+  positions?: Record<string, Position> | undefined;
+  zoom?: number | undefined;
+  pan?: Pan | undefined;
 }
 
 /**
@@ -72,9 +72,9 @@ export interface RelationshipGraphData {
   graphKey: string; // Foundry Page.uuid
   nodeKeys: string[];
   edges: RelationshipEdge[];
-  layout?: GraphLayout;
+  layout?: GraphLayout | undefined;
   // Backup f〉 Migration (wird in Phase 3 verwendet)
-  lastVersion?: GraphDataLastVersion;
+  lastVersion?: GraphDataLastVersion | undefined;
 }
 
 type GraphEdgeField = foundry.data.fields.SchemaField<{

@@ -40,6 +40,14 @@ export class FoundryJournalUiEventAdapter implements PlatformJournalUiEventPort 
 
   constructor(private readonly foundryHooksPort: FoundryHooksPort) {}
 
+  private isArrayOfUnknown(value: unknown): value is unknown[] {
+    return Array.isArray(value);
+  }
+
+  private isCallable(value: unknown): value is (...args: unknown[]) => unknown {
+    return typeof value === "function";
+  }
+
   // ===== UI Event Methods =====
 
   onJournalDirectoryRendered(
@@ -113,7 +121,7 @@ export class FoundryJournalUiEventAdapter implements PlatformJournalUiEventPort 
       "journalId" in record &&
       typeof record.journalId === "string" &&
       "options" in record &&
-      Array.isArray(record.options)
+      this.isArrayOfUnknown(record.options)
     ) {
       // Validate options array elements
       type ContextMenuItem = {
@@ -130,34 +138,36 @@ export class FoundryJournalUiEventAdapter implements PlatformJournalUiEventPort 
       const options: ContextMenuOption[] = [];
       const typedRecord: JournalContextMenuRecord = {
         journalId: record.journalId as string,
-        /* type-coverage:ignore-next-line -- Runtime type check: record.options validated as array above */
-        options: record.options as unknown[],
+        options: record.options,
         timestamp: typeof record.timestamp === "number" ? record.timestamp : undefined,
       };
 
       for (const item of typedRecord.options) {
-        if (
-          typeof item === "object" &&
-          item !== null &&
-          "name" in item &&
-          typeof item.name === "string" &&
-          "icon" in item &&
-          typeof item.icon === "string" &&
-          "callback" in item &&
-          typeof item.callback === "function"
-        ) {
-          const typedItem: ContextMenuItem = {
-            name: item.name as string,
-            icon: item.icon as string,
-            /* type-coverage:ignore-next-line -- Runtime type check: item.callback validated as function above */
-            callback: item.callback as (journalId: string) => void | Promise<void>,
-          };
-          options.push({
-            name: typedItem.name,
-            icon: typedItem.icon,
-            callback: typedItem.callback,
-          });
-        }
+        if (typeof item !== "object" || item === null) continue;
+
+        const itemRecord = castToRecord(item);
+        const name = itemRecord.name;
+        const icon = itemRecord.icon;
+        const callbackValue = itemRecord.callback;
+
+        if (typeof name !== "string") continue;
+        if (typeof icon !== "string") continue;
+        if (!this.isCallable(callbackValue)) continue;
+
+        const callback = async (journalId: string): Promise<void> => {
+          await callbackValue(journalId);
+        };
+
+        const typedItem: ContextMenuItem = {
+          name,
+          icon,
+          callback,
+        };
+        options.push({
+          name: typedItem.name,
+          icon: typedItem.icon,
+          callback: typedItem.callback,
+        });
       }
 
       return {

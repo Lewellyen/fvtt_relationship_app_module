@@ -8,6 +8,7 @@ import {
   castFoundryDocumentForFlag,
   isRecord,
 } from "@/infrastructure/adapters/foundry/runtime-casts";
+import { castToRecord } from "@/infrastructure/di/types/utilities/type-casts";
 
 /**
  * FlagsPersistAdapter - IPersistAdapter für Flags
@@ -153,14 +154,18 @@ export class FlagsPersistAdapter implements IPersistAdapter {
 
       // Fallback: access flags directly from document
       if (!flags) {
-        type DocumentWithFlags = { flags?: Record<string, Record<string, unknown>> };
-        /* type-coverage:ignore-next-line -- Runtime type check: doc validated as Foundry document with flags property */
-        const typedDoc = doc as DocumentWithFlags;
-        const docFlags = typedDoc.flags?.[config.namespace];
-        if (docFlags && config.key in docFlags) {
-          const flagValue = docFlags[config.key];
-          if (isRecord(flagValue)) {
-            flags = flagValue;
+        // Defensive: treat document as a record and validate the flags shape at runtime
+        if (doc !== null && doc !== undefined && typeof doc === "object") {
+          const docRecord = castToRecord(doc);
+          const flagsValue = docRecord.flags;
+          if (isRecord(flagsValue)) {
+            const namespaceValue = flagsValue[config.namespace];
+            if (isRecord(namespaceValue) && config.key in namespaceValue) {
+              const flagValue = namespaceValue[config.key];
+              if (isRecord(flagValue)) {
+                flags = flagValue;
+              }
+            }
           }
         }
       }

@@ -7,6 +7,10 @@
 
 import type { Initializable } from "@/domain/ports/initializable.interface";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && value !== undefined && typeof value === "object";
+}
+
 /**
  * Checks if an object has a method with the given name.
  *
@@ -23,14 +27,10 @@ import type { Initializable } from "@/domain/ports/initializable.interface";
  * ```
  */
 export function hasMethod(obj: unknown, methodName: string): boolean {
-  return (
-    obj !== null &&
-    obj !== undefined &&
-    typeof obj === "object" &&
-    methodName in obj &&
-    // type-coverage:ignore-next-line - Runtime type guard requires cast to check method type
-    typeof (obj as Record<string, unknown>)[methodName] === "function"
-  );
+  if (!isRecord(obj) || !(methodName in obj)) {
+    return false;
+  }
+  return typeof obj[methodName] === "function";
 }
 
 /**
@@ -71,8 +71,7 @@ export function hasOwnProperty(obj: unknown, propertyName: string): boolean {
   if (obj === null || obj === undefined || typeof obj !== "object") {
     return false;
   }
-  /* type-coverage:ignore-next-line -- Object.prototype.hasOwnProperty is a standard JavaScript method with known signature */
-  return Object.prototype.hasOwnProperty.call(obj, propertyName);
+  return Object.getOwnPropertyDescriptor(obj, propertyName) !== undefined;
 }
 
 /**

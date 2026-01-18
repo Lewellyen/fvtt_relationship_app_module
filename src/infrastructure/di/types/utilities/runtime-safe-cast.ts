@@ -8,9 +8,6 @@
  *
  * Diese Datei enthält KEINE spezifischen Service-Imports mehr!
  * Alle Service-spezifischen Casts wurden in separate Dateien ausgelagert.
- *
- * @ts-expect-error - Type coverage exclusion: This file intentionally uses type assertions
- * for runtime-safe casts that are necessary for the DI infrastructure.
  */
 
 import type { InjectionToken } from "../core/injectiontoken";

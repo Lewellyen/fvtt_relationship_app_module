@@ -15,8 +15,14 @@
  * T is used as a type parameter for generic type constraints,
  * even though it's not directly referenced in the type body.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type DomainInjectionToken<T = unknown> = symbol;
+export type DomainInjectionToken<T = unknown> = symbol & {
+  /**
+   * Phantom type to carry the service type through the type system.
+   * This keeps the domain/application boundary free of concrete service imports
+   * while still enabling type-safe tokens.
+   */
+  readonly __serviceType?: T;
+};
 
 /**
  * Base type for API-safe tokens that can be used with throwing resolve() methods.

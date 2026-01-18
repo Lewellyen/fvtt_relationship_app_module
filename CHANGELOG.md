@@ -12,6 +12,23 @@
 
 ### Upgrade-Hinweise
 
+## [0.59.7] - 2026-01-18
+### Hinzugefügt
+- Keine Einträge
+
+### Geändert
+- **Quality Gates / Ignore-Hygiene**: Ignore-Marker weiter reduziert und stärker auf Boundary-Dateien konzentriert. `check:no-ignores`-Whitelist von **43 → 36** Dateien gesenkt, u.a. durch Entfernen/Ersetzen von Markern in `metrics-reporter`, `type-guards`, `RuntimeConfigEventEmitter`, `FoundryJournalUiEventAdapter` und `FlagsPersistAdapter`. ([Details](scripts/check-no-ignores.mjs))
+- **Window Utils Konsolidierung**: `window-state-casts`, `window-casts`, `patch-utils` marker-frei gemacht und unvermeidbare Contract-Casts in `service-casts` zentralisiert; `check:no-ignores`-Whitelist weiter reduziert (**36 → 33**). ([Details](src/application/windows/utils/service-casts.ts), [Details](src/application/windows/utils/window-casts.ts), [Details](src/application/windows/utils/window-state-casts.ts), [Details](src/application/windows/utils/patch-utils.ts), [Details](scripts/check-no-ignores.mjs))
+
+### Fehlerbehebungen
+- Keine Einträge
+
+### Bekannte Probleme
+- Keine bekannten Probleme
+
+### Upgrade-Hinweise
+- Keine besonderen Maßnahmen erforderlich
+
 ## [0.59.6] - 2026-01-17
 ### Hinzugefügt
 - Keine Einträge

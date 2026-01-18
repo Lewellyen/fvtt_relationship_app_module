@@ -9,6 +9,10 @@
  */
 
 import { isRecord } from "@/domain/utils/type-guards";
+import {
+  castEventHandlerForSet as castEventHandlerForSetFromServiceCasts,
+  castSvelteComponent as castSvelteComponentFromServiceCasts,
+} from "./service-casts";
 
 /**
  * Gets a value from a Map, or creates it if it doesn't exist.
@@ -112,11 +116,8 @@ export function createNestedObject(path: string, value: unknown): Record<string,
   for (let i = 0; i < keys.length - 1; i++) {
     const key = keys[i];
     if (key) {
-      current[key] = {};
-      // next is guaranteed to be a Record because we just assigned {} to current[key]
-      // Type assertion is safe: TypeScript cannot prove that current[key] is Record<string, unknown>
-      /* type-coverage:ignore-next-line -- Type narrowing: current[key] is guaranteed to be Record<string, unknown> because we just assigned {} to it above */
-      const next = current[key] as Record<string, unknown>;
+      const next: Record<string, unknown> = {};
+      current[key] = next;
       current = next;
     }
   }
@@ -149,9 +150,7 @@ export function createNestedObject(path: string, value: unknown): Record<string,
 export function castEventHandlerForSet<TPayload>(
   handler: (payload: TPayload) => void
 ): (payload: unknown) => void {
-  type HandlerType = (payload: unknown) => void;
-  /* type-coverage:ignore-next-line -- Type variance: (payload: TPayload) => void is compatible with (payload: unknown) => void */
-  return handler as HandlerType;
+  return castEventHandlerForSetFromServiceCasts(handler);
 }
 
 /**
@@ -202,10 +201,5 @@ export function extractPersistMeta(
 export function castSvelteComponent<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 >(component: unknown): import("svelte").Component<TProps> | null {
-  if (typeof component === "function") {
-    type SvelteComponent = import("svelte").Component<TProps>;
-    /* type-coverage:ignore-next-line -- Runtime type check: component validated as function above */
-    return component as SvelteComponent;
-  }
-  return null;
+  return castSvelteComponentFromServiceCasts<TProps>(component);
 }

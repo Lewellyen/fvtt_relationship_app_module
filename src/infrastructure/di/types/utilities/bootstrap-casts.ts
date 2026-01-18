@@ -8,8 +8,6 @@
  * Type-Imports (import type) erzeugen KEINE Zyklen, da sie nur zur Compile-Zeit existieren.
  *
  * Re-exportiert castResolvedService von runtime-safe-cast für Bootstrap-Kontext.
- *
- * @ts-expect-error - Type coverage exclusion
  */
 
 export { castResolvedService } from "../utilities/runtime-safe-cast";

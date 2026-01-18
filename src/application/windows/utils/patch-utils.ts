@@ -23,14 +23,12 @@ export function applyPatch<T extends Record<string, unknown>>(
   for (const key in updates) {
     if (hasOwnProperty(updates, key)) {
       const typedKey = key as keyof T;
-      // Partial<T>[keyof T] is type-safe, but TypeScript cannot infer the type from Partial
-      type ValueType = T[keyof T];
-      /* type-coverage:ignore-next-line -- Type narrowing: key validated as keyof T above, updates[typedKey] is T[keyof T] */
-      const value = updates[typedKey] as ValueType;
+      const value = updates[typedKey];
       const currentValue = target[typedKey];
       if (currentValue !== value) {
-        // Type-Cast notwendig, da keyof T nicht direkt als Index verwendet werden kann
-        (target as Record<keyof T, T[keyof T]>)[typedKey] = value;
+        // Partial<T> may yield `undefined` even when T[keyof T] doesn't include it (exactOptionalPropertyTypes).
+        // Using Reflect avoids an unsound assignment error while keeping runtime behavior correct.
+        Reflect.set(target, typedKey, value);
         hasChanges = true;
       }
     }

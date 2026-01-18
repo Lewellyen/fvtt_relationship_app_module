@@ -143,6 +143,22 @@ export function parseAndValidate<
 }
 
 /**
+ * Validates and parses unknown data against a Valibot schema (throws on validation error).
+ *
+ * This is a small boundary helper to keep Valibot's complex generics + necessary casts
+ * isolated in one place, so individual schema modules can stay marker-free.
+ */
+export function parseWithSchema<
+  TSchema extends v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>,
+>(schema: TSchema, data: unknown): v.InferOutput<TSchema> {
+  const result = v.safeParse(schema, data);
+  if (result.success) {
+    return result.output;
+  }
+  throw result.issues;
+}
+
+/**
  * Serializes data to a JSON string.
  * Returns a Result to handle serialization errors gracefully.
  *

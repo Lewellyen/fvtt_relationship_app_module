@@ -7,8 +7,7 @@
  *
  * These tokens define injection points for Application layer services.
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { createInjectionToken } from "@/application/utils/token-factory";
+import { createUnsafeInjectionToken } from "@/application/di/unsafe-token-factory";
 
 /**
  * Injection token for the JournalVisibilityService.
@@ -17,7 +16,7 @@ import { createInjectionToken } from "@/application/utils/token-factory";
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const journalVisibilityServiceToken = createInjectionToken<any>("JournalVisibilityService");
+export const journalVisibilityServiceToken = createUnsafeInjectionToken("JournalVisibilityService");
 
 /**
  * Injection token for the JournalVisibilityConfig.
@@ -26,7 +25,7 @@ export const journalVisibilityServiceToken = createInjectionToken<any>("JournalV
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const journalVisibilityConfigToken = createInjectionToken<any>("JournalVisibilityConfig");
+export const journalVisibilityConfigToken = createUnsafeInjectionToken("JournalVisibilityConfig");
 
 /**
  * DI Token for HideJournalContextMenuHandler.
@@ -35,7 +34,7 @@ export const journalVisibilityConfigToken = createInjectionToken<any>("JournalVi
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const hideJournalContextMenuHandlerToken = createInjectionToken<any>(
+export const hideJournalContextMenuHandlerToken = createUnsafeInjectionToken(
   "HideJournalContextMenuHandler"
 );
 
@@ -47,7 +46,7 @@ export const hideJournalContextMenuHandlerToken = createInjectionToken<any>(
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const journalContextMenuHandlersToken = createInjectionToken<any>(
+export const journalContextMenuHandlersToken = createUnsafeInjectionToken(
   "JournalContextMenuHandlers"
 );
 
@@ -59,7 +58,7 @@ export const journalContextMenuHandlersToken = createInjectionToken<any>(
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const journalDirectoryProcessorToken = createInjectionToken<any>(
+export const journalDirectoryProcessorToken = createUnsafeInjectionToken(
   "JournalDirectoryProcessor"
 );
 
@@ -70,7 +69,7 @@ export const journalDirectoryProcessorToken = createInjectionToken<any>(
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const runtimeConfigSyncToken = createInjectionToken<any>("RuntimeConfigSync");
+export const runtimeConfigSyncToken = createUnsafeInjectionToken("RuntimeConfigSync");
 
 /**
  * Injection token for the RuntimeConfigSettingsSync.
@@ -80,7 +79,7 @@ export const runtimeConfigSyncToken = createInjectionToken<any>("RuntimeConfigSy
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const runtimeConfigSettingsSyncToken = createInjectionToken<any>(
+export const runtimeConfigSettingsSyncToken = createUnsafeInjectionToken(
   "RuntimeConfigSettingsSync"
 );
 
@@ -92,7 +91,7 @@ export const runtimeConfigSettingsSyncToken = createInjectionToken<any>(
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const settingRegistrationErrorMapperToken = createInjectionToken<any>(
+export const settingRegistrationErrorMapperToken = createUnsafeInjectionToken(
   "SettingRegistrationErrorMapper"
 );
 
@@ -105,7 +104,7 @@ export const settingRegistrationErrorMapperToken = createInjectionToken<any>(
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const settingDefinitionRegistryToken = createInjectionToken<any>(
+export const settingDefinitionRegistryToken = createUnsafeInjectionToken(
   "SettingDefinitionRegistry"
 );
 
@@ -118,7 +117,7 @@ export const settingDefinitionRegistryToken = createInjectionToken<any>(
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const runtimeConfigBindingRegistryToken = createInjectionToken<any>(
+export const runtimeConfigBindingRegistryToken = createUnsafeInjectionToken(
   "RuntimeConfigBindingRegistry"
 );
 
@@ -129,7 +128,7 @@ export const runtimeConfigBindingRegistryToken = createInjectionToken<any>(
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const moduleSettingsRegistrarToken = createInjectionToken<any>("ModuleSettingsRegistrar");
+export const moduleSettingsRegistrarToken = createUnsafeInjectionToken("ModuleSettingsRegistrar");
 
 /**
  * Injection token for the ModuleHealthService.
@@ -138,7 +137,7 @@ export const moduleSettingsRegistrarToken = createInjectionToken<any>("ModuleSet
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const moduleHealthServiceToken = createInjectionToken<any>("ModuleHealthService");
+export const moduleHealthServiceToken = createUnsafeInjectionToken("ModuleHealthService");
 
 /**
  * Injection token for the BatchUpdateContextService.
@@ -152,7 +151,7 @@ export const moduleHealthServiceToken = createInjectionToken<any>("ModuleHealthS
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const batchUpdateContextServiceToken = createInjectionToken<any>(
+export const batchUpdateContextServiceToken = createUnsafeInjectionToken(
   "BatchUpdateContextService"
 );
 
@@ -165,7 +164,7 @@ export const batchUpdateContextServiceToken = createInjectionToken<any>(
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const journalDirectoryRerenderSchedulerToken = createInjectionToken<any>(
+export const journalDirectoryRerenderSchedulerToken = createUnsafeInjectionToken(
   "JournalDirectoryRerenderScheduler"
 );
 
@@ -178,7 +177,7 @@ export const journalDirectoryRerenderSchedulerToken = createInjectionToken<any>(
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const eventRegistrarRegistryToken = createInjectionToken<any>("EventRegistrarRegistry");
+export const eventRegistrarRegistryToken = createUnsafeInjectionToken("EventRegistrarRegistry");
 
 /**
  * Injection token for the JournalOverviewService.
@@ -188,7 +187,7 @@ export const eventRegistrarRegistryToken = createInjectionToken<any>("EventRegis
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const journalOverviewServiceToken = createInjectionToken<any>("JournalOverviewService");
+export const journalOverviewServiceToken = createUnsafeInjectionToken("JournalOverviewService");
 
 /**
  * Injection token for the MigrationService.
@@ -198,7 +197,7 @@ export const journalOverviewServiceToken = createInjectionToken<any>("JournalOve
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const migrationServiceToken = createInjectionToken<any>("MigrationService");
+export const migrationServiceToken = createUnsafeInjectionToken("MigrationService");
 
 /**
  * Injection token for the NodeDataService.
@@ -208,7 +207,7 @@ export const migrationServiceToken = createInjectionToken<any>("MigrationService
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const nodeDataServiceToken = createInjectionToken<any>("NodeDataService");
+export const nodeDataServiceToken = createUnsafeInjectionToken("NodeDataService");
 
 /**
  * Injection token for the GraphDataService.
@@ -218,7 +217,7 @@ export const nodeDataServiceToken = createInjectionToken<any>("NodeDataService")
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const graphDataServiceToken = createInjectionToken<any>("GraphDataService");
+export const graphDataServiceToken = createUnsafeInjectionToken("GraphDataService");
 
 /**
  * Injection token for the CreateNodePageUseCase.
@@ -227,7 +226,7 @@ export const graphDataServiceToken = createInjectionToken<any>("GraphDataService
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const createNodePageUseCaseToken = createInjectionToken<any>("CreateNodePageUseCase");
+export const createNodePageUseCaseToken = createUnsafeInjectionToken("CreateNodePageUseCase");
 
 /**
  * Injection token for the CreateGraphPageUseCase.
@@ -236,7 +235,7 @@ export const createNodePageUseCaseToken = createInjectionToken<any>("CreateNodeP
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const createGraphPageUseCaseToken = createInjectionToken<any>("CreateGraphPageUseCase");
+export const createGraphPageUseCaseToken = createUnsafeInjectionToken("CreateGraphPageUseCase");
 
 /**
  * Injection token for the AddNodeToGraphUseCase.
@@ -245,7 +244,7 @@ export const createGraphPageUseCaseToken = createInjectionToken<any>("CreateGrap
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const addNodeToGraphUseCaseToken = createInjectionToken<any>("AddNodeToGraphUseCase");
+export const addNodeToGraphUseCaseToken = createUnsafeInjectionToken("AddNodeToGraphUseCase");
 
 /**
  * Injection token for the RemoveNodeFromGraphUseCase.
@@ -254,7 +253,7 @@ export const addNodeToGraphUseCaseToken = createInjectionToken<any>("AddNodeToGr
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const removeNodeFromGraphUseCaseToken = createInjectionToken<any>(
+export const removeNodeFromGraphUseCaseToken = createUnsafeInjectionToken(
   "RemoveNodeFromGraphUseCase"
 );
 
@@ -265,7 +264,7 @@ export const removeNodeFromGraphUseCaseToken = createInjectionToken<any>(
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const upsertEdgeUseCaseToken = createInjectionToken<any>("UpsertEdgeUseCase");
+export const upsertEdgeUseCaseToken = createUnsafeInjectionToken("UpsertEdgeUseCase");
 
 /**
  * Injection token for the RemoveEdgeUseCase.
@@ -274,4 +273,4 @@ export const upsertEdgeUseCaseToken = createInjectionToken<any>("UpsertEdgeUseCa
  *
  * Generic Type wird beim resolve() aufgelöst - kein Import nötig!
  */
-export const removeEdgeUseCaseToken = createInjectionToken<any>("RemoveEdgeUseCase");
+export const removeEdgeUseCaseToken = createUnsafeInjectionToken("RemoveEdgeUseCase");

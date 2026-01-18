@@ -14,10 +14,4 @@ import type { PlatformEntityCollectionPort } from "../collections/platform-entit
  * interface PlatformJournalReadRepository extends PlatformEntityReadRepository<JournalEntry> {}
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface PlatformEntityReadRepository<
-  TEntity,
-> extends PlatformEntityCollectionPort<TEntity> {
-  // Nur Read-Operationen (geerbt von PlatformEntityCollectionPort)
-  // getAll(), getById(), getByIds(), exists(), count(), search(), query()
-}
+export type PlatformEntityReadRepository<TEntity> = PlatformEntityCollectionPort<TEntity>;
