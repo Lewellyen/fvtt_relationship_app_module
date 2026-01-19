@@ -24,6 +24,7 @@ import {
   platformHtmlUtilsPortToken,
   platformAsyncUtilsPortToken,
 } from "@/application/tokens/domain-ports.tokens";
+import { sheetFacadeToken } from "@/application/tokens/api-facades.tokens";
 import type { IApiServiceResolver } from "../interfaces/api-component-interfaces";
 import type { IApiHealthMetricsProvider } from "../interfaces/api-component-interfaces";
 
@@ -90,6 +91,7 @@ export class ModuleApiBuilder implements IModuleApiBuilder {
           ["platformObjectUtilsPortToken", platformObjectUtilsPortToken],
           ["platformHtmlUtilsPortToken", platformHtmlUtilsPortToken],
           ["platformAsyncUtilsPortToken", platformAsyncUtilsPortToken],
+          ["sheetFacadeToken", sheetFacadeToken],
         ];
 
         for (const [, token] of tokenEntries) {

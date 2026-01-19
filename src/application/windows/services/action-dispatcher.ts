@@ -9,6 +9,8 @@ import type { WindowError } from "@/domain/windows/types/errors/window-error.int
 import { ok, err } from "@/domain/utils/result";
 import type { IWindowRegistry } from "@/domain/windows/ports/window-registry-port.interface";
 import { windowRegistryToken } from "../tokens/window.tokens";
+import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
+import { platformUIPortToken } from "@/application/tokens/domain-ports.tokens";
 
 /**
  * ActionDispatcher - Führt Actions aus (Command-Pattern)
@@ -16,9 +18,12 @@ import { windowRegistryToken } from "../tokens/window.tokens";
  * Phase 2: Vollständig mit Permissions, Validation und Confirmation
  */
 export class ActionDispatcher implements IActionDispatcher {
-  static dependencies = [windowRegistryToken] as const;
+  static dependencies = [windowRegistryToken, platformUIPortToken] as const;
 
-  constructor(private readonly registry: IWindowRegistry) {}
+  constructor(
+    private readonly registry: IWindowRegistry,
+    private readonly ui: PlatformUIPort
+  ) {}
 
   async dispatch(
     actionId: string,
@@ -208,19 +213,11 @@ export class ActionDispatcher implements IActionDispatcher {
     readonly confirmLabel?: string;
     readonly cancelLabel?: string;
   }): Promise<boolean> {
-    if (typeof foundry === "undefined" || !foundry.applications?.api?.DialogV2) {
-      // If DialogV2 is not available (e.g., in tests), default to false (cancel)
-      console.warn("Foundry DialogV2 not available, action confirmation cancelled");
-      return false;
-    }
-
-    // DialogV2.confirm() returns a Promise that resolves to true (yes) or false (no)
-    const result = await foundry.applications.api.DialogV2.confirm({
-      content: confirm.message,
-      rejectClose: false,
-      modal: true,
+    return await this.ui.confirm({
+      title: confirm.title,
+      message: confirm.message,
+      confirmLabel: confirm.confirmLabel,
+      cancelLabel: confirm.cancelLabel,
     });
-
-    return result === true;
   }
 }

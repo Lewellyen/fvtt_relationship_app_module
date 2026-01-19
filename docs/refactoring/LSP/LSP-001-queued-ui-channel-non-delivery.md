@@ -4,6 +4,9 @@ Prinzip: LSP
 Schweregrad: Mittel
 Module/Layer: infrastructure/notifications
 Status: Proposed
+Reviewed: 2026-01-19
+Relevance: still-relevant
+Notes: `src/infrastructure/notifications/channels/QueuedUIChannel.ts` still returns ok() while only enqueuing when UI unavailable.
 ---
 
 # 1. Problem

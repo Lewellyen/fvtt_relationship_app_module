@@ -4,6 +4,9 @@ Prinzip: ISP
 Schweregrad: Mittel
 Module/Layer: application/services + domain/ports
 Status: Proposed
+Reviewed: 2026-01-19
+Relevance: still-relevant
+Notes: `src/application/services/JournalVisibilityService.ts` still depends on `PlatformJournalRepository` for `getFlag(...)`.
 ---
 
 # 1. Problem

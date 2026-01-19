@@ -66,11 +66,10 @@ export function castEventHandlerForSet<TPayload>(
  */
 export function castSvelteComponent<
   TProps extends Record<string, unknown> = Record<string, unknown>,
->(component: unknown): import("svelte").Component<TProps> | null {
+>(component: unknown): ((props: TProps) => unknown) | null {
   if (typeof component !== "function") {
     return null;
   }
-  type SvelteComponent = import("svelte").Component<TProps>;
   // type-coverage:ignore-next-line - runtime check ensures function, cast provides component typing
-  return component as SvelteComponent;
+  return component as (props: TProps) => unknown;
 }

@@ -3,6 +3,7 @@ import type { ComponentDescriptor } from "@/domain/windows/types/component-descr
 import type { SvelteComponentInstance } from "@/domain/windows/types/component-instance.interface";
 import type { ViewModel } from "@/domain/windows/types/view-model.interface";
 import type { RenderError } from "@/domain/windows/types/errors/render-error.interface";
+import type { DomElement } from "@/domain/windows/types/dom.types";
 import { ok, err } from "@/domain/utils/result";
 import { mount, unmount } from "svelte";
 import { castSvelteComponent } from "@/application/windows/utils/window-state-casts";
@@ -11,9 +12,13 @@ import { castSvelteComponent } from "@/application/windows/utils/window-state-ca
  * SvelteRenderer - IRenderEnginePort<SvelteComponentInstance> Implementierung
  */
 export class SvelteRenderer implements IRenderEnginePort<SvelteComponentInstance> {
+  private isSvelteMountComponent(value: unknown): value is Parameters<typeof mount>[0] {
+    return typeof value === "function";
+  }
+
   mount(
     descriptor: ComponentDescriptor,
-    target: HTMLElement,
+    target: DomElement,
     viewModel: ViewModel
   ): import("@/domain/types/result").Result<SvelteComponentInstance, RenderError> {
     if (descriptor.type !== "svelte") {
@@ -26,10 +31,17 @@ export class SvelteRenderer implements IRenderEnginePort<SvelteComponentInstance
     try {
       // Component type from descriptor (should be a Svelte Component function)
       const component = castSvelteComponent<Record<string, unknown>>(descriptor.component);
-      if (!component) {
+      if (!component || !this.isSvelteMountComponent(component)) {
         return err({
           code: "InvalidType",
           message: "Component descriptor does not contain a valid Svelte component function",
+        });
+      }
+
+      if (!(target instanceof HTMLElement)) {
+        return err({
+          code: "InvalidTarget",
+          message: "Mount target is not a valid HTMLElement",
         });
       }
 

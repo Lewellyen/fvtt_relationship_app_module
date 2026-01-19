@@ -509,5 +509,196 @@ export default [
       ],
     },
   }
+  ,
+
+  // ============================
+  // Architecture Gates (A+B+C+D)
+  // ============================
+
+  // A: Domain must not depend on Foundry/DOM/UI frameworks.
+  {
+    files: ['src/domain/**/*.{ts,js}'],
+    ignores: ['src/domain/**/__tests__/**', 'src/domain/**/*.test.*', 'src/domain/**/*.spec.*'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            // Keep the existing barrel-export guidance for these files too
+            {
+              name: '@/infrastructure/shared/tokens',
+              message:
+                'Please import tokens from specific files (e.g., @/infrastructure/shared/tokens/core.tokens) for better tree-shaking.',
+            },
+            {
+              name: '@/infrastructure/shared/tokens/index',
+              message:
+                'Please import tokens from specific files (e.g., @/infrastructure/shared/tokens/core.tokens) for better tree-shaking.',
+            },
+            {
+              name: '@/application/tokens',
+              message:
+                'Please import tokens from specific files (e.g., @/application/tokens/application.tokens) for better tree-shaking.',
+            },
+            {
+              name: '@/application/tokens/index',
+              message:
+                'Please import tokens from specific files (e.g., @/application/tokens/application.tokens) for better tree-shaking.',
+            },
+
+            // A: Hard bans
+            { name: 'svelte', message: 'Domain darf nicht von Svelte abhängen (A).' },
+            { name: 'react', message: 'Domain darf nicht von React abhängen (A).' },
+            { name: 'vue', message: 'Domain darf nicht von Vue abhängen (A).' },
+          ],
+          patterns: [
+            { group: ['@sveltejs/*'], message: 'Domain darf nicht von Svelte Tooling abhängen (A).' },
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        // A: Foundry global namespace usage (type/value)
+        { selector: "Identifier[name='foundry']", message: 'Domain darf keine foundry.* Referenzen enthalten (A).' },
+        // A: DOM type leaks
+        { selector: "Identifier[name='HTMLElement']", message: 'Domain darf keinen DOM-Typ HTMLElement referenzieren (A).' },
+        { selector: "Identifier[name='Event']", message: 'Domain darf keinen DOM-Typ Event referenzieren (A).' },
+        // A: UI framework type-only imports like import(\"svelte\").Component
+        { selector: "TSImportType Literal[value='svelte']", message: 'Domain darf keine Svelte Import-Typen verwenden (A).' },
+        { selector: "TSImportType Literal[value='react']", message: 'Domain darf keine React Import-Typen verwenden (A).' },
+        { selector: "TSImportType Literal[value='vue']", message: 'Domain darf keine Vue Import-Typen verwenden (A).' },
+      ],
+    },
+  },
+
+  // B: Application must not depend on UI frameworks or platform types.
+  {
+    files: ['src/application/**/*.{ts,js}'],
+    ignores: [
+      'src/application/**/__tests__/**',
+      'src/application/**/*.test.*',
+      'src/application/**/*.spec.*',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          // Keep existing barrel guidance here as well
+          paths: [
+            {
+              name: '@/infrastructure/shared/tokens',
+              message:
+                'Please import tokens from specific files (e.g., @/infrastructure/shared/tokens/core.tokens) for better tree-shaking.',
+            },
+            {
+              name: '@/infrastructure/shared/tokens/index',
+              message:
+                'Please import tokens from specific files (e.g., @/infrastructure/shared/tokens/core.tokens) for better tree-shaking.',
+            },
+            {
+              name: '@/application/tokens',
+              message:
+                'Please import tokens from specific files (e.g., @/application/tokens/application.tokens) for better tree-shaking.',
+            },
+            {
+              name: '@/application/tokens/index',
+              message:
+                'Please import tokens from specific files (e.g., @/application/tokens/application.tokens) for better tree-shaking.',
+            },
+
+            // B: Hard bans
+            { name: 'svelte', message: 'Application darf nicht von Svelte abhängen (B).' },
+            { name: 'react', message: 'Application darf nicht von React abhängen (B).' },
+            { name: 'vue', message: 'Application darf nicht von Vue abhängen (B).' },
+          ],
+          patterns: [
+            { group: ['@sveltejs/*'], message: 'Application darf nicht von Svelte Tooling abhängen (B).' },
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        // B: Platform type leaks
+        { selector: "Identifier[name='foundry']", message: 'Application darf keine foundry.* Referenzen enthalten (B).' },
+        { selector: "Identifier[name='HTMLElement']", message: 'Application darf keinen DOM-Typ HTMLElement referenzieren (B).' },
+        { selector: "Identifier[name='Event']", message: 'Application darf keinen DOM-Typ Event referenzieren (B).' },
+        // B: Svelte type-only imports like import(\"svelte\").Component
+        { selector: "TSImportType Literal[value='svelte']", message: 'Application darf keine Svelte Import-Typen verwenden (B).' },
+      ],
+    },
+  },
+
+  // C: No service locator calls inside window definitions (definitions must be declarative).
+  {
+    files: ['src/application/windows/definitions/**/*.{ts,js}'],
+    ignores: [
+      'src/application/windows/definitions/**/__tests__/**',
+      'src/application/windows/definitions/**/*.test.*',
+      'src/application/windows/definitions/**/*.spec.*',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.type='MemberExpression'][callee.property.name='resolveWithError']",
+          message:
+            'Window-Definitions dürfen keine Container-Auflösung via resolveWithError() durchführen (C).',
+        },
+        {
+          selector:
+            "CallExpression[callee.type='ChainExpression'] MemberExpression[property.name='resolveWithError']",
+          message:
+            'Window-Definitions dürfen keine Container-Auflösung via resolveWithError() durchführen (C).',
+        },
+      ],
+    },
+  },
+
+  // D: Foundry-instantiated entrypoints must behave like third-party modules and use module.api facades only.
+  {
+    files: [
+      'src/infrastructure/adapters/foundry/sheets/**/*.{ts,js}',
+      'src/infrastructure/ui/window-system/**/*.{ts,js}',
+      'src/infrastructure/windows/adapters/foundry/**/*.{ts,js}',
+    ],
+    ignores: [
+      '**/__tests__/**',
+      '**/*.test.*',
+      '**/*.spec.*',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/application/tokens/application.tokens',
+              message:
+                'Foundry-EntryPoints dürfen keine internen Application Tokens importieren. Nutze nur module.api Facade Tokens (D).',
+            },
+            {
+              name: '@/application/tokens/application.tokens.ts',
+              message:
+                'Foundry-EntryPoints dürfen keine internen Application Tokens importieren. Nutze nur module.api Facade Tokens (D).',
+            },
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "Identifier[name='platformContainerPortToken']",
+          message:
+            'Foundry-EntryPoints dürfen PlatformContainerPort nicht nutzen. Verwende eine API-safe Facade über module.api (D).',
+        },
+        {
+          selector: "Identifier[name='PlatformContainerPort']",
+          message:
+            'Foundry-EntryPoints dürfen PlatformContainerPort nicht referenzieren. Verwende eine API-safe Facade über module.api (D).',
+        },
+      ],
+    },
+  },
 ];
 

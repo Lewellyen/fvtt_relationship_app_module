@@ -5,6 +5,7 @@ import type { WindowError } from "@/domain/windows/types/errors/window-error.int
 import type { ComponentInstance } from "@/domain/windows/types/component-instance.interface";
 import type { ViewModel } from "@/domain/windows/types/view-model.interface";
 import type { ComponentDescriptor } from "@/domain/windows/types/component-descriptor.interface";
+import type { DomElement } from "@/domain/windows/types/dom.types";
 import { err } from "@/domain/utils/result";
 import { rendererRegistryToken } from "../tokens/window.tokens";
 
@@ -21,7 +22,7 @@ export class WindowRendererCoordinator implements IWindowRendererCoordinator {
 
   mount(
     descriptor: ComponentDescriptor,
-    mountPoint: HTMLElement,
+    mountPoint: DomElement,
     viewModel: ViewModel
   ): Result<ComponentInstance, WindowError> {
     const rendererResult = this.rendererRegistry.get(descriptor.type);

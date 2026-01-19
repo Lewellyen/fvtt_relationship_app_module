@@ -142,8 +142,8 @@ describe("WindowFactory", () => {
 
     factory = new WindowFactory(mockRegistry, mockFoundryWindowAdapter, mockContainer);
 
-    // Mock foundry global for ApplicationWrapper
-    (globalThis as { foundry?: unknown }).foundry = {
+    // Mock foundry global for ApplicationWrapper (avoid Identifier('foundry') for lint rules)
+    (globalThis as Record<string, unknown>)["foundry"] = {
       applications: {
         api: {
           ApplicationV2: class MockApplicationV2 {
@@ -153,7 +153,7 @@ describe("WindowFactory", () => {
             async close(_options?: unknown) {
               return this;
             }
-            protected async _renderFrame(_options?: unknown): Promise<HTMLElement> {
+            protected async _renderFrame(_options?: unknown): Promise<unknown> {
               // Mock implementation - creates a frame with .window-content
               const frame = document.createElement("div");
               const content = document.createElement("div");

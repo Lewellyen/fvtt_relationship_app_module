@@ -8,6 +8,7 @@
 import { readFileSync } from "fs";
 import { join, dirname, resolve, relative } from "path";
 import { glob } from "glob";
+import * as ts from "typescript";
 
 /**
  * Ergebnis einer Domänengrenzen-Prüfung
@@ -24,6 +25,253 @@ export interface DomainBoundaryViolation {
   file: string;
   import: string;
   message: string;
+}
+
+type RuleId =
+  | "LAYER_IMPORT"
+  | "A_DOMAIN_LEAK"
+  | "B_APP_LEAK"
+  | "C_SERVICE_LOCATOR"
+  | "D_FOUNDRY_ENTRYPOINT";
+
+function isDomainFile(normalizedFilePath: string): boolean {
+  return normalizedFilePath.includes("/domain/");
+}
+
+function isApplicationFile(normalizedFilePath: string): boolean {
+  return normalizedFilePath.includes("/application/");
+}
+
+function isWindowDefinitionFile(normalizedFilePath: string): boolean {
+  return normalizedFilePath.includes("/application/windows/definitions/");
+}
+
+function isFoundryEntrypointFile(normalizedFilePath: string): boolean {
+  return (
+    normalizedFilePath.includes("/infrastructure/adapters/foundry/sheets/") ||
+    normalizedFilePath.includes("/infrastructure/ui/window-system/") ||
+    normalizedFilePath.includes("/infrastructure/windows/adapters/foundry/")
+  );
+}
+
+function addViolation(
+  violations: DomainBoundaryViolation[],
+  dedupe: Set<string>,
+  file: string,
+  importOrNode: string,
+  message: string
+): void {
+  const key = `${file}::${importOrNode}::${message}`;
+  if (dedupe.has(key)) return;
+  dedupe.add(key);
+  violations.push({ file, import: importOrNode, message });
+}
+
+function createSourceFile(file: string, content: string): ts.SourceFile {
+  const scriptKind = file.endsWith(".js") ? ts.ScriptKind.JS : ts.ScriptKind.TS;
+  return ts.createSourceFile(file, content, ts.ScriptTarget.Latest, true, scriptKind);
+}
+
+function containsImportFromModule(sourceFile: ts.SourceFile, moduleName: string): boolean {
+  for (const stmt of sourceFile.statements) {
+    if (ts.isImportDeclaration(stmt) && ts.isStringLiteral(stmt.moduleSpecifier)) {
+      if (stmt.moduleSpecifier.text === moduleName) return true;
+    }
+  }
+  return false;
+}
+
+function checkAandBTypeLeaks(
+  violations: DomainBoundaryViolation[],
+  dedupe: Set<string>,
+  file: string,
+  normalizedFilePath: string,
+  sourceFile: ts.SourceFile
+): void {
+  const enforceDomain = isDomainFile(normalizedFilePath);
+  const enforceApplication = isApplicationFile(normalizedFilePath);
+  if (!enforceDomain && !enforceApplication) return;
+
+  // A/B: import('svelte') type-level imports
+  const bannedImportTypes = new Set<string>(["svelte", "react", "vue"]);
+
+  function visit(node: ts.Node): void {
+    // A/B: Foundry global namespace
+    if (ts.isIdentifier(node) && node.text === "foundry") {
+      const rule: RuleId = enforceDomain ? "A_DOMAIN_LEAK" : "B_APP_LEAK";
+      addViolation(
+        violations,
+        dedupe,
+        file,
+        `${rule}: Identifier(foundry)`,
+        enforceDomain
+          ? "A: Domain enthält foundry.* Referenzen (verboten)."
+          : "B: Application enthält foundry.* Referenzen (verboten)."
+      );
+    }
+
+    // A/B: DOM type references (only enforce the capitalized DOM types)
+    if (ts.isTypeReferenceNode(node) && ts.isIdentifier(node.typeName)) {
+      const typeName = node.typeName.text;
+      if (typeName === "HTMLElement" || typeName === "Event") {
+        const rule: RuleId = enforceDomain ? "A_DOMAIN_LEAK" : "B_APP_LEAK";
+        addViolation(
+          violations,
+          dedupe,
+          file,
+          `${rule}: TypeReference(${typeName})`,
+          enforceDomain
+            ? `A: Domain referenziert DOM-Typ ${typeName} (verboten).`
+            : `B: Application referenziert DOM-Typ ${typeName} (verboten).`
+        );
+      }
+    }
+
+    // A/B: import(\"svelte\") and similar in type positions
+    if (ts.isImportTypeNode(node)) {
+      const arg = node.argument;
+      if (
+        ts.isLiteralTypeNode(arg) &&
+        ts.isStringLiteral(arg.literal) &&
+        bannedImportTypes.has(arg.literal.text)
+      ) {
+        const mod = arg.literal.text;
+        const rule: RuleId = enforceDomain ? "A_DOMAIN_LEAK" : "B_APP_LEAK";
+
+        // In Application we only strictly need to ban svelte per plan, but banning react/vue too is OK.
+        addViolation(
+          violations,
+          dedupe,
+          file,
+          `${rule}: ImportType(${mod})`,
+          enforceDomain
+            ? `A: Domain verwendet ImportType aus '${mod}' (verboten).`
+            : `B: Application verwendet ImportType aus '${mod}' (verboten).`
+        );
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+
+  // A/B: explicit module imports
+  if (containsImportFromModule(sourceFile, "svelte")) {
+    addViolation(
+      violations,
+      dedupe,
+      file,
+      "A_B: import from 'svelte'",
+      enforceDomain
+        ? "A: Domain importiert 'svelte' (verboten)."
+        : "B: Application importiert 'svelte' (verboten)."
+    );
+  }
+  if (enforceDomain && containsImportFromModule(sourceFile, "react")) {
+    addViolation(
+      violations,
+      dedupe,
+      file,
+      "A: import from 'react'",
+      "A: Domain importiert 'react' (verboten)."
+    );
+  }
+  if (enforceDomain && containsImportFromModule(sourceFile, "vue")) {
+    addViolation(
+      violations,
+      dedupe,
+      file,
+      "A: import from 'vue'",
+      "A: Domain importiert 'vue' (verboten)."
+    );
+  }
+}
+
+function checkCServiceLocatorInDefinitions(
+  violations: DomainBoundaryViolation[],
+  dedupe: Set<string>,
+  file: string,
+  normalizedFilePath: string,
+  sourceFile: ts.SourceFile
+): void {
+  if (!isWindowDefinitionFile(normalizedFilePath)) return;
+
+  function visit(node: ts.Node): void {
+    if (ts.isCallExpression(node)) {
+      const expr = node.expression;
+      if (ts.isPropertyAccessExpression(expr)) {
+        const methodName = expr.name.text;
+        if (methodName === "resolveWithError") {
+          addViolation(
+            violations,
+            dedupe,
+            file,
+            "C_SERVICE_LOCATOR: resolveWithError()",
+            "C: Window-Definitions dürfen keine Container-Auflösung via resolveWithError() durchführen."
+          );
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+}
+
+function checkDFoundryEntrypoints(
+  violations: DomainBoundaryViolation[],
+  dedupe: Set<string>,
+  file: string,
+  normalizedFilePath: string,
+  sourceFile: ts.SourceFile
+): void {
+  if (!isFoundryEntrypointFile(normalizedFilePath)) return;
+
+  // D: Foundry entrypoints must not import internal application tokens file.
+  for (const stmt of sourceFile.statements) {
+    if (ts.isImportDeclaration(stmt) && ts.isStringLiteral(stmt.moduleSpecifier)) {
+      const mod = stmt.moduleSpecifier.text;
+      if (
+        mod === "@/application/tokens/application.tokens" ||
+        mod === "@/application/tokens/application.tokens.ts"
+      ) {
+        addViolation(
+          violations,
+          dedupe,
+          file,
+          `D_FOUNDRY_ENTRYPOINT: import(${mod})`,
+          "D: Foundry-EntryPoints dürfen keine internen Application Tokens importieren (nur module.api Facade Tokens)."
+        );
+      }
+    }
+  }
+
+  // D: Foundry entrypoints must not reference platformContainerPortToken / PlatformContainerPort
+  function visit(node: ts.Node): void {
+    if (ts.isIdentifier(node)) {
+      if (node.text === "platformContainerPortToken") {
+        addViolation(
+          violations,
+          dedupe,
+          file,
+          "D_FOUNDRY_ENTRYPOINT: platformContainerPortToken",
+          "D: Foundry-EntryPoints dürfen PlatformContainerPort nicht verwenden (nur Facade über module.api)."
+        );
+      }
+      if (node.text === "PlatformContainerPort") {
+        addViolation(
+          violations,
+          dedupe,
+          file,
+          "D_FOUNDRY_ENTRYPOINT: PlatformContainerPort",
+          "D: Foundry-EntryPoints dürfen PlatformContainerPort nicht referenzieren (nur Facade über module.api)."
+        );
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
 }
 
 /**
@@ -223,6 +471,7 @@ export async function validateAllDomainBoundaries(
   projectRoot: string = process.cwd()
 ): Promise<{ violations: DomainBoundaryViolation[] }> {
   const violations: DomainBoundaryViolation[] = [];
+  const dedupe = new Set<string>();
 
   // Alle TypeScript/JavaScript Dateien finden (außer Tests, node_modules, dist)
   const files = await glob("src/**/*.{ts,js}", {
@@ -235,6 +484,7 @@ export async function validateAllDomainBoundaries(
 
     try {
       const content = readFileSync(filePath, "utf-8");
+      const normalizedFilePath = file.replace(/\\/g, "/");
       const imports = extractImports(content);
 
       for (const importPath of imports) {
@@ -248,6 +498,12 @@ export async function validateAllDomainBoundaries(
           });
         }
       }
+
+      // Additional architecture gates (A+B+C+D) using TypeScript AST.
+      const sf = createSourceFile(file, content);
+      checkAandBTypeLeaks(violations, dedupe, file, normalizedFilePath, sf);
+      checkCServiceLocatorInDefinitions(violations, dedupe, file, normalizedFilePath, sf);
+      checkDFoundryEntrypoints(violations, dedupe, file, normalizedFilePath, sf);
     } catch (error) {
       // Datei konnte nicht gelesen werden (z.B. Berechtigungen)
       console.warn(`Warning: Could not read file ${filePath}: ${error}`);

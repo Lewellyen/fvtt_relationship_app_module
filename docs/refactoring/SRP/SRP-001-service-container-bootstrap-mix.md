@@ -4,6 +4,9 @@ Prinzip: SRP
 Schweregrad: Hoch
 Module/Layer: infrastructure/di
 Status: Proposed
+Reviewed: 2026-01-19
+Relevance: partially-addressed
+Notes: `ServiceContainer` has internal manager components, but still contains bootstrap dependency creation (`createRoot`, `createBootstrapDependencies`).
 ---
 
 # 1. Problem

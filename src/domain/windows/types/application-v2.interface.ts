@@ -1,6 +1,8 @@
 /**
  * ApplicationV2 - Minimal Interface für Foundry ApplicationV2
  */
+import type { DomElement } from "./dom.types";
+
 export interface ApplicationV2 {
   render(options?: {
     force?: boolean;
@@ -22,7 +24,7 @@ export interface ApplicationV2 {
     tab?: string | { name: string; active: boolean } | { [x: string]: string | undefined };
   }): Promise<this>;
   close(options?: { animate?: boolean; closeKey?: boolean; submitted?: boolean }): Promise<this>;
-  element?: HTMLElement;
+  element?: DomElement;
 }
 
 /**

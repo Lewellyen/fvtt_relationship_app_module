@@ -20,6 +20,7 @@ import { ServiceLifecycle } from "@/infrastructure/di/types/core/servicelifecycl
 import { migrationServiceToken } from "@/application/tokens/application.tokens";
 import { nodeDataServiceToken } from "@/application/tokens/application.tokens";
 import { graphDataServiceToken } from "@/application/tokens/application.tokens";
+import { sheetFacadeToken } from "@/application/tokens/api-facades.tokens";
 import { createNodePageUseCaseToken } from "@/application/tokens/application.tokens";
 import { createGraphPageUseCaseToken } from "@/application/tokens/application.tokens";
 import { addNodeToGraphUseCaseToken } from "@/application/tokens/application.tokens";
@@ -29,6 +30,7 @@ import { removeEdgeUseCaseToken } from "@/application/tokens/application.tokens"
 import { DIMigrationService } from "@/application/services/MigrationService";
 import { DINodeDataService } from "@/application/services/NodeDataService";
 import { DIGraphDataService } from "@/application/services/GraphDataService";
+import { DISheetFacade } from "@/application/services/SheetFacade";
 import { DICreateNodePageUseCase } from "@/application/use-cases/create-node-page.use-case";
 import { DICreateGraphPageUseCase } from "@/application/use-cases/create-graph-page.use-case";
 import { DIAddNodeToGraphUseCase } from "@/application/use-cases/add-node-to-graph.use-case";
@@ -84,6 +86,16 @@ export function registerRelationshipAppServices(container: ServiceContainer): Re
   );
   if (isErr(graphDataServiceResult)) {
     return err(`Failed to register GraphDataService: ${graphDataServiceResult.error.message}`);
+  }
+
+  // Register SheetFacade (singleton) - API entrypoint for Foundry-instantiated sheets
+  const sheetFacadeResult = container.registerClass(
+    sheetFacadeToken,
+    DISheetFacade,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(sheetFacadeResult)) {
+    return err(`Failed to register SheetFacade: ${sheetFacadeResult.error.message}`);
   }
 
   // Register CreateNodePageUseCase (transient - new instance per use)

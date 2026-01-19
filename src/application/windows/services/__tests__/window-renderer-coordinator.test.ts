@@ -5,6 +5,7 @@ import type { IRenderEnginePort } from "@/domain/windows/ports/render-engine-por
 import type { ComponentDescriptor } from "@/domain/windows/types/component-descriptor.interface";
 import type { ComponentInstance } from "@/domain/windows/types/component-instance.interface";
 import type { ViewModel } from "@/domain/windows/types/view-model.interface";
+import type { DomElement } from "@/domain/windows/types/dom.types";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { ok, err } from "@/domain/utils/result";
 
@@ -13,7 +14,7 @@ describe("WindowRendererCoordinator", () => {
   let mockRegistry: IRendererRegistry;
   let mockRenderer: IRenderEnginePort;
   let mockDescriptor: ComponentDescriptor;
-  let mockMountPoint: HTMLElement;
+  let mockMountPoint: DomElement;
   let mockViewModel: ViewModel;
   let mockInstance: ComponentInstance;
 

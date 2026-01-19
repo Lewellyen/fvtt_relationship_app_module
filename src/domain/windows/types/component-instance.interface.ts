@@ -1,4 +1,5 @@
 import type { RenderEngineType } from "./component-descriptor.interface";
+import type { DomElement } from "./dom.types";
 
 /**
  * ComponentInstance - Discriminated Union für engine-spezifische Instances
@@ -15,7 +16,7 @@ export type ComponentInstance =
 export interface BaseComponentInstance {
   readonly id: string;
   readonly type: RenderEngineType;
-  readonly element: HTMLElement;
+  readonly element: DomElement;
   readonly props: Readonly<Record<string, unknown>>;
 }
 

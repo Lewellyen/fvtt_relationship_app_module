@@ -3,13 +3,45 @@
  * Stub implementation for early phases; full logic will be added in later phases.
  */
 
-import type {
-  RelationshipGraphData,
-  RelationshipGraphDataSchema,
-} from "@/domain/types/relationship-graph-data.interface";
+import type { RelationshipGraphData } from "@/domain/types/relationship-graph-data.interface";
 import { RELATIONSHIP_GRAPH_SCHEMA_VERSION } from "@/domain/types/relationship-graph-data.interface";
 
 type RelationshipGraphBaseData = RelationshipGraphData & Record<string, unknown>;
+
+type GraphEdgeField = foundry.data.fields.SchemaField<{
+  id: foundry.data.fields.StringField;
+  source: foundry.data.fields.StringField;
+  target: foundry.data.fields.StringField;
+  knowledge: foundry.data.fields.StringField;
+  label: foundry.data.fields.StringField;
+}>;
+
+type GraphLayoutField = foundry.data.fields.SchemaField<{
+  positions: foundry.data.fields.ObjectField;
+  zoom: foundry.data.fields.NumberField;
+  pan: foundry.data.fields.SchemaField<{
+    x: foundry.data.fields.NumberField;
+    y: foundry.data.fields.NumberField;
+  }>;
+}>;
+
+type GraphLastVersionField = foundry.data.fields.SchemaField<{
+  schemaVersion: foundry.data.fields.NumberField;
+}>;
+
+/**
+ * Foundry DataSchema interface for RelationshipGraphDataModel.
+ *
+ * Kept in Infrastructure to avoid leaking `foundry.*` types into Domain.
+ */
+interface RelationshipGraphDataSchema extends foundry.data.fields.DataSchema {
+  schemaVersion: foundry.data.fields.NumberField;
+  graphKey: foundry.data.fields.StringField;
+  nodeKeys: foundry.data.fields.ArrayField<foundry.data.fields.StringField>;
+  edges: foundry.data.fields.ArrayField<GraphEdgeField>;
+  layout: GraphLayoutField;
+  lastVersion: GraphLastVersionField;
+}
 
 export class RelationshipGraphDataModel extends foundry.abstract.TypeDataModel<
   RelationshipGraphDataSchema,

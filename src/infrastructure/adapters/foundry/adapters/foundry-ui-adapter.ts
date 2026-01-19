@@ -69,6 +69,28 @@ export class FoundryUIAdapter implements PlatformUIPort {
     }
     return ok(undefined);
   }
+
+  async confirm(options: {
+    title: string;
+    message: string;
+    confirmLabel?: string | undefined;
+    cancelLabel?: string | undefined;
+  }): Promise<boolean> {
+    // Prefer Foundry's DialogV2 when available.
+    if (typeof foundry === "undefined" || !foundry.applications?.api?.DialogV2) {
+      // In tests / headless environments, default to "cancel".
+      console.warn("Foundry DialogV2 not available, confirmation cancelled");
+      return false;
+    }
+
+    const result = await foundry.applications.api.DialogV2.confirm({
+      content: options.message,
+      rejectClose: false,
+      modal: true,
+    });
+
+    return result === true;
+  }
 }
 
 /**

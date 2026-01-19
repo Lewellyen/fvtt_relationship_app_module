@@ -36,15 +36,11 @@ import type { ContainerError } from "@/infrastructure/di/interfaces";
 import type { ComponentDescriptor } from "@/domain/windows/types/component-descriptor.interface";
 import type { IWindowState } from "@/domain/windows/types/view-model.interface";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
-import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { PlatformNotificationPort } from "@/domain/ports/platform-notification-port.interface";
 import { SvelteRenderer } from "@/infrastructure/windows/renderers/svelte-renderer";
 import type { SvelteComponentInstance } from "@/domain/windows/types/component-instance.interface";
 import type { ViewModel } from "@/domain/windows/types/view-model.interface";
-import {
-  graphDataServiceToken,
-  nodeDataServiceToken,
-} from "@/application/tokens/application.tokens";
+import type { SheetFacadeContract } from "@/shared/api-contract/sheet-facade.contract";
 
 /**
  * ModuleApi - Lokale Type-Definition für Infrastructure-Layer
@@ -62,8 +58,8 @@ interface ServiceResolutionApi {
   ) => Result<TServiceType, ContainerError>;
   tokens: {
     [key: string]: ApiSafeToken<unknown>;
-    platformContainerPortToken: ApiSafeToken<PlatformContainerPort>;
     platformNotificationPortToken: ApiSafeToken<PlatformNotificationPort>;
+    sheetFacadeToken: ApiSafeToken<SheetFacadeContract>;
   };
 }
 
@@ -166,9 +162,8 @@ export function JournalEntryPageWindowSystemBridgeMixin<
     private isMounted = false;
     // Cache für aktuelle Daten aus Svelte-Komponente (für _updateObject)
     private currentComponentData: Record<string, unknown> | null = null;
-    // Services für Validierung (cached)
-    private cachedNodeDataService: unknown | null = null;
-    private cachedGraphDataService: unknown | null = null;
+    // API-safe Facade (cached)
+    private cachedSheetFacade: SheetFacadeContract | null = null;
     // Event-Listener für Save-Button (wird nur einmal hinzugefügt)
     private saveButtonListener: ((event: MouseEvent) => Promise<void>) | null = null;
     // Cache für ursprünglichen Edit-Modus (um nach Update-Re-Render den Modus beizubehalten)
@@ -236,79 +231,32 @@ export function JournalEntryPageWindowSystemBridgeMixin<
                 return;
               }
 
-              // Prüfe, welcher Service verfügbar ist (Node oder Graph)
-              if (this.cachedNodeDataService) {
-                // Node-Daten speichern über NodeDataService
-                // type-coverage:ignore-next-line -- Service Type Narrowing: cachedNodeDataService is NodeDataService but type is unknown
-                const nodeService = this.cachedNodeDataService as {
-                  saveNodeData: (
-                    pageId: string,
-                    data: unknown
-                  ) => Promise<{ ok: boolean; error?: { message?: string } }>;
-                };
-                const result = await nodeService.saveNodeData(pageId, componentData);
-                if (result.ok) {
-                  // Benachrichtige Komponente über erfolgreiches Speichern
-                  if (this.saveSuccessCallback) {
-                    try {
-                      this.saveSuccessCallback();
-                    } catch (error) {
-                      console.error(
-                        "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
-                        error
-                      );
-                    }
+              const facade =
+                this.cachedSheetFacade ?? this.resolveService(this.api.tokens.sheetFacadeToken);
+              this.cachedSheetFacade = facade;
+
+              const isNodeSheet = windowDefinition.definitionId.includes("node");
+              const result = isNodeSheet
+                ? await facade.saveNodeData(pageId, componentData)
+                : await facade.saveGraphData(pageId, componentData);
+
+              if (result.ok) {
+                // Benachrichtige Komponente über erfolgreiches Speichern
+                if (this.saveSuccessCallback) {
+                  try {
+                    this.saveSuccessCallback();
+                  } catch (error) {
+                    console.error(
+                      "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
+                      error
+                    );
                   }
-                } else {
-                  console.error(
-                    "[JournalEntryPageWindowSystemBridgeMixin] Failed to save node data via service:",
-                    result.error
-                  );
-                }
-              } else if (this.cachedGraphDataService) {
-                // Graph-Daten speichern über GraphDataService
-                // type-coverage:ignore-next-line -- Service Type Narrowing: cachedGraphDataService is GraphDataService but type is unknown
-                const graphService = this.cachedGraphDataService as {
-                  saveGraphData: (
-                    pageId: string,
-                    data: unknown
-                  ) => Promise<{ ok: boolean; error?: { message?: string } }>;
-                };
-                const result = await graphService.saveGraphData(pageId, componentData);
-                if (result.ok) {
-                  // Benachrichtige Komponente über erfolgreiches Speichern
-                  if (this.saveSuccessCallback) {
-                    try {
-                      this.saveSuccessCallback();
-                    } catch (error) {
-                      console.error(
-                        "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
-                        error
-                      );
-                    }
-                  }
-                } else {
-                  console.error(
-                    "[JournalEntryPageWindowSystemBridgeMixin] Failed to save graph data via service:",
-                    result.error
-                  );
                 }
               } else {
-                // Fallback: Direkt document.update() (sollte nicht vorkommen, aber als Sicherheit)
-                console.warn(
-                  "[JournalEntryPageWindowSystemBridgeMixin] No service available, using direct document.update() as fallback"
+                console.error(
+                  "[JournalEntryPageWindowSystemBridgeMixin] Failed to save data via SheetFacade:",
+                  result.error
                 );
-                const updateData: Record<string, unknown> = {
-                  system: componentData,
-                };
-                try {
-                  await this.document.update(updateData);
-                } catch (error) {
-                  console.error(
-                    "[JournalEntryPageWindowSystemBridgeMixin] Failed to update document:",
-                    error
-                  );
-                }
               }
             };
             saveButton.addEventListener("click", this.saveButtonListener);
@@ -330,34 +278,16 @@ export function JournalEntryPageWindowSystemBridgeMixin<
         this.svelteRenderer = new SvelteRenderer();
       }
 
-      // 5. Services über Public API auflösen (für beide Sheet-Typen)
-      let graphDataService: unknown = null;
-      let nodeDataService: unknown = null;
+      // 5. Services über Public API auflösen (API-safe Facades)
+      let sheetFacade: SheetFacadeContract | null = null;
       let notificationCenter: PlatformNotificationPort | null = null;
 
       // Sheets werden von Foundry instanziiert → Zugriff erfolgt wie bei Drittmodulen über die Public API.
-      // Wichtig: Interne Services (Node/GraphDataService) sind NICHT API-safe Tokens und werden daher
-      // über den PlatformContainerPort mit resolveWithError() bezogen (Result-Pattern).
-      const containerPort = this.resolveService(this.api.tokens.platformContainerPortToken);
-
       try {
-        const graphResult = containerPort.resolveWithError<unknown>(graphDataServiceToken);
-        if (graphResult.ok) {
-          graphDataService = graphResult.value;
-          this.cachedGraphDataService = graphDataService;
-        }
-      } catch {
-        // optional
-      }
-
-      try {
-        const nodeResult = containerPort.resolveWithError<unknown>(nodeDataServiceToken);
-        if (nodeResult.ok) {
-          nodeDataService = nodeResult.value;
-          this.cachedNodeDataService = nodeDataService;
-        }
-      } catch {
-        // optional
+        sheetFacade = this.resolveService(this.api.tokens.sheetFacadeToken);
+        this.cachedSheetFacade = sheetFacade;
+      } catch (error) {
+        console.warn("Failed to resolve sheetFacade:", error);
       }
 
       try {
@@ -385,8 +315,11 @@ export function JournalEntryPageWindowSystemBridgeMixin<
       // Services als zusätzliche Props hinzufügen (nicht Teil des ViewModel-Interfaces, aber als Props verfügbar)
       // type-coverage:ignore-next-line -- ViewModel Extension: Adding dynamic service props to ViewModel
       const viewModelWithServices = viewModel as unknown as ViewModel & Record<string, unknown>;
-      viewModelWithServices.graphDataService = graphDataService;
-      viewModelWithServices.nodeDataService = nodeDataService;
+      // Backwards-compatible props expected by existing Svelte sheets:
+      // - GraphSheetView expects `graphDataService` methods
+      // - NodeSheetView expects `nodeDataService` methods
+      viewModelWithServices.graphDataService = sheetFacade;
+      viewModelWithServices.nodeDataService = sheetFacade;
       viewModelWithServices.notificationCenter = notificationCenter;
 
       // View/Edit-Modus erkennen basierend auf gerendertem Template
@@ -511,79 +444,32 @@ export function JournalEntryPageWindowSystemBridgeMixin<
               return;
             }
 
-            // Prüfe, welcher Service verfügbar ist (Node oder Graph)
-            if (this.cachedNodeDataService) {
-              // Node-Daten speichern über NodeDataService
-              // type-coverage:ignore-next-line -- Service Type Narrowing: cachedNodeDataService is NodeDataService but type is unknown
-              const nodeService = this.cachedNodeDataService as {
-                saveNodeData: (
-                  pageId: string,
-                  data: unknown
-                ) => Promise<{ ok: boolean; error?: { message?: string } }>;
-              };
-              const result = await nodeService.saveNodeData(pageId, componentData);
-              if (result.ok) {
-                // Benachrichtige Komponente über erfolgreiches Speichern
-                if (this.saveSuccessCallback) {
-                  try {
-                    this.saveSuccessCallback();
-                  } catch (error) {
-                    console.error(
-                      "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
-                      error
-                    );
-                  }
+            const facade =
+              this.cachedSheetFacade ?? this.resolveService(this.api.tokens.sheetFacadeToken);
+            this.cachedSheetFacade = facade;
+
+            const isNodeSheet = windowDefinition.definitionId.includes("node");
+            const result = isNodeSheet
+              ? await facade.saveNodeData(pageId, componentData)
+              : await facade.saveGraphData(pageId, componentData);
+
+            if (result.ok) {
+              // Benachrichtige Komponente über erfolgreiches Speichern
+              if (this.saveSuccessCallback) {
+                try {
+                  this.saveSuccessCallback();
+                } catch (error) {
+                  console.error(
+                    "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
+                    error
+                  );
                 }
-              } else {
-                console.error(
-                  "[JournalEntryPageWindowSystemBridgeMixin] Failed to save node data via service:",
-                  result.error
-                );
-              }
-            } else if (this.cachedGraphDataService) {
-              // Graph-Daten speichern über GraphDataService
-              // type-coverage:ignore-next-line -- Service Type Narrowing: cachedGraphDataService is GraphDataService but type is unknown
-              const graphService = this.cachedGraphDataService as {
-                saveGraphData: (
-                  pageId: string,
-                  data: unknown
-                ) => Promise<{ ok: boolean; error?: { message?: string } }>;
-              };
-              const result = await graphService.saveGraphData(pageId, componentData);
-              if (result.ok) {
-                // Benachrichtige Komponente über erfolgreiches Speichern
-                if (this.saveSuccessCallback) {
-                  try {
-                    this.saveSuccessCallback();
-                  } catch (error) {
-                    console.error(
-                      "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
-                      error
-                    );
-                  }
-                }
-              } else {
-                console.error(
-                  "[JournalEntryPageWindowSystemBridgeMixin] Failed to save graph data via service:",
-                  result.error
-                );
               }
             } else {
-              // Fallback: Direkt document.update() (sollte nicht vorkommen, aber als Sicherheit)
-              console.warn(
-                "[JournalEntryPageWindowSystemBridgeMixin] No service available, using direct document.update() as fallback"
+              console.error(
+                "[JournalEntryPageWindowSystemBridgeMixin] Failed to save data via SheetFacade:",
+                result.error
               );
-              const updateData: Record<string, unknown> = {
-                system: componentData,
-              };
-              try {
-                await this.document.update(updateData);
-              } catch (error) {
-                console.error(
-                  "[JournalEntryPageWindowSystemBridgeMixin] Failed to update document:",
-                  error
-                );
-              }
             }
           };
           saveButton.addEventListener("click", this.saveButtonListener);
@@ -631,18 +517,16 @@ export function JournalEntryPageWindowSystemBridgeMixin<
           return;
         }
 
-        // Verwende NodeDataService oder GraphDataService statt direkt document.update()
-        // Das folgt der Clean Architecture und nutzt den Repository-Service
-        if (this.cachedNodeDataService) {
-          // Node-Daten speichern über NodeDataService
-          // type-coverage:ignore-next-line -- Service Type Narrowing: cachedNodeDataService is NodeDataService but type is unknown
-          const nodeService = this.cachedNodeDataService as {
-            saveNodeData: (
-              pageId: string,
-              data: unknown
-            ) => Promise<{ ok: boolean; error?: { message?: string } }>;
-          };
-          const result = await nodeService.saveNodeData(pageId, componentData);
+        try {
+          const facade =
+            this.cachedSheetFacade ?? this.resolveService(this.api.tokens.sheetFacadeToken);
+          this.cachedSheetFacade = facade;
+
+          const isNodeSheet = windowDefinition.definitionId.includes("node");
+          const result = isNodeSheet
+            ? await facade.saveNodeData(pageId, componentData)
+            : await facade.saveGraphData(pageId, componentData);
+
           if (result.ok) {
             // Benachrichtige Komponente über erfolgreiches Speichern
             if (this.saveSuccessCallback) {
@@ -657,55 +541,19 @@ export function JournalEntryPageWindowSystemBridgeMixin<
             }
           } else {
             console.error(
-              "[JournalEntryPageWindowSystemBridgeMixin] Failed to save node data via service:",
+              "[JournalEntryPageWindowSystemBridgeMixin] Failed to save data via SheetFacade:",
               result.error
             );
           }
           return; // Service hat gespeichert, kein weiteres Update nötig
-        } else if (this.cachedGraphDataService) {
-          // Graph-Daten speichern über GraphDataService
-          // type-coverage:ignore-next-line -- Service Type Narrowing: cachedGraphDataService is GraphDataService but type is unknown
-          const graphService = this.cachedGraphDataService as {
-            saveGraphData: (
-              pageId: string,
-              data: unknown
-            ) => Promise<{ ok: boolean; error?: { message?: string } }>;
-          };
-          const result = await graphService.saveGraphData(pageId, componentData);
-          if (result.ok) {
-            // Benachrichtige Komponente über erfolgreiches Speichern
-            if (this.saveSuccessCallback) {
-              try {
-                this.saveSuccessCallback();
-              } catch (error) {
-                console.error(
-                  "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
-                  error
-                );
-              }
-            }
-          } else {
-            console.error(
-              "[JournalEntryPageWindowSystemBridgeMixin] Failed to save graph data via service:",
-              result.error
-            );
-          }
-          return; // Service hat gespeichert, kein weiteres Update nötig
-        } else {
-          // Fallback: Direkt document.update() (sollte nicht vorkommen)
+        } catch (error) {
+          // Fallback: Direkt document.update() (nur als Sicherheit)
           console.warn(
-            "[JournalEntryPageWindowSystemBridgeMixin] No service available, using direct document.update() as fallback"
+            "[JournalEntryPageWindowSystemBridgeMixin] SheetFacade not available, using direct document.update() as fallback",
+            error
           );
           updateData.system = componentData;
-          try {
-            await this.document.update(updateData);
-          } catch (error) {
-            console.error(
-              "[JournalEntryPageWindowSystemBridgeMixin] Failed to update document:",
-              error
-            );
-            throw error;
-          }
+          await this.document.update(updateData);
           return;
         }
       }

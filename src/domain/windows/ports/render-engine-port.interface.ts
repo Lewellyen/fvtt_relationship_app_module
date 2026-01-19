@@ -3,6 +3,7 @@ import type { RenderError } from "../types/errors/render-error.interface";
 import type { ComponentDescriptor } from "../types/component-descriptor.interface";
 import type { ComponentInstance } from "../types/component-instance.interface";
 import type { ViewModel } from "../types/view-model.interface";
+import type { DomElement } from "../types/dom.types";
 
 /**
  * IRenderEnginePort - Abstraktion für Render-Engine (engine-agnostisch)
@@ -20,7 +21,7 @@ export interface IRenderEnginePort<TInstance extends ComponentInstance = Compone
    */
   mount(
     descriptor: ComponentDescriptor,
-    target: HTMLElement,
+    target: DomElement,
     viewModel: ViewModel
   ): Result<TInstance, RenderError>;
 

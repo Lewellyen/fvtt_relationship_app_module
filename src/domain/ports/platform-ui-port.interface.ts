@@ -16,5 +16,18 @@ import type { PlatformUINotificationPort } from "./platform-ui-notification-port
  * - Roll20: Roll20UIAdapter
  * - CSV/Headless: NoOpUIAdapter
  */
-export interface PlatformUIPort
-  extends PlatformJournalDirectoryUiPort, PlatformUINotificationPort {}
+export interface PlatformUIPort extends PlatformJournalDirectoryUiPort, PlatformUINotificationPort {
+  /**
+   * Requests a user confirmation.
+   *
+   * Platform mappings:
+   * - Foundry: DialogV2.confirm()
+   * - Headless/Tests: can return false or a preconfigured value
+   */
+  confirm(options: {
+    title: string;
+    message: string;
+    confirmLabel?: string | undefined;
+    cancelLabel?: string | undefined;
+  }): Promise<boolean>;
+}

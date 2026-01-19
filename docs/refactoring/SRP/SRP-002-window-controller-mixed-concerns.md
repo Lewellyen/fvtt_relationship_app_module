@@ -4,6 +4,9 @@ prinzip: SRP
 schweregrad: hoch
 layer: application
 status: Proposed
+reviewed: 2026-01-19
+relevance: still-relevant
+notes: `src/application/windows/services/window-controller.ts` still contains journal-overview special-casing + container-based service resolution.
 ---
 
 # 1. Problem

@@ -3,12 +3,15 @@ import { ActionDispatcher } from "../action-dispatcher";
 import type { IWindowRegistry } from "@/domain/windows/ports/window-registry-port.interface";
 import type { WindowDefinition } from "@/domain/windows/types/window-definition.interface";
 import type { WindowInstance } from "@/domain/windows/types/window-handle.interface";
+import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
+import type { DomEvent } from "@/domain/windows/types/dom.types";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
 import { ok, err } from "@/domain/utils/result";
 
 describe("ActionDispatcher", () => {
   let dispatcher: ActionDispatcher;
   let mockRegistry: IWindowRegistry;
+  let mockUi: PlatformUIPort;
 
   beforeEach(() => {
     mockRegistry = {
@@ -21,7 +24,8 @@ describe("ActionDispatcher", () => {
       listInstancesByDefinition: vi.fn(),
     } as unknown as IWindowRegistry;
 
-    dispatcher = new ActionDispatcher(mockRegistry);
+    mockUi = { confirm: vi.fn().mockResolvedValue(true) } as unknown as PlatformUIPort;
+    dispatcher = new ActionDispatcher(mockRegistry, mockUi);
 
     // Mock game global
     (globalThis as { game?: { user?: { id: string; isGM: boolean; role: number } } }).game = {
@@ -35,7 +39,6 @@ describe("ActionDispatcher", () => {
 
   afterEach(() => {
     delete (globalThis as { game?: unknown }).game;
-    delete (globalThis as { foundry?: unknown }).foundry;
     vi.clearAllMocks();
   });
 
@@ -69,7 +72,7 @@ describe("ActionDispatcher", () => {
         windowInstanceId: "instance-1",
         controlId: "control-1",
         state: {},
-        event: new Event("click"),
+        event: { type: "click" } satisfies DomEvent,
       });
 
       expectResultOk(result);
@@ -617,24 +620,7 @@ describe("ActionDispatcher", () => {
         ],
       };
 
-      // Mock Foundry DialogV2
-      (
-        globalThis as {
-          foundry?: {
-            applications?: {
-              api?: { DialogV2?: { confirm: (options: unknown) => Promise<boolean> } };
-            };
-          };
-        }
-      ).foundry = {
-        applications: {
-          api: {
-            DialogV2: {
-              confirm: vi.fn().mockResolvedValue(true),
-            },
-          },
-        },
-      };
+      vi.mocked(mockUi.confirm).mockResolvedValue(true);
 
       vi.mocked(mockRegistry.getInstance).mockReturnValue(ok(mockInstance));
       vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
@@ -675,24 +661,7 @@ describe("ActionDispatcher", () => {
         ],
       };
 
-      // Mock Foundry DialogV2 to return false (cancelled)
-      (
-        globalThis as {
-          foundry?: {
-            applications?: {
-              api?: { DialogV2?: { confirm: (options: unknown) => Promise<boolean> } };
-            };
-          };
-        }
-      ).foundry = {
-        applications: {
-          api: {
-            DialogV2: {
-              confirm: vi.fn().mockResolvedValue(false),
-            },
-          },
-        },
-      };
+      vi.mocked(mockUi.confirm).mockResolvedValue(false);
 
       vi.mocked(mockRegistry.getInstance).mockReturnValue(ok(mockInstance));
       vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));
@@ -708,7 +677,7 @@ describe("ActionDispatcher", () => {
       expect(mockDefinition.actions?.[0]?.handler).not.toHaveBeenCalled();
     });
 
-    it("should return error if confirmation is cancelled when DialogV2 not available", async () => {
+    it("should return error if confirmation is cancelled when UI confirmation returns false", async () => {
       const mockInstance: WindowInstance = {
         instanceId: "instance-1",
         definitionId: "test-window",
@@ -734,8 +703,7 @@ describe("ActionDispatcher", () => {
         ],
       };
 
-      // DialogV2 not available
-      delete (globalThis as { foundry?: unknown }).foundry;
+      vi.mocked(mockUi.confirm).mockResolvedValue(false);
 
       vi.mocked(mockRegistry.getInstance).mockReturnValue(ok(mockInstance));
       vi.mocked(mockRegistry.getDefinition).mockReturnValue(ok(mockDefinition));

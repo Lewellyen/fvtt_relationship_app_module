@@ -16,8 +16,22 @@ import type { IWindowState } from "@/domain/windows/types/view-model.interface";
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { JournalOverviewService } from "@/application/services/JournalOverviewService";
-import { platformJournalEventPortToken } from "@/application/tokens/domain-ports.tokens";
-import { journalOverviewServiceToken } from "@/application/tokens/application.tokens";
+import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
+import type { CacheInvalidationPort } from "@/domain/ports/cache/cache-invalidation-port.interface";
+import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
+import type { JournalDirectoryRerenderScheduler } from "@/application/services/JournalDirectoryRerenderScheduler";
+import {
+  cacheInvalidationPortToken,
+  notificationPublisherPortToken,
+  platformJournalEventPortToken,
+  platformJournalRepositoryToken,
+  platformUIPortToken,
+} from "@/application/tokens/domain-ports.tokens";
+import {
+  journalDirectoryRerenderSchedulerToken,
+  journalOverviewServiceToken,
+} from "@/application/tokens/application.tokens";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { expectResultOk, expectResultErr } from "@/test/utils/test-helpers";
@@ -604,7 +618,7 @@ describe("WindowController", () => {
     });
 
     it("should dispatch action with event", async () => {
-      const event = new Event("click");
+      const event = { type: "click" };
       const result = await controller.dispatchAction("test-action", undefined, event);
 
       expectResultOk(result);
@@ -2104,6 +2118,148 @@ describe("WindowController", () => {
       if (callArgs && callArgs[1]) {
         expect(callArgs[1].metadata).not.toHaveProperty("container");
       }
+    });
+
+    it("should inject journal-overview dependencies into metadata", async () => {
+      const mockJournalOverviewService: JournalOverviewService = {
+        getAllJournalsWithVisibilityStatus: vi.fn(),
+      } as unknown as JournalOverviewService;
+
+      const mockRepo: PlatformJournalRepository = {
+        setFlag: vi.fn(),
+      } as unknown as PlatformJournalRepository;
+
+      const mockCache: CacheInvalidationPort = {
+        invalidateWhere: vi.fn(),
+      } as unknown as CacheInvalidationPort;
+
+      const mockScheduler: JournalDirectoryRerenderScheduler = {
+        requestRerender: vi.fn(),
+      } as unknown as JournalDirectoryRerenderScheduler;
+
+      const mockUI: PlatformUIPort = {
+        notify: vi.fn(),
+        confirm: vi.fn(),
+      } as unknown as PlatformUIPort;
+
+      const mockNotifications: NotificationPublisherPort = {
+        warn: vi.fn(),
+      } as unknown as NotificationPublisherPort;
+
+      const mockContainer: PlatformContainerPort = {
+        resolveWithError: vi.fn((token: symbol) => {
+          if (token === journalOverviewServiceToken) return ok(mockJournalOverviewService);
+          if (token === platformJournalRepositoryToken) return ok(mockRepo);
+          if (token === cacheInvalidationPortToken) return ok(mockCache);
+          if (token === journalDirectoryRerenderSchedulerToken) return ok(mockScheduler);
+          if (token === platformUIPortToken) return ok(mockUI);
+          if (token === notificationPublisherPortToken) return ok(mockNotifications);
+          return err({
+            code: "TokenNotRegistered",
+            message: "Token not found",
+            tokenDescription: String(token),
+          });
+        }),
+        resolve: vi.fn(),
+        getValidationState: vi.fn(),
+        isRegistered: vi.fn(),
+      } as unknown as PlatformContainerPort;
+
+      const definition: WindowDefinition = { ...mockDefinition, definitionId: "journal-overview" };
+      const controllerWithContainer = new WindowController(
+        "instance-1",
+        "journal-overview",
+        definition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator,
+        mockContainer
+      );
+
+      const result = await controllerWithContainer.dispatchAction("test-action");
+      expectResultOk(result);
+
+      const callArgs = vi.mocked(mockActionDispatcher.dispatch).mock.calls.at(-1);
+      expect(callArgs).toBeDefined();
+      if (!callArgs) return;
+      const [, ctx] = callArgs;
+      expect(ctx.metadata).toMatchObject({
+        controller: controllerWithContainer,
+        container: mockContainer,
+        journalOverviewService: mockJournalOverviewService,
+        platformJournalRepository: mockRepo,
+        cacheInvalidationPort: mockCache,
+        journalDirectoryRerenderScheduler: mockScheduler,
+        platformUI: mockUI,
+        notificationPublisher: mockNotifications,
+      });
+
+      // Second call should use cached deps (no additional resolveWithError calls)
+      const result2 = await controllerWithContainer.dispatchAction("test-action");
+      expectResultOk(result2);
+      expect(vi.mocked(mockContainer.resolveWithError)).toHaveBeenCalledTimes(6);
+    });
+
+    it("should not inject journal-overview deps when resolution fails", async () => {
+      const mockContainer: PlatformContainerPort = {
+        resolveWithError: vi.fn((_token: symbol) =>
+          err({
+            code: "TokenNotRegistered",
+            message: "Token not found",
+            tokenDescription: "x",
+          })
+        ),
+        resolve: vi.fn(),
+        getValidationState: vi.fn(),
+        isRegistered: vi.fn(),
+      } as unknown as PlatformContainerPort;
+
+      const definition: WindowDefinition = { ...mockDefinition, definitionId: "journal-overview" };
+      const controllerWithContainer = new WindowController(
+        "instance-1",
+        "journal-overview",
+        definition,
+        mockRegistry,
+        mockStateStore,
+        mockStatePortFactory,
+        mockActionDispatcher,
+
+        mockBindingEngine,
+        mockViewModelBuilder,
+        mockEventBus,
+        mockRemoteSyncGate,
+        mockStateInitializer,
+        mockRendererCoordinator,
+        mockPersistenceCoordinator,
+        mockContainer
+      );
+
+      const result = await controllerWithContainer.dispatchAction("test-action");
+      expectResultOk(result);
+
+      const callArgs = vi.mocked(mockActionDispatcher.dispatch).mock.calls.at(-1);
+      expect(callArgs).toBeDefined();
+      if (!callArgs) return;
+      const [, ctx] = callArgs;
+      expect(ctx.metadata).toMatchObject({
+        controller: controllerWithContainer,
+        container: mockContainer,
+      });
+      expect(ctx.metadata).not.toHaveProperty("journalOverviewService");
+      expect(ctx.metadata).not.toHaveProperty("platformJournalRepository");
+      expect(ctx.metadata).not.toHaveProperty("cacheInvalidationPort");
+      expect(ctx.metadata).not.toHaveProperty("journalDirectoryRerenderScheduler");
+      expect(ctx.metadata).not.toHaveProperty("platformUI");
+      expect(ctx.metadata).not.toHaveProperty("notificationPublisher");
     });
   });
 

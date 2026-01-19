@@ -200,6 +200,6 @@ export function extractPersistMeta(
  */
 export function castSvelteComponent<
   TProps extends Record<string, unknown> = Record<string, unknown>,
->(component: unknown): import("svelte").Component<TProps> | null {
+>(component: unknown): ((props: TProps) => unknown) | null {
   return castSvelteComponentFromServiceCasts<TProps>(component);
 }

@@ -37,13 +37,13 @@ class StubHandler implements TranslationHandler {
 
 describe("TranslationHandlerChain", () => {
   it("should wire handlers in constructor and delegate handle/has calls", () => {
-    const foundry = new StubHandler(null, false);
+    const head = new StubHandler(null, false);
     const local = new StubHandler("local-result", true);
     const fallback = new StubHandler("fallback-result", false);
 
-    const chain = new TranslationHandlerChain([foundry, local, fallback]);
+    const chain = new TranslationHandlerChain([head, local, fallback]);
 
-    expect(foundry.next).toBe(local);
+    expect(head.next).toBe(local);
     expect(local.next).toBe(fallback);
     expect(fallback.next).toBeNull();
 
@@ -61,16 +61,16 @@ describe("TranslationHandlerChain", () => {
   });
 
   it("should forward setNext to head handler", () => {
-    const foundry = new StubHandler();
+    const head = new StubHandler();
     const local = new StubHandler();
     const fallback = new StubHandler();
-    const chain = new TranslationHandlerChain([foundry, local, fallback]);
+    const chain = new TranslationHandlerChain([head, local, fallback]);
 
     const custom = new StubHandler("custom");
     const returned = chain.setNext(custom);
 
     expect(returned).toBe(custom);
-    expect(foundry.next).toBe(custom);
+    expect(head.next).toBe(custom);
   });
 
   it("should throw error when handlers array is empty", () => {
@@ -80,11 +80,11 @@ describe("TranslationHandlerChain", () => {
   });
 
   it("DITranslationHandlerChain should behave identically", () => {
-    const foundry = new StubHandler(null, false);
+    const head = new StubHandler(null, false);
     const local = new StubHandler(null, false);
     const fallback = new StubHandler("fallback", true);
 
-    const chain = new DITranslationHandlerChain([foundry, local, fallback]);
+    const chain = new DITranslationHandlerChain([head, local, fallback]);
 
     const handleResult = chain.handle("key");
     expect(handleResult.ok).toBe(true);

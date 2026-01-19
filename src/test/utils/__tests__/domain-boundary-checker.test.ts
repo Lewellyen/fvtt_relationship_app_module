@@ -200,12 +200,12 @@ describe("Domain Boundary Checker", () => {
   });
 
   describe("validateAllDomainBoundaries", () => {
-    it("should validate all domain boundaries without violations", async () => {
+    it("should validate all architecture boundaries without violations", async () => {
       const { violations } = await validateAllDomainBoundaries();
 
       if (violations.length > 0) {
         // Verwende console.log statt console.error, damit es in CI-Logs besser sichtbar ist
-        console.log("\n❌ Domain boundary violations found:");
+        console.log("\n❌ Architecture boundary violations found:");
         console.log(`Total violations: ${violations.length}\n`);
 
         violations.forEach((v, index) => {
@@ -217,7 +217,7 @@ describe("Domain Boundary Checker", () => {
         });
 
         // Zusätzlich als Error ausgeben für bessere Sichtbarkeit in CI
-        console.error("\n❌ Domain boundary violations found:");
+        console.error("\n❌ Architecture boundary violations found:");
         violations.forEach((v) => {
           console.error(`  ${v.file}: ${v.message}`);
           console.error(`    Import: ${v.import}`);
@@ -233,7 +233,7 @@ describe("Domain Boundary Checker", () => {
           .join("\n\n");
 
         throw new Error(
-          `Found ${violations.length} domain boundary violation(s):\n\n${violationDetails}`
+          `Found ${violations.length} architecture boundary violation(s):\n\n${violationDetails}`
         );
       }
 

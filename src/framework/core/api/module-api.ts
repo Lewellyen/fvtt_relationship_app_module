@@ -24,6 +24,7 @@ import type { PlatformHtmlUtilsPort } from "@/domain/ports/utils/platform-html-u
 import type { PlatformAsyncUtilsPort } from "@/domain/ports/utils/platform-async-utils-port.interface";
 import type { Result } from "@/domain/types/result";
 import type { HealthStatus } from "@/domain/types/health-status";
+import type { SheetFacadeContract } from "@/shared/api-contract/sheet-facade.contract";
 
 /**
  * Information about a registered service token.
@@ -79,6 +80,7 @@ export interface ModuleApiTokens {
   platformObjectUtilsPortToken: ApiSafeToken<PlatformObjectUtilsPort>;
   platformHtmlUtilsPortToken: ApiSafeToken<PlatformHtmlUtilsPort>;
   platformAsyncUtilsPortToken: ApiSafeToken<PlatformAsyncUtilsPort>;
+  sheetFacadeToken: ApiSafeToken<SheetFacadeContract>;
 }
 
 /**

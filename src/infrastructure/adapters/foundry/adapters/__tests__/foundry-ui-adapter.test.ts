@@ -136,4 +136,46 @@ describe("FoundryUIAdapter", () => {
       expect(result.error.message).toBe("UI not available");
     });
   });
+
+  describe("confirm", () => {
+    it("should return false when DialogV2 is not available", async () => {
+      delete (globalThis as Record<string, unknown>)["foundry"];
+
+      const result = await adapter.confirm({ title: "t", message: "m" });
+
+      expect(result).toBe(false);
+    });
+
+    it("should return true when DialogV2 confirms", async () => {
+      (globalThis as Record<string, unknown>)["foundry"] = {
+        applications: {
+          api: {
+            DialogV2: {
+              confirm: vi.fn().mockResolvedValue(true),
+            },
+          },
+        },
+      };
+
+      const result = await adapter.confirm({ title: "t", message: "m" });
+
+      expect(result).toBe(true);
+    });
+
+    it("should return false when DialogV2 cancels", async () => {
+      (globalThis as Record<string, unknown>)["foundry"] = {
+        applications: {
+          api: {
+            DialogV2: {
+              confirm: vi.fn().mockResolvedValue(false),
+            },
+          },
+        },
+      };
+
+      const result = await adapter.confirm({ title: "t", message: "m" });
+
+      expect(result).toBe(false);
+    });
+  });
 });

@@ -3,6 +3,7 @@ import type { WindowError } from "../types/errors/window-error.interface";
 import type { WindowDefinition } from "../types/window-definition.interface";
 import type { ViewModel } from "../types/view-model.interface";
 import type { PersistMeta } from "../types/persist-config.interface";
+import type { DomElement, DomEvent } from "../types/dom.types";
 
 /**
  * IWindowController - Kernstück des Window-Frameworks
@@ -22,7 +23,7 @@ export interface IWindowController {
    * @param element - Gerendertes Foundry-Element
    * @returns Result
    */
-  onFoundryRender(element: HTMLElement): Promise<Result<void, WindowError>>;
+  onFoundryRender(element: DomElement): Promise<Result<void, WindowError>>;
 
   /**
    * Wird von FoundryApplicationWrapper bei render() aufgerufen (bei weiteren Renders).
@@ -30,7 +31,7 @@ export interface IWindowController {
    * @param element - Gerendertes Foundry-Element
    * @returns Result
    */
-  onFoundryUpdate(element: HTMLElement): Promise<Result<void, WindowError>>;
+  onFoundryUpdate(element: DomElement): Promise<Result<void, WindowError>>;
 
   /**
    * Wird von FoundryApplicationWrapper bei close() aufgerufen.
@@ -78,7 +79,7 @@ export interface IWindowController {
   dispatchAction(
     actionId: string,
     controlId?: string,
-    event?: Event
+    event?: DomEvent
   ): Promise<Result<void, WindowError>>;
 
   /**

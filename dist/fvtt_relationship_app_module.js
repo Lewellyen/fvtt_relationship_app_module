@@ -10516,6 +10516,18 @@ const _FoundryUIAdapter = class _FoundryUIAdapter {
     }
     return ok(void 0);
   }
+  async confirm(options2) {
+    if (typeof foundry === "undefined" || !foundry.applications?.api?.DialogV2) {
+      console.warn("Foundry DialogV2 not available, confirmation cancelled");
+      return false;
+    }
+    const result = await foundry.applications.api.DialogV2.confirm({
+      content: options2.message,
+      rejectClose: false,
+      modal: true
+    });
+    return result === true;
+  }
 };
 __name(_FoundryUIAdapter, "FoundryUIAdapter");
 let FoundryUIAdapter = _FoundryUIAdapter;
@@ -13246,6 +13258,7 @@ const _DIModuleHealthService = class _DIModuleHealthService extends ModuleHealth
 __name(_DIModuleHealthService, "DIModuleHealthService");
 _DIModuleHealthService.dependencies = [healthCheckRegistryToken];
 let DIModuleHealthService = _DIModuleHealthService;
+const sheetFacadeToken = createUnsafeInjectionToken("SheetFacade");
 function createApiTokens() {
   return {
     platformContainerPortToken: markAsApiSafe(platformContainerPortToken),
@@ -13266,7 +13279,8 @@ function createApiTokens() {
     platformUuidUtilsPortToken: markAsApiSafe(platformUuidUtilsPortToken),
     platformObjectUtilsPortToken: markAsApiSafe(platformObjectUtilsPortToken),
     platformHtmlUtilsPortToken: markAsApiSafe(platformHtmlUtilsPortToken),
-    platformAsyncUtilsPortToken: markAsApiSafe(platformAsyncUtilsPortToken)
+    platformAsyncUtilsPortToken: markAsApiSafe(platformAsyncUtilsPortToken),
+    sheetFacadeToken: markAsApiSafe(sheetFacadeToken)
   };
 }
 __name(createApiTokens, "createApiTokens");
@@ -13323,7 +13337,8 @@ const _ModuleApiBuilder = class _ModuleApiBuilder {
           ["platformUuidUtilsPortToken", platformUuidUtilsPortToken],
           ["platformObjectUtilsPortToken", platformObjectUtilsPortToken],
           ["platformHtmlUtilsPortToken", platformHtmlUtilsPortToken],
-          ["platformAsyncUtilsPortToken", platformAsyncUtilsPortToken]
+          ["platformAsyncUtilsPortToken", platformAsyncUtilsPortToken],
+          ["sheetFacadeToken", sheetFacadeToken]
         ];
         for (const [, token] of tokenEntries) {
           const isRegisteredResult = container2.isRegistered(token);
@@ -27408,6 +27423,9 @@ function castSvelteComponent(component3) {
 }
 __name(castSvelteComponent, "castSvelteComponent");
 const _SvelteRenderer = class _SvelteRenderer {
+  isSvelteMountComponent(value2) {
+    return typeof value2 === "function";
+  }
   mount(descriptor, target, viewModel) {
     if (descriptor.type !== "svelte") {
       return err({
@@ -27417,10 +27435,16 @@ const _SvelteRenderer = class _SvelteRenderer {
     }
     try {
       const component3 = castSvelteComponent(descriptor.component);
-      if (!component3) {
+      if (!component3 || !this.isSvelteMountComponent(component3)) {
         return err({
           code: "InvalidType",
           message: "Component descriptor does not contain a valid Svelte component function"
+        });
+      }
+      if (!(target instanceof HTMLElement)) {
+        return err({
+          code: "InvalidTarget",
+          message: "Mount target is not a valid HTMLElement"
         });
       }
       const props = {
@@ -27507,8 +27531,7 @@ function JournalEntryPageWindowSystemBridgeMixin(BaseSheet, windowDefinition, mo
       this.componentInstance = null;
       this.isMounted = false;
       this.currentComponentData = null;
-      this.cachedNodeDataService = null;
-      this.cachedGraphDataService = null;
+      this.cachedSheetFacade = null;
       this.saveButtonListener = null;
       this.cachedIsEditMode = null;
       this.saveSuccessCallback = null;
@@ -27574,61 +27597,26 @@ function JournalEntryPageWindowSystemBridgeMixin(BaseSheet, windowDefinition, mo
                 );
                 return;
               }
-              if (this.cachedNodeDataService) {
-                const nodeService = this.cachedNodeDataService;
-                const result = await nodeService.saveNodeData(pageId, componentData);
-                if (result.ok) {
-                  if (this.saveSuccessCallback) {
-                    try {
-                      this.saveSuccessCallback();
-                    } catch (error3) {
-                      console.error(
-                        "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
-                        error3
-                      );
-                    }
+              const facade = this.cachedSheetFacade ?? this.resolveService(this.api.tokens.sheetFacadeToken);
+              this.cachedSheetFacade = facade;
+              const isNodeSheet = windowDefinition.definitionId.includes("node");
+              const result = isNodeSheet ? await facade.saveNodeData(pageId, componentData) : await facade.saveGraphData(pageId, componentData);
+              if (result.ok) {
+                if (this.saveSuccessCallback) {
+                  try {
+                    this.saveSuccessCallback();
+                  } catch (error3) {
+                    console.error(
+                      "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
+                      error3
+                    );
                   }
-                } else {
-                  console.error(
-                    "[JournalEntryPageWindowSystemBridgeMixin] Failed to save node data via service:",
-                    result.error
-                  );
-                }
-              } else if (this.cachedGraphDataService) {
-                const graphService = this.cachedGraphDataService;
-                const result = await graphService.saveGraphData(pageId, componentData);
-                if (result.ok) {
-                  if (this.saveSuccessCallback) {
-                    try {
-                      this.saveSuccessCallback();
-                    } catch (error3) {
-                      console.error(
-                        "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
-                        error3
-                      );
-                    }
-                  }
-                } else {
-                  console.error(
-                    "[JournalEntryPageWindowSystemBridgeMixin] Failed to save graph data via service:",
-                    result.error
-                  );
                 }
               } else {
-                console.warn(
-                  "[JournalEntryPageWindowSystemBridgeMixin] No service available, using direct document.update() as fallback"
+                console.error(
+                  "[JournalEntryPageWindowSystemBridgeMixin] Failed to save data via SheetFacade:",
+                  result.error
                 );
-                const updateData = {
-                  system: componentData
-                };
-                try {
-                  await this.document.update(updateData);
-                } catch (error3) {
-                  console.error(
-                    "[JournalEntryPageWindowSystemBridgeMixin] Failed to update document:",
-                    error3
-                  );
-                }
               }
             };
             saveButton.addEventListener("click", this.saveButtonListener);
@@ -27643,25 +27631,13 @@ function JournalEntryPageWindowSystemBridgeMixin(BaseSheet, windowDefinition, mo
       if (!this.svelteRenderer) {
         this.svelteRenderer = new SvelteRenderer();
       }
-      let graphDataService = null;
-      let nodeDataService = null;
+      let sheetFacade = null;
       let notificationCenter = null;
-      const containerPort = this.resolveService(this.api.tokens.platformContainerPortToken);
       try {
-        const graphResult = containerPort.resolveWithError(graphDataServiceToken);
-        if (graphResult.ok) {
-          graphDataService = graphResult.value;
-          this.cachedGraphDataService = graphDataService;
-        }
-      } catch {
-      }
-      try {
-        const nodeResult = containerPort.resolveWithError(nodeDataServiceToken);
-        if (nodeResult.ok) {
-          nodeDataService = nodeResult.value;
-          this.cachedNodeDataService = nodeDataService;
-        }
-      } catch {
+        sheetFacade = this.resolveService(this.api.tokens.sheetFacadeToken);
+        this.cachedSheetFacade = sheetFacade;
+      } catch (error3) {
+        console.warn("Failed to resolve sheetFacade:", error3);
       }
       try {
         notificationCenter = this.resolveService(this.api.tokens.platformNotificationPortToken);
@@ -27678,8 +27654,8 @@ function JournalEntryPageWindowSystemBridgeMixin(BaseSheet, windowDefinition, mo
         // Diese werden über das ViewModel als Props an die Komponente übergeben
       };
       const viewModelWithServices = viewModel;
-      viewModelWithServices.graphDataService = graphDataService;
-      viewModelWithServices.nodeDataService = nodeDataService;
+      viewModelWithServices.graphDataService = sheetFacade;
+      viewModelWithServices.nodeDataService = sheetFacade;
       viewModelWithServices.notificationCenter = notificationCenter;
       const hasSaveButton = this.element.querySelector('footer button[type="submit"], button[type="submit"]') !== null;
       const sheetWithView = this;
@@ -27759,61 +27735,26 @@ function JournalEntryPageWindowSystemBridgeMixin(BaseSheet, windowDefinition, mo
               );
               return;
             }
-            if (this.cachedNodeDataService) {
-              const nodeService = this.cachedNodeDataService;
-              const result = await nodeService.saveNodeData(pageId, componentData);
-              if (result.ok) {
-                if (this.saveSuccessCallback) {
-                  try {
-                    this.saveSuccessCallback();
-                  } catch (error3) {
-                    console.error(
-                      "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
-                      error3
-                    );
-                  }
+            const facade = this.cachedSheetFacade ?? this.resolveService(this.api.tokens.sheetFacadeToken);
+            this.cachedSheetFacade = facade;
+            const isNodeSheet = windowDefinition.definitionId.includes("node");
+            const result = isNodeSheet ? await facade.saveNodeData(pageId, componentData) : await facade.saveGraphData(pageId, componentData);
+            if (result.ok) {
+              if (this.saveSuccessCallback) {
+                try {
+                  this.saveSuccessCallback();
+                } catch (error3) {
+                  console.error(
+                    "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
+                    error3
+                  );
                 }
-              } else {
-                console.error(
-                  "[JournalEntryPageWindowSystemBridgeMixin] Failed to save node data via service:",
-                  result.error
-                );
-              }
-            } else if (this.cachedGraphDataService) {
-              const graphService = this.cachedGraphDataService;
-              const result = await graphService.saveGraphData(pageId, componentData);
-              if (result.ok) {
-                if (this.saveSuccessCallback) {
-                  try {
-                    this.saveSuccessCallback();
-                  } catch (error3) {
-                    console.error(
-                      "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
-                      error3
-                    );
-                  }
-                }
-              } else {
-                console.error(
-                  "[JournalEntryPageWindowSystemBridgeMixin] Failed to save graph data via service:",
-                  result.error
-                );
               }
             } else {
-              console.warn(
-                "[JournalEntryPageWindowSystemBridgeMixin] No service available, using direct document.update() as fallback"
+              console.error(
+                "[JournalEntryPageWindowSystemBridgeMixin] Failed to save data via SheetFacade:",
+                result.error
               );
-              const updateData = {
-                system: componentData
-              };
-              try {
-                await this.document.update(updateData);
-              } catch (error3) {
-                console.error(
-                  "[JournalEntryPageWindowSystemBridgeMixin] Failed to update document:",
-                  error3
-                );
-              }
             }
           };
           saveButton.addEventListener("click", this.saveButtonListener);
@@ -27849,9 +27790,11 @@ function JournalEntryPageWindowSystemBridgeMixin(BaseSheet, windowDefinition, mo
           console.error("[JournalEntryPageWindowSystemBridgeMixin] No pageId found on document");
           return;
         }
-        if (this.cachedNodeDataService) {
-          const nodeService = this.cachedNodeDataService;
-          const result = await nodeService.saveNodeData(pageId, componentData);
+        try {
+          const facade = this.cachedSheetFacade ?? this.resolveService(this.api.tokens.sheetFacadeToken);
+          this.cachedSheetFacade = facade;
+          const isNodeSheet = windowDefinition.definitionId.includes("node");
+          const result = isNodeSheet ? await facade.saveNodeData(pageId, componentData) : await facade.saveGraphData(pageId, componentData);
           if (result.ok) {
             if (this.saveSuccessCallback) {
               try {
@@ -27865,46 +27808,18 @@ function JournalEntryPageWindowSystemBridgeMixin(BaseSheet, windowDefinition, mo
             }
           } else {
             console.error(
-              "[JournalEntryPageWindowSystemBridgeMixin] Failed to save node data via service:",
+              "[JournalEntryPageWindowSystemBridgeMixin] Failed to save data via SheetFacade:",
               result.error
             );
           }
           return;
-        } else if (this.cachedGraphDataService) {
-          const graphService = this.cachedGraphDataService;
-          const result = await graphService.saveGraphData(pageId, componentData);
-          if (result.ok) {
-            if (this.saveSuccessCallback) {
-              try {
-                this.saveSuccessCallback();
-              } catch (error3) {
-                console.error(
-                  "[JournalEntryPageWindowSystemBridgeMixin] Error calling saveSuccessCallback:",
-                  error3
-                );
-              }
-            }
-          } else {
-            console.error(
-              "[JournalEntryPageWindowSystemBridgeMixin] Failed to save graph data via service:",
-              result.error
-            );
-          }
-          return;
-        } else {
+        } catch (error3) {
           console.warn(
-            "[JournalEntryPageWindowSystemBridgeMixin] No service available, using direct document.update() as fallback"
+            "[JournalEntryPageWindowSystemBridgeMixin] SheetFacade not available, using direct document.update() as fallback",
+            error3
           );
           updateData.system = componentData;
-          try {
-            await this.document.update(updateData);
-          } catch (error3) {
-            console.error(
-              "[JournalEntryPageWindowSystemBridgeMixin] Failed to update document:",
-              error3
-            );
-            throw error3;
-          }
+          await this.document.update(updateData);
           return;
         }
       }
@@ -34802,8 +34717,9 @@ const _StateStore = class _StateStore {
 __name(_StateStore, "StateStore");
 let StateStore = _StateStore;
 const _ActionDispatcher = class _ActionDispatcher {
-  constructor(registry) {
+  constructor(registry, ui2) {
     this.registry = registry;
+    this.ui = ui2;
   }
   async dispatch(actionId, context) {
     const instanceResult = this.registry.getInstance(context.windowInstanceId);
@@ -34945,20 +34861,16 @@ const _ActionDispatcher = class _ActionDispatcher {
    * Requests user confirmation before executing the action
    */
   async requestConfirmation(confirm) {
-    if (typeof foundry === "undefined" || !foundry.applications?.api?.DialogV2) {
-      console.warn("Foundry DialogV2 not available, action confirmation cancelled");
-      return false;
-    }
-    const result = await foundry.applications.api.DialogV2.confirm({
-      content: confirm.message,
-      rejectClose: false,
-      modal: true
+    return await this.ui.confirm({
+      title: confirm.title,
+      message: confirm.message,
+      confirmLabel: confirm.confirmLabel,
+      cancelLabel: confirm.cancelLabel
     });
-    return result === true;
   }
 };
 __name(_ActionDispatcher, "ActionDispatcher");
-_ActionDispatcher.dependencies = [windowRegistryToken];
+_ActionDispatcher.dependencies = [windowRegistryToken, platformUIPortToken];
 let ActionDispatcher = _ActionDispatcher;
 const _RendererRegistry = class _RendererRegistry {
   constructor() {
@@ -35619,16 +35531,14 @@ const _FlagsPersistAdapter = class _FlagsPersistAdapter {
         }
       }
       if (!flags2) {
-        if (doc !== null && doc !== void 0 && typeof doc === "object") {
-          const docRecord = castToRecord(doc);
-          const flagsValue = docRecord.flags;
-          if (isRecord$1(flagsValue)) {
-            const namespaceValue = flagsValue[config2.namespace];
-            if (isRecord$1(namespaceValue) && config2.key in namespaceValue) {
-              const flagValue = namespaceValue[config2.key];
-              if (isRecord$1(flagValue)) {
-                flags2 = flagValue;
-              }
+        const docRecord = castToRecord(doc);
+        const flagsValue = docRecord.flags;
+        if (isRecord$1(flagsValue)) {
+          const namespaceValue = flagsValue[config2.namespace];
+          if (isRecord$1(namespaceValue) && config2.key in namespaceValue) {
+            const flagValue = namespaceValue[config2.key];
+            if (isRecord$1(flagValue)) {
+              flags2 = flagValue;
             }
           }
         }
@@ -35773,7 +35683,7 @@ const _WindowController = class _WindowController {
       this.createActions()
     );
     this.cachedViewModel = viewModel;
-    const mountPoint = element3.querySelector("#svelte-mount-point");
+    const mountPoint = element3.querySelector?.("#svelte-mount-point") ?? null;
     if (!mountPoint) {
       return err({
         code: "MountPointNotFound",
@@ -35861,6 +35771,61 @@ const _WindowController = class _WindowController {
     return ok(void 0);
   }
   async dispatchAction(actionId, controlId, event3, additionalMetadata) {
+    const injectedDeps = {};
+    if (this.definitionId === "journal-overview" && this.container) {
+      if (!this.journalOverviewService) {
+        const res = this.container.resolveWithError(
+          journalOverviewServiceToken
+        );
+        if (res.ok) this.journalOverviewService = res.value;
+      }
+      if (this.journalOverviewService) {
+        injectedDeps.journalOverviewService = this.journalOverviewService;
+      }
+      if (!this.platformJournalRepository) {
+        const res = this.container.resolveWithError(
+          platformJournalRepositoryToken
+        );
+        if (res.ok) this.platformJournalRepository = res.value;
+      }
+      if (this.platformJournalRepository) {
+        injectedDeps.platformJournalRepository = this.platformJournalRepository;
+      }
+      if (!this.cacheInvalidationPort) {
+        const res = this.container.resolveWithError(
+          cacheInvalidationPortToken
+        );
+        if (res.ok) this.cacheInvalidationPort = res.value;
+      }
+      if (this.cacheInvalidationPort) {
+        injectedDeps.cacheInvalidationPort = this.cacheInvalidationPort;
+      }
+      if (!this.journalDirectoryRerenderScheduler) {
+        const res = this.container.resolveWithError(
+          journalDirectoryRerenderSchedulerToken
+        );
+        if (res.ok) this.journalDirectoryRerenderScheduler = res.value;
+      }
+      if (this.journalDirectoryRerenderScheduler) {
+        injectedDeps.journalDirectoryRerenderScheduler = this.journalDirectoryRerenderScheduler;
+      }
+      if (!this.platformUI) {
+        const res = this.container.resolveWithError(platformUIPortToken);
+        if (res.ok) this.platformUI = res.value;
+      }
+      if (this.platformUI) {
+        injectedDeps.platformUI = this.platformUI;
+      }
+      if (!this.notificationPublisher) {
+        const res = this.container.resolveWithError(
+          notificationPublisherPortToken
+        );
+        if (res.ok) this.notificationPublisher = res.value;
+      }
+      if (this.notificationPublisher) {
+        injectedDeps.notificationPublisher = this.notificationPublisher;
+      }
+    }
     const context = {
       windowInstanceId: this.instanceId,
       ...controlId !== void 0 && { controlId },
@@ -35869,6 +35834,7 @@ const _WindowController = class _WindowController {
       metadata: {
         controller: this,
         ...this.container !== void 0 && { container: this.container },
+        ...injectedDeps,
         ...additionalMetadata !== void 0 && additionalMetadata
       }
     };
@@ -36779,6 +36745,42 @@ function getContainerFromContext(context) {
   return castPlatformContainerPort(container2);
 }
 __name(getContainerFromContext, "getContainerFromContext");
+function getJournalOverviewServiceFromContext(context) {
+  const service = context.metadata?.journalOverviewService;
+  if (service === void 0) return void 0;
+  return castResolvedService(service);
+}
+__name(getJournalOverviewServiceFromContext, "getJournalOverviewServiceFromContext");
+function getPlatformJournalRepositoryFromContext(context) {
+  const repo = context.metadata?.platformJournalRepository;
+  if (repo === void 0) return void 0;
+  return castResolvedService(repo);
+}
+__name(getPlatformJournalRepositoryFromContext, "getPlatformJournalRepositoryFromContext");
+function getCacheInvalidationPortFromContext(context) {
+  const cache3 = context.metadata?.cacheInvalidationPort;
+  if (cache3 === void 0) return void 0;
+  return castResolvedService(cache3);
+}
+__name(getCacheInvalidationPortFromContext, "getCacheInvalidationPortFromContext");
+function getJournalDirectoryRerenderSchedulerFromContext(context) {
+  const scheduler = context.metadata?.journalDirectoryRerenderScheduler;
+  if (scheduler === void 0) return void 0;
+  return castResolvedService(scheduler);
+}
+__name(getJournalDirectoryRerenderSchedulerFromContext, "getJournalDirectoryRerenderSchedulerFromContext");
+function getPlatformUIPortFromContext(context) {
+  const ui2 = context.metadata?.platformUI;
+  if (ui2 === void 0) return void 0;
+  return castResolvedService(ui2);
+}
+__name(getPlatformUIPortFromContext, "getPlatformUIPortFromContext");
+function getNotificationPublisherFromContext(context) {
+  const notifications2 = context.metadata?.notificationPublisher;
+  if (notifications2 === void 0) return void 0;
+  return castResolvedService(notifications2);
+}
+__name(getNotificationPublisherFromContext, "getNotificationPublisherFromContext");
 function createJournalSortComparator(sortColumn, sortDirection) {
   return (a, b) => {
     let aVal;
@@ -36837,35 +36839,23 @@ function createJournalOverviewWindowDefinition(component3) {
         handler: /* @__PURE__ */ __name(async (context) => {
           try {
             const controller = getControllerFromContext(context);
-            const container2 = getContainerFromContext(context);
+            const service = getJournalOverviewServiceFromContext(context);
             if (!controller) {
               return err({
                 code: "InvalidContext",
                 message: "Controller not found in context"
               });
             }
-            if (!container2) {
+            if (!service) {
               return err({
-                code: "InvalidContext",
-                message: "Container not found in context"
+                code: "ServiceNotFound",
+                message: "JournalOverviewService not available in context metadata"
               });
             }
             await controller.updateStateLocal({
               isLoading: true,
               error: null
             });
-            const serviceResult = container2.resolveWithError(journalOverviewServiceToken);
-            if (!serviceResult.ok) {
-              await controller.updateStateLocal({
-                isLoading: false,
-                error: `Failed to resolve JournalOverviewService: ${serviceResult.error.message}`
-              });
-              return err({
-                code: "ServiceNotFound",
-                message: `Failed to resolve JournalOverviewService: ${serviceResult.error.message}`
-              });
-            }
-            const service = castResolvedService(serviceResult.value);
             const result = service.getAllJournalsWithVisibilityStatus();
             if (!result.ok) {
               await controller.updateStateLocal({
@@ -36902,11 +36892,17 @@ function createJournalOverviewWindowDefinition(component3) {
         handler: /* @__PURE__ */ __name(async (context) => {
           try {
             const controller = getControllerFromContext(context);
-            const container2 = getContainerFromContext(context);
-            if (!controller || !container2) {
+            const repository = getPlatformJournalRepositoryFromContext(context);
+            if (!controller) {
               return err({
                 code: "InvalidContext",
-                message: "Controller or container not found in context"
+                message: "Controller not found in context"
+              });
+            }
+            if (!repository) {
+              return err({
+                code: "ServiceNotFound",
+                message: "PlatformJournalRepository not available in context metadata"
               });
             }
             const journalId = context.metadata && typeof context.metadata.journalId === "string" ? context.metadata.journalId : void 0;
@@ -36925,14 +36921,6 @@ function createJournalOverviewWindowDefinition(component3) {
                 message: `Journal ${journalId} not found`
               });
             }
-            const repoResult = container2.resolveWithError(platformJournalRepositoryToken);
-            if (!repoResult.ok) {
-              return err({
-                code: "ServiceNotFound",
-                message: `Failed to resolve PlatformJournalRepository: ${repoResult.error.message}`
-              });
-            }
-            const repository = castResolvedService(repoResult.value);
             const newVisibility = !journal.isHidden;
             let flagResult;
             if (newVisibility) {
@@ -36956,30 +36944,17 @@ function createJournalOverviewWindowDefinition(component3) {
                 message: flagResult.error.message
               });
             }
-            const cacheResult = container2.resolveWithError(cacheInvalidationPortToken);
-            if (cacheResult.ok) {
-              const cache3 = castResolvedService(cacheResult.value);
-              cache3.invalidateWhere((meta3) => meta3.tags.includes(HIDDEN_JOURNAL_CACHE_TAG));
-            }
-            const schedulerResult = container2.resolveWithError(
-              journalDirectoryRerenderSchedulerToken
-            );
-            if (schedulerResult.ok) {
-              const scheduler = castResolvedService(
-                schedulerResult.value
-              );
-              scheduler.requestRerender();
-            }
-            const serviceResult = container2.resolveWithError(journalOverviewServiceToken);
-            if (serviceResult.ok) {
-              const service = castResolvedService(serviceResult.value);
-              const reloadResult = service.getAllJournalsWithVisibilityStatus();
-              if (reloadResult.ok) {
-                await controller.updateStateLocal({
-                  journals: reloadResult.value
-                });
-                await controller.dispatchAction("applyFilters");
-              }
+            const cache3 = getCacheInvalidationPortFromContext(context);
+            cache3?.invalidateWhere((meta3) => meta3.tags.includes(HIDDEN_JOURNAL_CACHE_TAG));
+            const scheduler = getJournalDirectoryRerenderSchedulerFromContext(context);
+            scheduler?.requestRerender();
+            const reloadService = getJournalOverviewServiceFromContext(context);
+            const reloadResult = reloadService?.getAllJournalsWithVisibilityStatus();
+            if (reloadResult?.ok) {
+              await controller.updateStateLocal({
+                journals: reloadResult.value
+              });
+              await controller.dispatchAction("applyFilters");
             }
             return ok(void 0);
           } catch (error3) {
@@ -37182,21 +37157,19 @@ function createJournalOverviewWindowDefinition(component3) {
         handler: /* @__PURE__ */ __name(async (context) => {
           try {
             const controller = getControllerFromContext(context);
-            const container2 = getContainerFromContext(context);
-            if (!controller || !container2) {
+            const service = getJournalOverviewServiceFromContext(context);
+            if (!controller) {
               return err({
                 code: "InvalidContext",
-                message: "Controller or container not found in context"
+                message: "Controller not found in context"
               });
             }
-            const serviceResult = container2.resolveWithError(journalOverviewServiceToken);
-            if (!serviceResult.ok) {
+            if (!service) {
               return err({
                 code: "ServiceNotFound",
-                message: `Failed to resolve JournalOverviewService: ${serviceResult.error.message}`
+                message: "JournalOverviewService not available in context metadata"
               });
             }
-            const service = castResolvedService(serviceResult.value);
             const result = service.getAllJournalsWithVisibilityStatus();
             if (!result.ok) {
               return err({
@@ -37225,11 +37198,17 @@ __name(createJournalOverviewWindowDefinition, "createJournalOverviewWindowDefini
 async function handleBulkVisibilityChange(context, targetVisibility) {
   try {
     const controller = getControllerFromContext(context);
-    const container2 = getContainerFromContext(context);
-    if (!controller || !container2) {
+    const repository = getPlatformJournalRepositoryFromContext(context);
+    if (!controller) {
       return err({
         code: "InvalidContext",
-        message: "Controller or container not found in context"
+        message: "Controller not found in context"
+      });
+    }
+    if (!repository) {
+      return err({
+        code: "ServiceNotFound",
+        message: "PlatformJournalRepository not available in context metadata"
       });
     }
     const currentState = controller.state;
@@ -37237,18 +37216,8 @@ async function handleBulkVisibilityChange(context, targetVisibility) {
     if (filteredJournals.length === 0) {
       return ok(void 0);
     }
-    const repoResult = container2.resolveWithError(platformJournalRepositoryToken);
-    if (!repoResult.ok) {
-      return err({
-        code: "ServiceNotFound",
-        message: `Failed to resolve PlatformJournalRepository: ${repoResult.error.message}`
-      });
-    }
-    const repository = castResolvedService(repoResult.value);
-    const uiResult = container2.resolveWithError(platformUIPortToken);
-    const notificationsResult = container2.resolveWithError(notificationPublisherPortToken);
-    const ui2 = uiResult.ok ? castResolvedService(uiResult.value) : null;
-    const notifications2 = notificationsResult.ok ? castResolvedService(notificationsResult.value) : null;
+    const ui2 = getPlatformUIPortFromContext(context);
+    const notifications2 = getNotificationPublisherFromContext(context);
     let successCount = 0;
     let errorCount = 0;
     for (const journal of filteredJournals) {
@@ -37267,33 +37236,22 @@ async function handleBulkVisibilityChange(context, targetVisibility) {
         }
       }
     }
-    const cacheResult = container2.resolveWithError(cacheInvalidationPortToken);
-    if (cacheResult.ok) {
-      const cache3 = castResolvedService(cacheResult.value);
-      cache3.invalidateWhere((meta3) => meta3.tags.includes(HIDDEN_JOURNAL_CACHE_TAG));
-    }
-    const schedulerResult = container2.resolveWithError(journalDirectoryRerenderSchedulerToken);
-    if (schedulerResult.ok) {
-      const scheduler = castResolvedService(
-        schedulerResult.value
-      );
-      scheduler.requestRerender();
-    }
+    const cache3 = getCacheInvalidationPortFromContext(context);
+    cache3?.invalidateWhere((meta3) => meta3.tags.includes(HIDDEN_JOURNAL_CACHE_TAG));
+    const scheduler = getJournalDirectoryRerenderSchedulerFromContext(context);
+    scheduler?.requestRerender();
     if (ui2) {
       const actionName = targetVisibility === null ? "umschalten" : targetVisibility ? "verstecken" : "anzeigen";
       const message2 = errorCount > 0 ? `${successCount} Journals ${actionName}, ${errorCount} Fehler` : `${successCount} Journals ${actionName}`;
       ui2.notify(message2, "info");
     }
-    const serviceResult = container2.resolveWithError(journalOverviewServiceToken);
-    if (serviceResult.ok) {
-      const service = castResolvedService(serviceResult.value);
-      const reloadResult = service.getAllJournalsWithVisibilityStatus();
-      if (reloadResult.ok) {
-        await controller.updateStateLocal({
-          journals: reloadResult.value
-        });
-        await controller.dispatchAction("applyFilters");
-      }
+    const reloadService = getJournalOverviewServiceFromContext(context);
+    const reloadResult = reloadService?.getAllJournalsWithVisibilityStatus();
+    if (reloadResult?.ok) {
+      await controller.updateStateLocal({
+        journals: reloadResult.value
+      });
+      await controller.dispatchAction("applyFilters");
     }
     return ok(void 0);
   } catch (error3) {
@@ -38928,6 +38886,87 @@ _DIGraphDataService.dependencies = [
   notificationPublisherPortToken
 ];
 let DIGraphDataService = _DIGraphDataService;
+const _SheetFacade = class _SheetFacade {
+  constructor(nodeData, graphData) {
+    this.nodeData = nodeData;
+    this.graphData = graphData;
+  }
+  async loadNodeData(pageId) {
+    const result = await this.nodeData.loadNodeData(pageId);
+    return mapServiceError(result);
+  }
+  async saveNodeData(pageId, data4) {
+    const parsed = safeParseRelationshipNodeData(data4);
+    if (!parsed.success) {
+      return err({
+        code: "VALIDATION_FAILED",
+        message: `Node data validation failed: ${parsed.issues.map((i) => i.message).join(", ")}`,
+        details: parsed.issues
+      });
+    }
+    const result = await this.nodeData.saveNodeData(pageId, parsed.output);
+    return mapServiceError(result);
+  }
+  validateNodeData(data4) {
+    const parsed = safeParseRelationshipNodeData(data4);
+    if (!parsed.success) {
+      return err({
+        code: "VALIDATION_FAILED",
+        message: `Node data validation failed: ${parsed.issues.map((i) => i.message).join(", ")}`,
+        details: parsed.issues
+      });
+    }
+    return ok(void 0);
+  }
+  async loadGraphData(pageId) {
+    const result = await this.graphData.loadGraphData(pageId);
+    return mapServiceError(result);
+  }
+  async saveGraphData(pageId, data4) {
+    const parsed = safeParseRelationshipGraphData(data4);
+    if (!parsed.success) {
+      return err({
+        code: "VALIDATION_FAILED",
+        message: `Graph data validation failed: ${parsed.issues.map((i) => i.message).join(", ")}`,
+        details: parsed.issues
+      });
+    }
+    const result = await this.graphData.saveGraphData(pageId, parsed.output);
+    return mapServiceError(result);
+  }
+  validateGraphData(data4) {
+    const parsed = safeParseRelationshipGraphData(data4);
+    if (!parsed.success) {
+      return err({
+        code: "VALIDATION_FAILED",
+        message: `Graph data validation failed: ${parsed.issues.map((i) => i.message).join(", ")}`,
+        details: parsed.issues
+      });
+    }
+    return ok(void 0);
+  }
+};
+__name(_SheetFacade, "SheetFacade");
+let SheetFacade = _SheetFacade;
+const _DISheetFacade = class _DISheetFacade extends SheetFacade {
+  constructor(nodeData, graphData) {
+    super(nodeData, graphData);
+  }
+};
+__name(_DISheetFacade, "DISheetFacade");
+_DISheetFacade.dependencies = [nodeDataServiceToken, graphDataServiceToken];
+let DISheetFacade = _DISheetFacade;
+function mapServiceError(result) {
+  if (result.ok) {
+    return ok(result.value);
+  }
+  return err({
+    code: result.error.code,
+    message: result.error.message,
+    details: result.error.details
+  });
+}
+__name(mapServiceError, "mapServiceError");
 const _CreateNodePageUseCase = class _CreateNodePageUseCase {
   constructor(journalRepository, nodeDataService, pageRepository, pageCreationPort, notifications2) {
     this.journalRepository = journalRepository;
@@ -39329,6 +39368,14 @@ function registerRelationshipAppServices(container2) {
   );
   if (isErr(graphDataServiceResult)) {
     return err(`Failed to register GraphDataService: ${graphDataServiceResult.error.message}`);
+  }
+  const sheetFacadeResult = container2.registerClass(
+    sheetFacadeToken,
+    DISheetFacade,
+    ServiceLifecycle.SINGLETON
+  );
+  if (isErr(sheetFacadeResult)) {
+    return err(`Failed to register SheetFacade: ${sheetFacadeResult.error.message}`);
   }
   const createNodePageResult = container2.registerClass(
     createNodePageUseCaseToken,

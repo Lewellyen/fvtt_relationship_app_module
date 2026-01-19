@@ -4,6 +4,9 @@ Prinzip: DIP
 Schweregrad: Hoch
 Module/Layer: domain/windows
 Status: Proposed
+Reviewed: 2026-01-19
+Relevance: still-relevant
+Notes: Evidence in `src/domain/windows/**` verified (HTMLElement in ports/types).
 ---
 
 # 1. Problem
@@ -27,11 +30,17 @@ export interface ApplicationV2 {
 ```
 ```ts
 // src/domain/windows/ports/render-engine-port.interface.ts
-render(target: HTMLElement, ...): Promise<Result<void, WindowError>>;
+mount(descriptor: ComponentDescriptor, target: HTMLElement, viewModel: ViewModel): Result<TInstance, RenderError>;
 ```
 ```ts
 // src/domain/windows/ports/window-controller-port.interface.ts
 onFoundryRender(element: HTMLElement): Promise<Result<void, WindowError>>;
+```
+```ts
+// src/domain/windows/types/action-definition.interface.ts
+export interface ActionContext<TState = Record<string, unknown>> {
+  readonly event?: Event;
+}
 ```
 
 # 3. SOLID-Analyse

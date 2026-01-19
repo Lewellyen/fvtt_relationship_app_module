@@ -4,6 +4,9 @@ Prinzip: OCP
 Schweregrad: Mittel
 Module/Layer: framework/config
 Status: Proposed
+Reviewed: 2026-01-19
+Relevance: still-relevant
+Notes: `src/framework/config/modules/port-infrastructure.config.ts` still calls `registerV13Ports(...)` directly and suggests future hardcoded calls.
 ---
 
 # 1. Problem

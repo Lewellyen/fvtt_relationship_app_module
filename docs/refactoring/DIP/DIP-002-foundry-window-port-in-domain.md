@@ -4,6 +4,9 @@ Prinzip: DIP
 Schweregrad: Hoch
 Module/Layer: domain/windows
 Status: Proposed
+Reviewed: 2026-01-19
+Relevance: still-relevant
+Notes: `src/domain/windows/ports/foundry-window-adapter.interface.ts` still exists and exposes Foundry-specific `ApplicationClass`.
 ---
 
 # 1. Problem

@@ -4,6 +4,9 @@ prinzip: ISP
 schweregrad: mittel
 layer: domain
 status: Proposed
+reviewed: 2026-01-19
+relevance: still-relevant
+notes: `src/domain/windows/ports/window-controller-port.interface.ts` remains a multi-concern interface (hooks/state/actions/persist/viewmodel).
 ---
 
 # 1. Problem

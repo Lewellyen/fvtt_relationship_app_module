@@ -4,6 +4,9 @@ prinzip: DIP
 schweregrad: hoch
 layer: domain
 status: Proposed
+reviewed: 2026-01-19
+relevance: still-relevant
+notes: Evidence verified in `src/domain/types/relationship-graph-data.interface.ts` and `src/domain/types/relationship-node-data.interface.ts` (foundry.data.fields.*).
 ---
 
 # 1. Problem

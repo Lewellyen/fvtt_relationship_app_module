@@ -6,13 +6,51 @@
  * for JournalEntryPage.system data when the page type is relationship_app_node.
  */
 
-import type {
-  RelationshipNodeData,
-  RelationshipNodeDataSchema,
-} from "@/domain/types/relationship-node-data.interface";
+import type { RelationshipNodeData } from "@/domain/types/relationship-node-data.interface";
 import { RELATIONSHIP_NODE_SCHEMA_VERSION } from "@/domain/types/relationship-node-data.interface";
 
 type RelationshipNodeBaseData = RelationshipNodeData & Record<string, unknown>;
+
+type NodeDescriptionsField = foundry.data.fields.SchemaField<{
+  public: foundry.data.fields.StringField;
+  hidden: foundry.data.fields.StringField;
+  gm: foundry.data.fields.StringField;
+}>;
+
+type NodeRevealField = foundry.data.fields.SchemaField<{
+  public: foundry.data.fields.BooleanField;
+  hidden: foundry.data.fields.BooleanField;
+}>;
+
+type NodeEffectsField = foundry.data.fields.SchemaField<{
+  friend: foundry.data.fields.StringField;
+  enemy: foundry.data.fields.StringField;
+  neutral: foundry.data.fields.StringField;
+}>;
+
+type NodeLastVersionField = foundry.data.fields.SchemaField<{
+  schemaVersion: foundry.data.fields.NumberField;
+}>;
+
+/**
+ * Foundry DataSchema interface for RelationshipNodeDataModel.
+ *
+ * Kept in Infrastructure to avoid leaking `foundry.*` types into Domain.
+ */
+interface RelationshipNodeDataSchema extends foundry.data.fields.DataSchema {
+  schemaVersion: foundry.data.fields.NumberField;
+  nodeKey: foundry.data.fields.StringField;
+  name: foundry.data.fields.StringField;
+  kind: foundry.data.fields.StringField;
+  factionId: foundry.data.fields.StringField;
+  relation: foundry.data.fields.StringField;
+  icon: foundry.data.fields.StringField;
+  descriptions: NodeDescriptionsField;
+  reveal: NodeRevealField;
+  effects: NodeEffectsField;
+  linkedEntityUuid: foundry.data.fields.StringField;
+  lastVersion: NodeLastVersionField;
+}
 
 /**
  * RelationshipNodeDataModel for JournalEntryPage system data.

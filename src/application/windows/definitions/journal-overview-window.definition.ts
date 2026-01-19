@@ -2,25 +2,18 @@ import type { WindowDefinition } from "@/domain/windows/types/window-definition.
 import type { ActionContext } from "@/domain/windows/types/action-definition.interface";
 import { ok, err } from "@/domain/utils/result";
 import type { Result } from "@/domain/types/result";
-import type { JournalOverviewService } from "@/application/services/JournalOverviewService";
-import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
 import type { EntityRepositoryError } from "@/domain/ports/repositories/platform-entity-repository.interface";
-import type { CacheInvalidationPort } from "@/domain/ports/cache/cache-invalidation-port.interface";
 import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
 import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
-import type { JournalDirectoryRerenderScheduler } from "@/application/services/JournalDirectoryRerenderScheduler";
 import {
-  journalOverviewServiceToken,
-  journalDirectoryRerenderSchedulerToken,
-} from "@/application/tokens/application.tokens";
-import {
-  platformJournalRepositoryToken,
-  cacheInvalidationPortToken,
-  platformUIPortToken,
-  notificationPublisherPortToken,
-} from "@/application/tokens/domain-ports.tokens";
-import { getControllerFromContext, getContainerFromContext } from "../utils/window-casts";
-import { castResolvedService } from "../utils/service-casts";
+  getCacheInvalidationPortFromContext,
+  getControllerFromContext,
+  getJournalDirectoryRerenderSchedulerFromContext,
+  getJournalOverviewServiceFromContext,
+  getNotificationPublisherFromContext,
+  getPlatformJournalRepositoryFromContext,
+  getPlatformUIPortFromContext,
+} from "../utils/window-casts";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { HIDDEN_JOURNAL_CACHE_TAG } from "@/application/services/JournalVisibilityService";
@@ -63,9 +56,9 @@ export function createJournalOverviewWindowDefinition(component: unknown): Windo
         id: "onOpen",
         handler: async (context: ActionContext) => {
           try {
-            // Get controller and container from metadata
+            // Get controller and injected deps from metadata
             const controller = getControllerFromContext(context);
-            const container = getContainerFromContext(context);
+            const service = getJournalOverviewServiceFromContext(context);
 
             if (!controller) {
               return err({
@@ -74,10 +67,10 @@ export function createJournalOverviewWindowDefinition(component: unknown): Windo
               });
             }
 
-            if (!container) {
+            if (!service) {
               return err({
-                code: "InvalidContext",
-                message: "Container not found in context",
+                code: "ServiceNotFound",
+                message: "JournalOverviewService not available in context metadata",
               });
             }
 
@@ -86,21 +79,6 @@ export function createJournalOverviewWindowDefinition(component: unknown): Windo
               isLoading: true,
               error: null,
             });
-
-            // Get service from container
-            const serviceResult = container.resolveWithError(journalOverviewServiceToken);
-            if (!serviceResult.ok) {
-              await controller.updateStateLocal({
-                isLoading: false,
-                error: `Failed to resolve JournalOverviewService: ${serviceResult.error.message}`,
-              });
-              return err({
-                code: "ServiceNotFound",
-                message: `Failed to resolve JournalOverviewService: ${serviceResult.error.message}`,
-              });
-            }
-
-            const service = castResolvedService<JournalOverviewService>(serviceResult.value);
 
             // Load journals
             const result = service.getAllJournalsWithVisibilityStatus();
@@ -144,12 +122,18 @@ export function createJournalOverviewWindowDefinition(component: unknown): Windo
         handler: async (context: ActionContext) => {
           try {
             const controller = getControllerFromContext(context);
-            const container = getContainerFromContext(context);
+            const repository = getPlatformJournalRepositoryFromContext(context);
 
-            if (!controller || !container) {
+            if (!controller) {
               return err({
                 code: "InvalidContext",
-                message: "Controller or container not found in context",
+                message: "Controller not found in context",
+              });
+            }
+            if (!repository) {
+              return err({
+                code: "ServiceNotFound",
+                message: "PlatformJournalRepository not available in context metadata",
               });
             }
 
@@ -179,17 +163,6 @@ export function createJournalOverviewWindowDefinition(component: unknown): Windo
               });
             }
 
-            // Get repository
-            const repoResult = container.resolveWithError(platformJournalRepositoryToken);
-            if (!repoResult.ok) {
-              return err({
-                code: "ServiceNotFound",
-                message: `Failed to resolve PlatformJournalRepository: ${repoResult.error.message}`,
-              });
-            }
-
-            const repository = castResolvedService<PlatformJournalRepository>(repoResult.value);
-
             // Toggle visibility
             const newVisibility = !journal.isHidden;
             let flagResult: Result<void, EntityRepositoryError>;
@@ -216,37 +189,24 @@ export function createJournalOverviewWindowDefinition(component: unknown): Windo
               });
             }
 
-            // Invalidate cache
-            const cacheResult = container.resolveWithError(cacheInvalidationPortToken);
-            if (cacheResult.ok) {
-              const cache = castResolvedService<CacheInvalidationPort>(cacheResult.value);
-              cache.invalidateWhere((meta) => meta.tags.includes(HIDDEN_JOURNAL_CACHE_TAG));
-            }
+            // Invalidate cache (optional)
+            const cache = getCacheInvalidationPortFromContext(context);
+            cache?.invalidateWhere((meta) => meta.tags.includes(HIDDEN_JOURNAL_CACHE_TAG));
 
             // Trigger journal directory re-render to show/hide the journal
             // This is especially important when making a journal visible again
-            const schedulerResult = container.resolveWithError(
-              journalDirectoryRerenderSchedulerToken
-            );
-            if (schedulerResult.ok) {
-              const scheduler = castResolvedService<JournalDirectoryRerenderScheduler>(
-                schedulerResult.value
-              );
-              scheduler.requestRerender();
-            }
+            const scheduler = getJournalDirectoryRerenderSchedulerFromContext(context);
+            scheduler?.requestRerender();
 
             // Reload data
-            const serviceResult = container.resolveWithError(journalOverviewServiceToken);
-            if (serviceResult.ok) {
-              const service = castResolvedService<JournalOverviewService>(serviceResult.value);
-              const reloadResult = service.getAllJournalsWithVisibilityStatus();
-              if (reloadResult.ok) {
-                await controller.updateStateLocal({
-                  journals: reloadResult.value,
-                });
-                // Re-apply filters
-                await controller.dispatchAction("applyFilters");
-              }
+            const reloadService = getJournalOverviewServiceFromContext(context);
+            const reloadResult = reloadService?.getAllJournalsWithVisibilityStatus();
+            if (reloadResult?.ok) {
+              await controller.updateStateLocal({
+                journals: reloadResult.value,
+              });
+              // Re-apply filters
+              await controller.dispatchAction("applyFilters");
             }
 
             return ok(undefined);
@@ -519,25 +479,20 @@ export function createJournalOverviewWindowDefinition(component: unknown): Windo
         handler: async (context: ActionContext) => {
           try {
             const controller = getControllerFromContext(context);
-            const container = getContainerFromContext(context);
+            const service = getJournalOverviewServiceFromContext(context);
 
-            if (!controller || !container) {
+            if (!controller) {
               return err({
                 code: "InvalidContext",
-                message: "Controller or container not found in context",
+                message: "Controller not found in context",
               });
             }
-
-            // Get service from container
-            const serviceResult = container.resolveWithError(journalOverviewServiceToken);
-            if (!serviceResult.ok) {
+            if (!service) {
               return err({
                 code: "ServiceNotFound",
-                message: `Failed to resolve JournalOverviewService: ${serviceResult.error.message}`,
+                message: "JournalOverviewService not available in context metadata",
               });
             }
-
-            const service = castResolvedService<JournalOverviewService>(serviceResult.value);
 
             // Load journals
             const result = service.getAllJournalsWithVisibilityStatus();
@@ -586,12 +541,18 @@ async function handleBulkVisibilityChange(
 > {
   try {
     const controller = getControllerFromContext(context);
-    const container = getContainerFromContext(context);
+    const repository = getPlatformJournalRepositoryFromContext(context);
 
-    if (!controller || !container) {
+    if (!controller) {
       return err({
         code: "InvalidContext",
-        message: "Controller or container not found in context",
+        message: "Controller not found in context",
+      });
+    }
+    if (!repository) {
+      return err({
+        code: "ServiceNotFound",
+        message: "PlatformJournalRepository not available in context metadata",
       });
     }
 
@@ -609,24 +570,10 @@ async function handleBulkVisibilityChange(
       return ok(undefined); // Nothing to do
     }
 
-    // Get repository
-    const repoResult = container.resolveWithError(platformJournalRepositoryToken);
-    if (!repoResult.ok) {
-      return err({
-        code: "ServiceNotFound",
-        message: `Failed to resolve PlatformJournalRepository: ${repoResult.error.message}`,
-      });
-    }
-
-    const repository = castResolvedService<PlatformJournalRepository>(repoResult.value);
-
-    // Get UI and notifications for feedback
-    const uiResult = container.resolveWithError(platformUIPortToken);
-    const notificationsResult = container.resolveWithError(notificationPublisherPortToken);
-    const ui = uiResult.ok ? castResolvedService<PlatformUIPort>(uiResult.value) : null;
-    const notifications = notificationsResult.ok
-      ? castResolvedService<NotificationPublisherPort>(notificationsResult.value)
-      : null;
+    // Get UI and notifications for feedback (optional)
+    const ui: PlatformUIPort | undefined = getPlatformUIPortFromContext(context);
+    const notifications: NotificationPublisherPort | undefined =
+      getNotificationPublisherFromContext(context);
 
     // Process all journals
     let successCount = 0;
@@ -653,22 +600,14 @@ async function handleBulkVisibilityChange(
       }
     }
 
-    // Invalidate cache
-    const cacheResult = container.resolveWithError(cacheInvalidationPortToken);
-    if (cacheResult.ok) {
-      const cache = castResolvedService<CacheInvalidationPort>(cacheResult.value);
-      cache.invalidateWhere((meta) => meta.tags.includes(HIDDEN_JOURNAL_CACHE_TAG));
-    }
+    // Invalidate cache (optional)
+    const cache = getCacheInvalidationPortFromContext(context);
+    cache?.invalidateWhere((meta) => meta.tags.includes(HIDDEN_JOURNAL_CACHE_TAG));
 
     // Trigger journal directory re-render to show/hide the journals
     // This is especially important when making journals visible again
-    const schedulerResult = container.resolveWithError(journalDirectoryRerenderSchedulerToken);
-    if (schedulerResult.ok) {
-      const scheduler = castResolvedService<JournalDirectoryRerenderScheduler>(
-        schedulerResult.value
-      );
-      scheduler.requestRerender();
-    }
+    const scheduler = getJournalDirectoryRerenderSchedulerFromContext(context);
+    scheduler?.requestRerender();
 
     // Show notification
     if (ui) {
@@ -681,18 +620,15 @@ async function handleBulkVisibilityChange(
       ui.notify(message, "info");
     }
 
-    // Reload data
-    const serviceResult = container.resolveWithError(journalOverviewServiceToken);
-    if (serviceResult.ok) {
-      const service = castResolvedService<JournalOverviewService>(serviceResult.value);
-      const reloadResult = service.getAllJournalsWithVisibilityStatus();
-      if (reloadResult.ok) {
-        await controller.updateStateLocal({
-          journals: reloadResult.value,
-        });
-        // Re-apply filters
-        await controller.dispatchAction("applyFilters");
-      }
+    // Reload data (optional)
+    const reloadService = getJournalOverviewServiceFromContext(context);
+    const reloadResult = reloadService?.getAllJournalsWithVisibilityStatus();
+    if (reloadResult?.ok) {
+      await controller.updateStateLocal({
+        journals: reloadResult.value,
+      });
+      // Re-apply filters
+      await controller.dispatchAction("applyFilters");
     }
 
     return ok(undefined);

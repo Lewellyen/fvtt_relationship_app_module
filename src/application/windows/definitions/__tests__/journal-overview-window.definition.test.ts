@@ -28,6 +28,7 @@ describe("createJournalOverviewWindowDefinition", () => {
   let mockController: IWindowController;
   let mockContainer: PlatformContainerPort;
   let mockService: JournalOverviewService;
+  let mockNotifications: NotificationPublisherPort;
   let context: ActionContext;
 
   beforeEach(() => {
@@ -54,8 +55,25 @@ describe("createJournalOverviewWindowDefinition", () => {
       ),
     } as unknown as JournalOverviewService;
 
+    mockNotifications = {
+      warn: vi.fn(),
+      info: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    } as unknown as NotificationPublisherPort;
+
+    const resolveWithError = vi.fn().mockReturnValue(ok(mockService));
+    const resolve = vi.fn((token: symbol) => {
+      const result = resolveWithError(token);
+      if (result.ok) {
+        return result.value;
+      }
+      throw new Error(result.error.message);
+    });
+
     mockContainer = {
-      resolveWithError: vi.fn().mockReturnValue(ok(mockService)),
+      resolve,
+      resolveWithError,
     } as unknown as PlatformContainerPort;
 
     context = {
@@ -64,6 +82,7 @@ describe("createJournalOverviewWindowDefinition", () => {
       metadata: {
         controller: mockController,
         container: mockContainer,
+        journalOverviewService: mockService,
       },
     };
   });
@@ -100,7 +119,6 @@ describe("createJournalOverviewWindowDefinition", () => {
       const result = await handler(context);
 
       expect(result.ok).toBe(true);
-      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(journalOverviewServiceToken);
       expect(mockService.getAllJournalsWithVisibilityStatus).toHaveBeenCalled();
       expect(mockController.updateStateLocal).toHaveBeenCalledTimes(2);
       expect(mockController.updateStateLocal).toHaveBeenNthCalledWith(1, {
@@ -132,7 +150,7 @@ describe("createJournalOverviewWindowDefinition", () => {
       const contextWithoutController: ActionContext = {
         ...context,
         metadata: {
-          container: mockContainer,
+          journalOverviewService: mockService,
         },
       };
 
@@ -153,19 +171,19 @@ describe("createJournalOverviewWindowDefinition", () => {
       expect(handler).toBeDefined();
       if (!handler) return;
 
-      const contextWithoutContainer: ActionContext = {
+      const contextWithoutService: ActionContext = {
         ...context,
         metadata: {
           controller: mockController,
         },
       };
 
-      const result = await handler(contextWithoutContainer);
+      const result = await handler(contextWithoutService);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error.code).toBe("InvalidContext");
-        expect(result.error.message).toBe("Container not found in context");
+        expect(result.error.code).toBe("ServiceNotFound");
+        expect(result.error.message).toContain("JournalOverviewService");
       }
       expect(mockController.updateStateLocal).not.toHaveBeenCalled();
     });
@@ -177,30 +195,21 @@ describe("createJournalOverviewWindowDefinition", () => {
       expect(handler).toBeDefined();
       if (!handler) return;
 
-      vi.mocked(mockContainer.resolveWithError).mockReturnValue(
-        err({
-          code: "TokenNotRegistered",
-          message: "Service not found",
-          tokenDescription: String(journalOverviewServiceToken),
-        })
-      );
+      const contextWithoutService: ActionContext = {
+        ...context,
+        metadata: {
+          ...context.metadata,
+          journalOverviewService: undefined,
+        },
+      };
 
-      const result = await handler(context);
+      const result = await handler(contextWithoutService);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("ServiceNotFound");
-        expect(result.error.message).toContain("Failed to resolve JournalOverviewService");
+        expect(result.error.message).toContain("JournalOverviewService");
       }
-      expect(mockController.updateStateLocal).toHaveBeenCalledTimes(2);
-      expect(mockController.updateStateLocal).toHaveBeenNthCalledWith(1, {
-        isLoading: true,
-        error: null,
-      });
-      expect(mockController.updateStateLocal).toHaveBeenNthCalledWith(2, {
-        isLoading: false,
-        error: "Failed to resolve JournalOverviewService: Service not found",
-      });
       expect(mockService.getAllJournalsWithVisibilityStatus).not.toHaveBeenCalled();
     });
 
@@ -319,6 +328,14 @@ describe("createJournalOverviewWindowDefinition", () => {
           { id: "journal-1", name: "Journal 1", isHidden: false },
           { id: "journal-2", name: "Journal 2", isHidden: true },
         ],
+      });
+
+      // Inject deps into context.metadata (WindowController contract)
+      Object.assign(context.metadata ?? {}, {
+        platformJournalRepository: mockRepository,
+        cacheInvalidationPort: mockCache,
+        journalDirectoryRerenderScheduler: mockScheduler,
+        journalOverviewService: mockService,
       });
     });
 
@@ -449,7 +466,7 @@ describe("createJournalOverviewWindowDefinition", () => {
       const contextWithoutController: ActionContext = {
         ...context,
         metadata: {
-          container: mockContainer,
+          journalOverviewService: mockService,
         },
       };
 
@@ -458,7 +475,7 @@ describe("createJournalOverviewWindowDefinition", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("InvalidContext");
-        expect(result.error.message).toBe("Controller or container not found in context");
+        expect(result.error.message).toBe("Controller not found in context");
       }
     });
 
@@ -480,8 +497,8 @@ describe("createJournalOverviewWindowDefinition", () => {
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error.code).toBe("InvalidContext");
-        expect(result.error.message).toBe("Controller or container not found in context");
+        expect(result.error.code).toBe("ServiceNotFound");
+        expect(result.error.message).toContain("PlatformJournalRepository");
       }
     });
 
@@ -512,6 +529,7 @@ describe("createJournalOverviewWindowDefinition", () => {
         metadata: {
           ...context.metadata,
           journalId: "journal-1",
+          platformJournalRepository: undefined,
         },
       };
 
@@ -520,7 +538,7 @@ describe("createJournalOverviewWindowDefinition", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("ServiceNotFound");
-        expect(result.error.message).toContain("Failed to resolve PlatformJournalRepository");
+        expect(result.error.message).toContain("PlatformJournalRepository");
       }
     });
 
@@ -829,6 +847,34 @@ describe("createJournalOverviewWindowDefinition", () => {
       expect(result.ok).toBe(true);
       expect(mockRepository.setFlag).toHaveBeenCalled();
       // State should not be updated when service cannot be resolved for reload
+    });
+
+    it("should handle non-Error thrown during repository resolution", async () => {
+      const definition = createJournalOverviewWindowDefinition(mockComponent);
+      const action = definition.actions?.find((a) => a.id === "toggleJournalVisibility");
+      const handler = action?.handler;
+      expect(handler).toBeDefined();
+      if (!handler) return;
+
+      // Ensure journal exists in controller state
+      await mockController.updateStateLocal({
+        journals: [{ id: "journal-1", name: "Journal 1", isHidden: false }],
+      });
+
+      const result = await handler({
+        ...context,
+        metadata: {
+          ...context.metadata,
+          journalId: "journal-1",
+          platformJournalRepository: undefined,
+        },
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("ServiceNotFound");
+        expect(result.error.message).toContain("PlatformJournalRepository");
+      }
     });
   });
 
@@ -1943,7 +1989,6 @@ describe("createJournalOverviewWindowDefinition", () => {
       const result = await handler(context);
 
       expect(result.ok).toBe(true);
-      expect(mockContainer.resolveWithError).toHaveBeenCalledWith(journalOverviewServiceToken);
       expect(mockService.getAllJournalsWithVisibilityStatus).toHaveBeenCalled();
       expect(mockController.updateStateLocal).toHaveBeenCalledWith({
         journals: [
@@ -1955,21 +2000,21 @@ describe("createJournalOverviewWindowDefinition", () => {
     });
 
     it("should return error when service cannot be resolved", async () => {
-      vi.mocked(mockContainer.resolveWithError).mockReturnValue(
-        err({
-          code: "TokenNotRegistered",
-          message: "Service not found",
-          tokenDescription: String(journalOverviewServiceToken),
-        })
-      );
-
       const definition = createJournalOverviewWindowDefinition(mockComponent);
       const action = definition.actions?.find((a) => a.id === "refreshData");
       const handler = action?.handler;
       expect(handler).toBeDefined();
       if (!handler) return;
 
-      const result = await handler(context);
+      const contextWithoutService: ActionContext = {
+        ...context,
+        metadata: {
+          ...context.metadata,
+          journalOverviewService: undefined,
+        },
+      };
+
+      const result = await handler(contextWithoutService);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -2006,7 +2051,7 @@ describe("createJournalOverviewWindowDefinition", () => {
       const contextWithoutController: ActionContext = {
         ...context,
         metadata: {
-          container: mockContainer,
+          journalOverviewService: mockService,
         },
       };
 
@@ -2015,7 +2060,7 @@ describe("createJournalOverviewWindowDefinition", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("InvalidContext");
-        expect(result.error.message).toBe("Controller or container not found in context");
+        expect(result.error.message).toBe("Controller not found in context");
       }
     });
 
@@ -2026,19 +2071,19 @@ describe("createJournalOverviewWindowDefinition", () => {
       expect(handler).toBeDefined();
       if (!handler) return;
 
-      const contextWithoutContainer: ActionContext = {
+      const contextWithoutService: ActionContext = {
         ...context,
         metadata: {
           controller: mockController,
         },
       };
 
-      const result = await handler(contextWithoutContainer);
+      const result = await handler(contextWithoutService);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error.code).toBe("InvalidContext");
-        expect(result.error.message).toBe("Controller or container not found in context");
+        expect(result.error.code).toBe("ServiceNotFound");
+        expect(result.error.message).toContain("JournalOverviewService");
       }
     });
 
@@ -2080,6 +2125,28 @@ describe("createJournalOverviewWindowDefinition", () => {
         expect(result.error.message).toBe("String error");
       }
     });
+
+    it("should handle non-Error thrown during service resolution", async () => {
+      const definition = createJournalOverviewWindowDefinition(mockComponent);
+      const action = definition.actions?.find((a) => a.id === "refreshData");
+      const handler = action?.handler;
+      expect(handler).toBeDefined();
+      if (!handler) return;
+
+      const result = await handler({
+        ...context,
+        metadata: {
+          ...context.metadata,
+          journalOverviewService: undefined,
+        },
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("ServiceNotFound");
+        expect(result.error.message).toContain("JournalOverviewService");
+      }
+    });
   });
 
   describe("setAllVisible handler", () => {
@@ -2100,6 +2167,15 @@ describe("createJournalOverviewWindowDefinition", () => {
       mockCache = {
         invalidateWhere: vi.fn(),
       } as unknown as CacheInvalidationPort;
+
+      // Inject deps into context.metadata (WindowController contract)
+      Object.assign(context.metadata ?? {}, {
+        platformJournalRepository: mockRepository,
+        platformUI: mockUI,
+        cacheInvalidationPort: mockCache,
+        journalOverviewService: mockService,
+        notificationPublisher: mockNotifications,
+      });
 
       vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
         if (token === platformJournalRepositoryToken) {
@@ -2209,39 +2285,19 @@ describe("createJournalOverviewWindowDefinition", () => {
         err({ code: "OPERATION_FAILED", message: "Failed" })
       );
 
-      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
-        if (token === platformJournalRepositoryToken) {
-          return ok(mockRepository);
-        }
-        if (token === platformUIPortToken) {
-          return ok(mockUI);
-        }
-        if (token === notificationPublisherPortToken) {
-          return ok(mockNotifications);
-        }
-        if (token === cacheInvalidationPortToken) {
-          return ok({ invalidateWhere: vi.fn() });
-        }
-        if (token === journalDirectoryRerenderSchedulerToken) {
-          return ok({ requestRerender: vi.fn() });
-        }
-        if (token === journalOverviewServiceToken) {
-          return ok(mockService);
-        }
-        return err({
-          code: "TokenNotRegistered",
-          message: "Token not found",
-          tokenDescription: String(token),
-        });
-      });
-
       const definition = createJournalOverviewWindowDefinition(mockComponent);
       const action = definition.actions?.find((a) => a.id === "setAllVisible");
       const handler = action?.handler;
       expect(handler).toBeDefined();
       if (!handler) return;
 
-      const result = await handler(context);
+      const result = await handler({
+        ...context,
+        metadata: {
+          ...context.metadata,
+          notificationPublisher: mockNotifications,
+        },
+      });
 
       expect(result.ok).toBe(true);
       expect(mockNotifications.warn).toHaveBeenCalled();
@@ -2319,7 +2375,7 @@ describe("createJournalOverviewWindowDefinition", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("InvalidContext");
-        expect(result.error.message).toBe("Controller or container not found in context");
+        expect(result.error.message).toBe("Controller not found in context");
       }
     });
 
@@ -2341,39 +2397,30 @@ describe("createJournalOverviewWindowDefinition", () => {
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error.code).toBe("InvalidContext");
-        expect(result.error.message).toBe("Controller or container not found in context");
+        expect(result.error.code).toBe("ServiceNotFound");
+        expect(result.error.message).toContain("PlatformJournalRepository");
       }
     });
 
     it("should return error when repository cannot be resolved", async () => {
-      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
-        if (token === platformJournalRepositoryToken) {
-          return err({
-            code: "TokenNotRegistered",
-            message: "Repository not found",
-            tokenDescription: String(token),
-          });
-        }
-        return err({
-          code: "TokenNotRegistered",
-          message: "Token not found",
-          tokenDescription: String(token),
-        });
-      });
-
       const definition = createJournalOverviewWindowDefinition(mockComponent);
       const action = definition.actions?.find((a) => a.id === "setAllVisible");
       const handler = action?.handler;
       expect(handler).toBeDefined();
       if (!handler) return;
 
-      const result = await handler(context);
+      const result = await handler({
+        ...context,
+        metadata: {
+          ...context.metadata,
+          platformJournalRepository: undefined,
+        },
+      });
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("ServiceNotFound");
-        expect(result.error.message).toContain("Failed to resolve PlatformJournalRepository");
+        expect(result.error.message).toContain("PlatformJournalRepository");
       }
     });
 
@@ -2648,32 +2695,6 @@ describe("createJournalOverviewWindowDefinition", () => {
         err({ code: "OPERATION_FAILED", message: "Failed" })
       );
 
-      vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
-        if (token === platformJournalRepositoryToken) {
-          return ok(mockRepository);
-        }
-        if (token === platformUIPortToken) {
-          return ok(mockUI);
-        }
-        if (token === notificationPublisherPortToken) {
-          return ok(mockNotifications);
-        }
-        if (token === cacheInvalidationPortToken) {
-          return ok({ invalidateWhere: vi.fn() });
-        }
-        if (token === journalDirectoryRerenderSchedulerToken) {
-          return ok({ requestRerender: vi.fn() });
-        }
-        if (token === journalOverviewServiceToken) {
-          return ok(mockService);
-        }
-        return err({
-          code: "TokenNotRegistered",
-          message: "Token not found",
-          tokenDescription: String(token),
-        });
-      });
-
       Object.assign((mockController as { state: Record<string, unknown> }).state, {
         filteredJournals: [
           { id: "journal-1", isHidden: true }, // No name
@@ -2686,7 +2707,13 @@ describe("createJournalOverviewWindowDefinition", () => {
       expect(handler).toBeDefined();
       if (!handler) return;
 
-      const result = await handler(context);
+      const result = await handler({
+        ...context,
+        metadata: {
+          ...context.metadata,
+          notificationPublisher: mockNotifications,
+        },
+      });
 
       expect(result.ok).toBe(true);
       expect(mockNotifications.warn).toHaveBeenCalledWith(
@@ -2725,6 +2752,13 @@ describe("createJournalOverviewWindowDefinition", () => {
         setFlag: vi.fn().mockResolvedValue(ok(undefined)),
         unsetFlag: vi.fn().mockResolvedValue(ok(undefined)),
       } as unknown as PlatformJournalRepository;
+
+      // Inject deps into context.metadata (WindowController contract)
+      Object.assign(context.metadata ?? {}, {
+        platformJournalRepository: mockRepository,
+        journalOverviewService: mockService,
+        platformUI: { notify: vi.fn() } as unknown as PlatformUIPort,
+      });
 
       vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
         if (token === platformJournalRepositoryToken) {
@@ -2780,6 +2814,13 @@ describe("createJournalOverviewWindowDefinition", () => {
         unsetFlag: vi.fn().mockResolvedValue(ok(undefined)),
       } as unknown as PlatformJournalRepository;
 
+      // Inject deps into context.metadata (WindowController contract)
+      Object.assign(context.metadata ?? {}, {
+        platformJournalRepository: mockRepository,
+        journalOverviewService: mockService,
+        platformUI: { notify: vi.fn() } as unknown as PlatformUIPort,
+      });
+
       vi.mocked(mockContainer.resolveWithError).mockImplementation((token) => {
         if (token === platformJournalRepositoryToken) {
           return ok(mockRepository);
@@ -2834,6 +2875,31 @@ describe("createJournalOverviewWindowDefinition", () => {
         expect.any(String),
         false
       );
+    });
+  });
+
+  describe("bulk visibility repository resolution", () => {
+    it("should handle non-Error thrown during repository resolution", async () => {
+      const definition = createJournalOverviewWindowDefinition(mockComponent);
+      const action = definition.actions?.find((a) => a.id === "setAllVisible");
+      const handler = action?.handler;
+      expect(handler).toBeDefined();
+      if (!handler) return;
+
+      await mockController.updateStateLocal({
+        filteredJournals: [
+          { id: "journal-1", name: "Journal 1", isHidden: true },
+          { id: "journal-2", name: "Journal 2", isHidden: false },
+        ],
+      });
+
+      const result = await handler(context);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("ServiceNotFound");
+        expect(result.error.message).toContain("PlatformJournalRepository");
+      }
     });
   });
 });

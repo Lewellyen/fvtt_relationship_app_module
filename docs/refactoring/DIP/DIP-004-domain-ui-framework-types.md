@@ -4,6 +4,9 @@ prinzip: DIP
 schweregrad: hoch
 layer: domain
 status: Proposed
+reviewed: 2026-01-19
+relevance: still-relevant
+notes: Still distinct from DIP-001: focuses on UI-framework-specific instance types (React/Vue/etc) in domain.
 ---
 
 # 1. Problem

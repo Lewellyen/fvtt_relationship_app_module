@@ -118,6 +118,23 @@ describe("SvelteRenderer", () => {
       );
     });
 
+    it("should return error when mount target is not an HTMLElement", () => {
+      const descriptor: ComponentDescriptor = {
+        type: "svelte",
+        component: mockComponent,
+        props: {},
+      };
+
+      const invalidTarget = {};
+
+      const result = renderer.mount(descriptor, invalidTarget, mockViewModel);
+
+      expectResultErr(result);
+      expect(result.error.code).toBe("InvalidTarget");
+      expect(result.error.message).toContain("Mount target is not a valid HTMLElement");
+      expect(vi.mocked(mount)).not.toHaveBeenCalled();
+    });
+
     it("should return error if mount fails", () => {
       const descriptor: ComponentDescriptor = {
         type: "svelte",

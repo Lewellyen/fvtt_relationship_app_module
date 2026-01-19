@@ -1,5 +1,6 @@
 import type { Result } from "@/domain/types/result";
 import type { ActionError } from "./errors/action-error.interface";
+import type { DomEvent } from "./dom.types";
 
 /**
  * ActionDefinition - Schema für eine Action (Command-Pattern)
@@ -29,7 +30,7 @@ export interface ActionContext<TState = Record<string, unknown>> {
   readonly windowInstanceId: string;
   readonly controlId?: string;
   readonly state: Readonly<TState>;
-  readonly event?: Event;
+  readonly event?: DomEvent;
   readonly metadata?: Record<string, unknown>;
 }
 

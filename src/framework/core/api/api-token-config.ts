@@ -18,6 +18,7 @@ import {
   platformHtmlUtilsPortToken,
   platformAsyncUtilsPortToken,
 } from "@/application/tokens/domain-ports.tokens";
+import { sheetFacadeToken } from "@/application/tokens/api-facades.tokens";
 import type { ModuleApiTokens } from "@/framework/core/api/module-api";
 
 /**
@@ -49,5 +50,6 @@ export function createApiTokens(): ModuleApiTokens {
     platformObjectUtilsPortToken: markAsApiSafe(platformObjectUtilsPortToken),
     platformHtmlUtilsPortToken: markAsApiSafe(platformHtmlUtilsPortToken),
     platformAsyncUtilsPortToken: markAsApiSafe(platformAsyncUtilsPortToken),
+    sheetFacadeToken: markAsApiSafe(sheetFacadeToken),
   };
 }

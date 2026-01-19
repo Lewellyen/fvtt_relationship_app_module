@@ -19,12 +19,27 @@ import type { IWindowPersistenceCoordinator } from "../ports/window-persistence-
 import type { PlatformContainerPort } from "@/domain/ports/platform-container-port.interface";
 import type { PlatformJournalEventPort } from "@/domain/ports/events/platform-journal-event-port.interface";
 import type { JournalOverviewService } from "@/application/services/JournalOverviewService";
+import type { PlatformJournalRepository } from "@/domain/ports/repositories/platform-journal-repository.interface";
+import type { CacheInvalidationPort } from "@/domain/ports/cache/cache-invalidation-port.interface";
+import type { PlatformUIPort } from "@/domain/ports/platform-ui-port.interface";
+import type { NotificationPublisherPort } from "@/domain/ports/notifications/notification-publisher-port.interface";
+import type { JournalDirectoryRerenderScheduler } from "@/application/services/JournalDirectoryRerenderScheduler";
 import { platformJournalEventPortToken } from "@/application/tokens/domain-ports.tokens";
-import { journalOverviewServiceToken } from "@/application/tokens/application.tokens";
+import {
+  cacheInvalidationPortToken,
+  notificationPublisherPortToken,
+  platformJournalRepositoryToken,
+  platformUIPortToken,
+} from "@/application/tokens/domain-ports.tokens";
+import {
+  journalDirectoryRerenderSchedulerToken,
+  journalOverviewServiceToken,
+} from "@/application/tokens/application.tokens";
 import { MODULE_METADATA } from "@/application/constants/app-constants";
 import { DOMAIN_FLAGS } from "@/domain/constants/domain-constants";
 import { castResolvedService } from "@/application/windows/utils/service-casts";
 import { ok, err } from "@/domain/utils/result";
+import type { DomElement, DomEvent } from "@/domain/windows/types/dom.types";
 
 /**
  * WindowController - Facade für Window-Lifecycle-Orchestrierung
@@ -43,11 +58,19 @@ export class WindowController implements IWindowController {
   readonly definition: Readonly<WindowDefinition>;
 
   private componentInstance: ComponentInstance | null = null;
-  private element?: HTMLElement;
+  private element?: DomElement;
   private cachedViewModel?: ViewModel;
   private statePort: IWindowState<Record<string, unknown>>;
   private isMounted = false;
   private journalEventRegistrationId?: import("@/domain/ports/events/platform-event-port.interface").EventRegistrationId;
+
+  // Cached dependencies for journal-overview actions (resolved once per controller instance)
+  private journalOverviewService?: JournalOverviewService;
+  private platformJournalRepository?: PlatformJournalRepository;
+  private cacheInvalidationPort?: CacheInvalidationPort;
+  private journalDirectoryRerenderScheduler?: JournalDirectoryRerenderScheduler;
+  private platformUI?: PlatformUIPort;
+  private notificationPublisher?: NotificationPublisherPort;
 
   constructor(
     instanceId: string,
@@ -81,7 +104,7 @@ export class WindowController implements IWindowController {
   }
 
   async onFoundryRender(
-    element: HTMLElement
+    element: DomElement
   ): Promise<import("@/domain/types/result").Result<void, WindowError>> {
     if (this.isMounted) {
       // Bereits gemountet - sollte nicht passieren, aber sicherheitshalber
@@ -111,7 +134,7 @@ export class WindowController implements IWindowController {
     this.cachedViewModel = viewModel;
 
     // 3. Mount-Point finden
-    const mountPoint: HTMLElement | null = element.querySelector("#svelte-mount-point");
+    const mountPoint = element.querySelector?.<DomElement>("#svelte-mount-point") ?? null;
     if (!mountPoint) {
       return err({
         code: "MountPointNotFound",
@@ -150,7 +173,7 @@ export class WindowController implements IWindowController {
   }
 
   async onFoundryUpdate(
-    _element: HTMLElement
+    _element: DomElement
   ): Promise<import("@/domain/types/result").Result<void, WindowError>> {
     // Bei weiteren Renders: Kein Re-Mount, nur Update (wenn nötig)
     // Bei Svelte mit RuneState ist normalerweise kein Update nötig (reaktiv)
@@ -256,9 +279,73 @@ export class WindowController implements IWindowController {
   async dispatchAction(
     actionId: string,
     controlId?: string,
-    event?: Event,
+    event?: DomEvent,
     additionalMetadata?: Record<string, unknown>
   ): Promise<import("@/domain/types/result").Result<void, WindowError>> {
+    const injectedDeps: Record<string, unknown> = {};
+    if (this.definitionId === "journal-overview" && this.container) {
+      // Required: JournalOverviewService
+      if (!this.journalOverviewService) {
+        const res = this.container.resolveWithError<JournalOverviewService>(
+          journalOverviewServiceToken
+        );
+        if (res.ok) this.journalOverviewService = res.value;
+      }
+      if (this.journalOverviewService) {
+        injectedDeps.journalOverviewService = this.journalOverviewService;
+      }
+
+      // Required: PlatformJournalRepository
+      if (!this.platformJournalRepository) {
+        const res = this.container.resolveWithError<PlatformJournalRepository>(
+          platformJournalRepositoryToken
+        );
+        if (res.ok) this.platformJournalRepository = res.value;
+      }
+      if (this.platformJournalRepository) {
+        injectedDeps.platformJournalRepository = this.platformJournalRepository;
+      }
+
+      // Optional dependencies
+      if (!this.cacheInvalidationPort) {
+        const res = this.container.resolveWithError<CacheInvalidationPort>(
+          cacheInvalidationPortToken
+        );
+        if (res.ok) this.cacheInvalidationPort = res.value;
+      }
+      if (this.cacheInvalidationPort) {
+        injectedDeps.cacheInvalidationPort = this.cacheInvalidationPort;
+      }
+
+      if (!this.journalDirectoryRerenderScheduler) {
+        const res = this.container.resolveWithError<JournalDirectoryRerenderScheduler>(
+          journalDirectoryRerenderSchedulerToken
+        );
+        if (res.ok) this.journalDirectoryRerenderScheduler = res.value;
+      }
+      if (this.journalDirectoryRerenderScheduler) {
+        injectedDeps.journalDirectoryRerenderScheduler = this.journalDirectoryRerenderScheduler;
+      }
+
+      if (!this.platformUI) {
+        const res = this.container.resolveWithError<PlatformUIPort>(platformUIPortToken);
+        if (res.ok) this.platformUI = res.value;
+      }
+      if (this.platformUI) {
+        injectedDeps.platformUI = this.platformUI;
+      }
+
+      if (!this.notificationPublisher) {
+        const res = this.container.resolveWithError<NotificationPublisherPort>(
+          notificationPublisherPortToken
+        );
+        if (res.ok) this.notificationPublisher = res.value;
+      }
+      if (this.notificationPublisher) {
+        injectedDeps.notificationPublisher = this.notificationPublisher;
+      }
+    }
+
     const context: ActionContext = {
       windowInstanceId: this.instanceId,
       ...(controlId !== undefined && { controlId }),
@@ -267,6 +354,7 @@ export class WindowController implements IWindowController {
       metadata: {
         controller: this,
         ...(this.container !== undefined && { container: this.container }),
+        ...injectedDeps,
         ...(additionalMetadata !== undefined && additionalMetadata),
       },
     };

@@ -4,6 +4,9 @@ prinzip: LSP
 schweregrad: mittel
 layer: infrastructure
 status: Proposed
+reviewed: 2026-01-19
+relevance: still-relevant
+notes: `src/infrastructure/adapters/notifications/platform-notification-port-adapter.ts` still implements addChannel() as OPERATION_NOT_SUPPORTED.
 ---
 
 # 1. Problem
