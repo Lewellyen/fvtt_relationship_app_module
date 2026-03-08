@@ -1,3 +1,12 @@
+<script module lang="ts">
+  // Typen für Svelte 5 Runes (für TS/IDE), ohne Runtime-Effekt.
+  // Svelte/TS verlangt `declare` im module-script.
+  export {};
+  declare global {
+    function $props<T>(): T;
+  }
+</script>
+
 <script lang="ts">
   /**
    * NodeForm - Form-Komponente für Node-Daten
@@ -159,6 +168,17 @@
     font-size: 0.95rem;
     background-color: var(--input-background-color);
     color: var(--input-text-color);
+    box-sizing: border-box;
+  }
+
+  /* Windows/Chromium (Foundry) kann Select-Text vertikal clippen, wenn line-height/height
+     nicht sauber zusammenpassen. Explizit setzen, ohne das Theme farblich zu verändern. */
+  .form-field select {
+    line-height: 1.2;
+    min-height: 2.4rem;
+    height: 2.4rem;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
   }
 
   .form-field input:focus,

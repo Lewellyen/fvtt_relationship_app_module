@@ -25388,6 +25388,38 @@ function srcset_url_equal(element3, srcset) {
   );
 }
 __name(srcset_url_equal, "srcset_url_equal");
+let supported = null;
+function is_supported() {
+  if (supported === null) {
+    var select = document.createElement("select");
+    select.innerHTML = "<option><span>t</span></option>";
+    supported = /** @type {Element} */
+    select.firstChild?.firstChild?.nodeType === 1;
+  }
+  return supported;
+}
+__name(is_supported, "is_supported");
+function customizable_select(element3, rich_fn) {
+  var was_hydrating = hydrating;
+  if (!is_supported()) {
+    set_hydrating(false);
+    element3.textContent = "";
+    element3.append(create_comment(""));
+  }
+  try {
+    rich_fn();
+  } finally {
+    if (was_hydrating) {
+      if (hydrating) {
+        reset(element3);
+      } else {
+        set_hydrating(true);
+        set_hydrate_node(element3);
+      }
+    }
+  }
+}
+__name(customizable_select, "customizable_select");
 function bind_active_element(update2) {
   listen(document, ["focusin", "focusout"], (event3) => {
     if (event3 && event3.type === "focusout" && /** @type {FocusEvent} */
@@ -27855,7 +27887,7 @@ function JournalEntryPageWindowSystemBridgeMixin(BaseSheet, windowDefinition, mo
   return MixedClass;
 }
 __name(JournalEntryPageWindowSystemBridgeMixin, "JournalEntryPageWindowSystemBridgeMixin");
-const VERSION = "5.46.4";
+const VERSION = "5.47.0";
 const PUBLIC_VERSION = "5";
 if (typeof window !== "undefined") {
   ((_d = window.__svelte ?? (window.__svelte = {})).v ?? (_d.v = /* @__PURE__ */ new Set())).add(PUBLIC_VERSION);
@@ -27863,7 +27895,7 @@ if (typeof window !== "undefined") {
 var root$a = /* @__PURE__ */ from_html(`<div class="node-form svelte-194b1eq"><h3 class="svelte-194b1eq">Grunddaten</h3> <div class="form-field svelte-194b1eq"><label for="node-name" class="svelte-194b1eq">Name *</label> <input id="node-name" type="text" required class="svelte-194b1eq"/></div> <div class="form-field svelte-194b1eq"><label for="node-kind" class="svelte-194b1eq">Art *</label> <select id="node-kind" required class="svelte-194b1eq"><option>Person</option><option>Ort</option><option>Objekt</option></select></div> <div class="form-field svelte-194b1eq"><label for="node-faction" class="svelte-194b1eq">Fraktion</label> <input id="node-faction" type="text" class="svelte-194b1eq"/></div> <div class="form-field svelte-194b1eq"><label for="node-relation" class="svelte-194b1eq">Beziehung *</label> <select id="node-relation" required class="svelte-194b1eq"><option>Freund</option><option>Feind</option><option>Neutral</option></select></div> <div class="form-field svelte-194b1eq"><label for="node-icon" class="svelte-194b1eq">Icon</label> <input id="node-icon" type="text" placeholder="z.B. fas fa-user" class="svelte-194b1eq"/></div> <div class="form-field svelte-194b1eq"><label for="node-linked-entity" class="svelte-194b1eq">Verknüpfte Entity UUID</label> <input id="node-linked-entity" type="text" placeholder="UUID der verknüpften Entity" class="svelte-194b1eq"/></div></div>`);
 const $$css$9 = {
   hash: "svelte-194b1eq",
-  code: ".node-form.svelte-194b1eq {background:var(--color-bg-secondary, var(--color-cool-5-90));padding:1.5rem;border-radius:4px;border:1px solid var(--color-border, var(--color-border-light-primary));}.node-form.svelte-194b1eq h3:where(.svelte-194b1eq) {margin:0 0 1rem 0;font-size:1.2rem;border-bottom:1px solid var(--color-border, var(--color-border-light-tertiary));padding-bottom:0.5rem;color:var(--color-text-primary, var(--color-text-light-primary));}.form-field.svelte-194b1eq {display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;}.form-field.svelte-194b1eq label:where(.svelte-194b1eq) {font-weight:bold;font-size:0.9rem;color:var(--color-form-label);}.form-field.svelte-194b1eq input:where(.svelte-194b1eq),\r\n  .form-field.svelte-194b1eq select:where(.svelte-194b1eq) {padding:0.5rem;border:1px solid var(--input-border-color);border-radius:4px;font-size:0.95rem;background-color:var(--input-background-color);color:var(--input-text-color);}.form-field.svelte-194b1eq input:where(.svelte-194b1eq):focus,\r\n  .form-field.svelte-194b1eq select:where(.svelte-194b1eq):focus {outline:none;border-color:var(--input-focus-outline-color);color:var(--input-text-color);}"
+  code: ".node-form.svelte-194b1eq {background:var(--color-bg-secondary, var(--color-cool-5-90));padding:1.5rem;border-radius:4px;border:1px solid var(--color-border, var(--color-border-light-primary));}.node-form.svelte-194b1eq h3:where(.svelte-194b1eq) {margin:0 0 1rem 0;font-size:1.2rem;border-bottom:1px solid var(--color-border, var(--color-border-light-tertiary));padding-bottom:0.5rem;color:var(--color-text-primary, var(--color-text-light-primary));}.form-field.svelte-194b1eq {display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;}.form-field.svelte-194b1eq label:where(.svelte-194b1eq) {font-weight:bold;font-size:0.9rem;color:var(--color-form-label);}.form-field.svelte-194b1eq input:where(.svelte-194b1eq),\r\n  .form-field.svelte-194b1eq select:where(.svelte-194b1eq) {padding:0.5rem;border:1px solid var(--input-border-color);border-radius:4px;font-size:0.95rem;background-color:var(--input-background-color);color:var(--input-text-color);box-sizing:border-box;}\r\n\r\n  /* Windows/Chromium (Foundry) kann Select-Text vertikal clippen, wenn line-height/height\r\n     nicht sauber zusammenpassen. Explizit setzen, ohne das Theme farblich zu verändern. */.form-field.svelte-194b1eq select:where(.svelte-194b1eq) {line-height:1.2;min-height:2.4rem;height:2.4rem;padding-top:0.45rem;padding-bottom:0.45rem;}.form-field.svelte-194b1eq input:where(.svelte-194b1eq):focus,\r\n  .form-field.svelte-194b1eq select:where(.svelte-194b1eq):focus {outline:none;border-color:var(--input-focus-outline-color);color:var(--input-text-color);}"
 };
 function NodeForm($$anchor, $$props) {
   push$1($$props, true);
